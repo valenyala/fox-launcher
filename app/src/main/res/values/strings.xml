@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Fox</string>
+    <string name="default_launcher_explainer">Fox is not your home screen yet. Make it the default launcher to start using it.</string>
+    <string name="set_as_default_launcher">Set as default launcher</string>
 </resources>

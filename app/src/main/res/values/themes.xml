@@ -1,5 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Filled in properly in task 0.3 (wallpaper pass-through, cutout mode, transparent window). -->
-    <style name="Theme.Fox.Home" parent="@android:style/Theme.Material.NoActionBar" />
+    <!--
+      The launcher window is transparent and shows the system wallpaper through it
+      (windowShowWallpaper). Nothing in the app ever draws the wallpaper itself.
+      See docs/PLATFORM-NOTES.md section H.
+    -->
+    <style name="Theme.Fox.Home" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowShowWallpaper">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowTranslucentStatus">false</item>
+        <item name="android:windowTranslucentNavigation">false</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+    </style>
 </resources>

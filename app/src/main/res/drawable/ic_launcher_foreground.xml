@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Simple fox face. Everything stays inside the 72dp safe zone (x,y in 18..90). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- ears -->
+    <path
+        android:fillColor="#FFF3E4"
+        android:pathData="M31,28 L48,44 L29,52 Z" />
+    <path
+        android:fillColor="#FFF3E4"
+        android:pathData="M77,28 L60,44 L79,52 Z" />
+    <!-- head -->
+    <path
+        android:fillColor="#FFF3E4"
+        android:pathData="M29,48 C29,70 39,84 54,89 C69,84 79,70 79,48 C70,43 62,41 54,41 C46,41 38,43 29,48 Z" />
+    <!-- eyes -->
+    <path
+        android:fillColor="#2B2119"
+        android:pathData="M44,60 m-4.5,0 a4.5,4.5 0 1,0 9,0 a4.5,4.5 0 1,0 -9,0 Z" />
+    <path
+        android:fillColor="#2B2119"
+        android:pathData="M64,60 m-4.5,0 a4.5,4.5 0 1,0 9,0 a4.5,4.5 0 1,0 -9,0 Z" />
+    <!-- snout -->
+    <path
+        android:fillColor="#2B2119"
+        android:pathData="M54,74 m-5,0 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0 Z" />
+</vector>
