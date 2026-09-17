@@ -60,8 +60,15 @@ adb logcat -s FoxLauncher:V AndroidRuntime:E
 **Pre-commit gate** (must be green before every commit):
 
 ```
-./gradlew :app:testDebugUnitTest :app:lintDebug assembleDebug
+./scripts/ci.sh
 ```
+
+That is the whole CI for this repo (ADR-13): it runs
+`./gradlew check assembleDebug :app:compileDebugAndroidTestKotlin` — unit tests, lint, the APK, and the
+instrumented sources that nothing else compiles while no device is attached. It re-enters `nix develop` on
+its own, so it works from outside the shell. `.githooks/pre-commit` execs it and the dev shell points
+`core.hooksPath` there, so the gate runs on every `git commit`; `git commit --no-verify` is the escape
+hatch. There is no GitHub Actions workflow — do not add one without a new ADR.
 
 ## Architecture
 
@@ -112,3 +119,17 @@ Unidirectional data flow everywhere: repositories expose `Flow`, ViewModels expo
 - **minSdk is 29.** Do not add `@RequiresApi`/`SDK_INT` gates for anything below it.
 - **Never delete or weaken a test to make the gate pass.** Fix the code or record a blocker in `docs/STATUS.md`.
 - One task per commit, message `phaseN: <task title>`.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live as GitHub issues, managed with the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical triage roles, using the default label strings. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
