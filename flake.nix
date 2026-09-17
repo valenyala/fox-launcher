@@ -43,6 +43,14 @@
 
         # NixOS ships a patched aapt2; AGP would otherwise unpack a non-runnable one from Maven.
         GRADLE_OPTS = "-Dorg.gradle.project.android.aapt2FromMavenOverride=${sdk}/build-tools/${buildToolsVersion}/aapt2";
+
+        # ADR-13: CI is a local pre-commit hook, so point git at the tracked hooks dir.
+        shellHook = ''
+          if [ -d .git ] && [ "$(git config --get core.hooksPath || true)" != ".githooks" ]; then
+            git config core.hooksPath .githooks
+            echo "fox: enabled the pre-commit gate (.githooks)"
+          fi
+        '';
       };
 
       formatter.${system} = pkgs.nixpkgs-fmt;

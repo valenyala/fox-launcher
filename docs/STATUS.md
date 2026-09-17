@@ -111,16 +111,15 @@ Update this file at the end of every session. Keep it terse. Newest session note
 
 ## Session notes
 
-- 2026-09-17 — 0.6 done, **no remote run observed**. `.github/workflows/ci.yml`: push to main / PR / manual dispatch,
-  `ubuntu-latest`, concurrency-cancel, read-only token, checkout v5 → setup-java v5 (temurin 17) →
-  `android-actions/setup-android@v3` + an explicit `sdkmanager --install "platforms;android-37" "build-tools;37.0.0"`
-  (the runner image ships older ones, and ADR-12 needs 37) → `gradle/actions/setup-gradle@v4` (wrapper validation on,
-  cache read-only off main) → `./gradlew check assembleDebug :app:compileDebugAndroidTestKotlin --no-daemon --stacktrace`.
-  `check` covers unit tests and lint; the androidTest compile is added explicitly because nothing else compiles those
-  sources without a device. Artifacts: debug APK, plus `app/build/reports/**` and `app/build/test-results/**` on
-  `always()`. The YAML parses (`uv run --with pyyaml`) and the exact Gradle command is green locally.
-  `origin` is github.com/valenyala/fox-launcher and has commits up to 0.3, but 0.4–0.6 are **unpushed**, so CI has never
-  run — confirm the first run is green after the next push.
+- 2026-09-17 — 0.6 reworked: **CI is local, not GitHub Actions** (ADR-13). The workflow from the first pass was
+  verified and then removed at the user's request. `scripts/ci.sh` runs `check assembleDebug
+  :app:compileDebugAndroidTestKotlin` — unit tests, lint, APK and the instrumented sources that nothing else compiles
+  without a device — re-entering `nix develop` unless the caller is already in the dev shell. `.githooks/pre-commit`
+  execs it; the hooks dir is tracked and the flake's `shellHook` sets `core.hooksPath=.githooks` on entering the shell,
+  so it installs itself. The hook checks the working tree, not the index; `git commit --no-verify` skips it.
+  Verified both ways: green on the current tree, and a deliberately failing unit test made `scripts/ci.sh` exit 1.
+  The old workflow is recoverable from commit 75192eb. CLAUDE.md's "Pre-commit gate" paragraph still lists the older
+  three-task command — worth pointing at `scripts/ci.sh` next time that file is edited.
 
   Phase 0 code is complete. Still owed on a device: the 0.3 checklist (wallpaper through the window, no flash on
   rotation, Home returns to Fox), the 0.4 runtime Hilt/WorkManager start, and the first `connectedDebugAndroidTest`

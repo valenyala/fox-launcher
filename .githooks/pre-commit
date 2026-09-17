@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Pre-commit gate (ADR-13). Note it checks the working tree, not the staged
+# snapshot, which is what you want while iterating. Escape hatch for a
+# docs-only or work-in-progress commit: git commit --no-verify.
+set -euo pipefail
+
+echo "fox: running the local CI gate (git commit --no-verify to skip)"
+exec "$(git rev-parse --show-toplevel)/scripts/ci.sh"

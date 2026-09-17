@@ -140,6 +140,10 @@ Read `PLATFORM-NOTES.md` section H before 0.3.
 
 ## 0.6 CI workflow
 
+> **Superseded by ADR-13.** The GitHub Actions workflow below was built and then replaced by a local
+> pre-commit gate (`scripts/ci.sh` + `.githooks/pre-commit`). Do not recreate `.github/workflows/ci.yml`
+> without a new ADR.
+
 - **Why:** future sessions without a device still get an independent green/red signal.
 - **Do:** `.github/workflows/ci.yml`: on push/PR; `ubuntu-latest`; `actions/checkout`, `actions/setup-java` (temurin 17),
   `android-actions/setup-android` (or rely on the preinstalled SDK on the runner and set `ANDROID_HOME`),

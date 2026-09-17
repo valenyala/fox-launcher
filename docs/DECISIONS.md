@@ -81,6 +81,18 @@ AndroidX as of 2026-09 (`core-ktx` 1.19.0 and friends) declares an AAR-metadata 
 `compileSdk` of 37, so 36 fails `checkDebugAarMetadata`. The dev shell therefore pins Android
 platform 37 and build-tools 37.0.0. minSdk stays 29 per ADR-2.
 
+## ADR-13 CI runs locally as a pre-commit hook, not on GitHub Actions
+Phase 0.6 originally called for `.github/workflows/ci.yml`. The workflow was written, verified and then
+removed: the checks now run on this machine before every commit instead. `scripts/ci.sh` runs
+`check assembleDebug :app:compileDebugAndroidTestKotlin` (unit tests, lint, APK, instrumented sources),
+re-entering `nix develop` when the caller is not already in the dev shell, and `.githooks/pre-commit`
+execs it. The hooks directory is tracked, and the dev shell's `shellHook` sets `core.hooksPath` on entry,
+so the gate installs itself. It checks the working tree, not the staged snapshot; `git commit --no-verify`
+is the escape hatch for docs-only or WIP commits. The hosted runner bought little here — one developer,
+one machine, no attached device, and every run would re-provision SDK 37 — while the local gate is the
+same commands the session protocol already requires. Restoring the workflow means reverting this file and
+`git show 75192eb -- .github`.
+
 ## Dependency log
 (append `- <lib> <version> — reason` when adding a dependency)
 - AGP (com.android.application) 9.4.0 — build system; built-in Kotlin, see ADR-11.
