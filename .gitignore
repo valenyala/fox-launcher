@@ -1,0 +1,29 @@
+# Gradle / Android
+*.iml
+.gradle/
+build/
+/local.properties
+/captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.ap_
+*.dex
+/app/release/
+keystore.properties
+*.jks
+*.keystore
+
+# IDE
+.idea/
+*.swp
+.vscode/
+
+# Nix / direnv
+result
+result-*
+.direnv/
+
+# OS
+.DS_Store
