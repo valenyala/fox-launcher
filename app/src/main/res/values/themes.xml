@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Filled in properly in task 0.3 (wallpaper pass-through, cutout mode, transparent window). -->
+    <style name="Theme.Fox.Home" parent="@android:style/Theme.Material.NoActionBar" />
+</resources>

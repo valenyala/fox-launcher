@@ -66,5 +66,40 @@ must never be required for any other feature.
 consumes events when the classifier reports a recognized non-pager gesture. This keeps the pager's
 native horizontal paging and makes the classifier exhaustively testable.
 
+## ADR-11 AGP 9 built-in Kotlin; Kotlin 2.3.21 pinned by KSP
+AGP 9 ships Kotlin support itself and **refuses** `org.jetbrains.kotlin.android`
+("no longer required for Kotlin support since AGP 9.0"), so the app module applies only
+`com.android.application` plus the separate `plugin.compose`, `plugin.serialization`, `ksp` and `hilt`
+plugins. AGP 9.4.0 bundles KGP 2.2.10; applying the Compose/serialization plugins at 2.3.21 upgrades
+the buildscript classpath, which is the documented upgrade path. Kotlin is **2.3.21, not the newest
+2.4.20**, because KSP's newest release (2.3.12) is built against Kotlin 2.3.20 and no 2.4.x KSP exists
+yet. Revisit when KSP publishes a 2.4 line. `kotlinOptions` is gone; the `kotlin { }` extension that
+AGP registers (`KotlinAndroidProjectExtension`) is still there and carries `jvmToolchain(17)`.
+
+## ADR-12 compileSdk/targetSdk 37 (supersedes the "36" figure in ADR-2)
+AndroidX as of 2026-09 (`core-ktx` 1.19.0 and friends) declares an AAR-metadata minimum
+`compileSdk` of 37, so 36 fails `checkDebugAarMetadata`. The dev shell therefore pins Android
+platform 37 and build-tools 37.0.0. minSdk stays 29 per ADR-2.
+
 ## Dependency log
 (append `- <lib> <version> — reason` when adding a dependency)
+- AGP (com.android.application) 9.4.0 — build system; built-in Kotlin, see ADR-11.
+- Kotlin (compose + serialization plugins) 2.3.21 — see ADR-11.
+- KSP 2.3.12 — annotation processing for Hilt and Room; newest release, built against Kotlin 2.3.20.
+- Gradle wrapper 9.7.1 — required by AGP 9; distribution SHA-256 pinned in gradle-wrapper.properties.
+- androidx.compose:compose-bom 2026.09.00 — single source of truth for Compose artifact versions.
+- androidx.activity:activity-compose 1.13.0 — ComponentActivity + setContent, role-request launcher.
+- androidx.core:core-ktx 1.19.0 — platform ktx extensions.
+- androidx.lifecycle 2.11.0 (runtime-ktx, runtime-compose, viewmodel-compose) — collectAsStateWithLifecycle, VMs.
+- androidx.navigation:navigation-compose 2.10.1 — in-activity navigation (settings, drawer routes).
+- com.google.dagger:hilt-android 2.60.1 (+ hilt-android-compiler) — DI, per ADR-6.
+- androidx.hilt 1.4.0 (hilt-navigation-compose, hilt-work, hilt-compiler) — Hilt bridges for Compose nav and WorkManager.
+- androidx.room 2.8.5 (runtime, ktx, compiler) — structured persistence, per ADR-6.
+- androidx.datastore:datastore-preferences 1.2.1 — settings store, per ADR-6.
+- androidx.work:work-runtime-ktx 2.11.2 — wallpaper rotation scheduling, per ADR-6.
+- io.coil-kt.coil3:coil-compose 3.6.2 — UI image loading only (not the wallpaper engine), per ADR-6.
+- org.jetbrains.kotlinx:kotlinx-coroutines 1.11.0 (android, test) — concurrency everywhere.
+- org.jetbrains.kotlinx:kotlinx-serialization-json 1.11.0 — JSON for structured DataStore values.
+- org.jetbrains.kotlinx:kotlinx-collections-immutable 0.5.2 — stable Compose parameters.
+- junit 4.13.2, kotlin-test 2.3.21, turbine 1.2.1 — JVM unit tests, per ADR-7.
+- androidx.test runner/rules 1.7.0, androidx.test.ext:junit 1.3.0, compose ui-test-junit4/manifest (BOM) — instrumented tests.
