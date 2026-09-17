@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 0 — Toolchain & scaffold
-**Next task:** 0.4 Base libraries and DI
+**Next task:** 0.5 Test infrastructure
 
 ## Environment facts (verified 2026-09-17)
 
@@ -16,7 +16,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] 0.1 Nix dev shell
 - [x] 0.2 Gradle project skeleton
 - [x] 0.3 HOME activity, theme, default-launcher prompt
-- [ ] 0.4 Base libraries and DI
+- [x] 0.4 Base libraries and DI
 - [ ] 0.5 Test infrastructure
 - [ ] 0.6 CI workflow
 - [ ] Device checklist passed on: —
@@ -110,6 +110,23 @@ Update this file at the end of every session. Keep it terse. Newest session note
 (none)
 
 ## Session notes
+
+- 2026-09-17 — 0.4 done, **desk-verified only, no device**. Hilt graph up: `@HiltAndroidApp FoxApp` is now also
+  `Configuration.Provider` (injected `HiltWorkerFactory`) and Coil 3's `SingletonImageLoader.Factory` (memory cache 15 % of
+  heap, 64 MB disk cache in `cacheDir/image_cache`, crossfade on). Hilt-WorkManager needs the default startup initializer
+  gone, so the manifest now merges `androidx.startup.InitializationProvider` with `tools:node="remove"` on
+  `WorkManagerInitializer` — WorkManager initializes on demand from `FoxApp` instead. `core/common/Dispatchers.kt` has
+  `@IoDispatcher`/`@DefaultDispatcher`/`@MainDispatcher` plus an `@ApplicationScope` `CoroutineScope`.
+  `core/data/db`: `FoxDatabase` v1 with the placeholder `KeyValueEntity`/`KeyValueDao` and `DatabaseModule`; schema exported
+  and committed at `app/schemas/dev.foxlauncher.core.data.db.FoxDatabase/1.json`. `core/data/settings`: `FoxSettings` over
+  `DataStore<Preferences>` (`isFirstRun` Flow + `suspend setFirstRun`, writes on IO) with `SettingsModule`.
+  `HomeActivity` is `@AndroidEntryPoint` and gets a `HomeViewModel` (injected `FoxSettings`, `StateFlow<HomeUiState>`); on
+  resume, once the home role is held, it calls `onLauncherReady()` which clears first-run — that is the proof the graph
+  resolves at compile time. `hiltViewModel` moved package in androidx.hilt 1.4.0 (now
+  `androidx.hilt.lifecycle.viewmodel.compose`); the old import compiles with a deprecation warning, so the new one is used.
+  Gate green; lint unchanged at 5 warnings, 0 errors. `testDebugUnitTest` is still NO-SOURCE — 0.5 brings the first tests.
+  **Still owed: runtime Hilt check on a device** (app starts without a `HiltAndroidApp`/WorkManager init error), plus the
+  0.3 device checklist.
 
 - 2026-09-17 — 0.3 done, **desk-verified only, no device**. `HomeActivity` (singleTask, full `configChanges`, `enableEdgeToEdge`, `onNewIntent` stores the intent), `Theme.Fox.Home` with `windowShowWallpaper` + transparent window + `shortEdges` cutout, `FoxTheme` (dynamic color on API 31+, static fox-orange scheme below), stateless `HomeRoot(isDefaultLauncher, onRequestDefaultLauncher)`, `RoleManager.ROLE_HOME` request with a `Settings.ACTION_HOME_SETTINGS` fallback, adaptive launcher icon with a monochrome layer. The activity manifest block is byte-for-byte the attribute set in PLATFORM-NOTES H (checked by diffing the two). Pulled `core/common/FoxLog.kt` forward from 0.4 because the role fallback needed logging. Gate green; lint 5 warnings, 0 errors — all deliberate: `UnusedAttribute`/`DataExtractionRules` (minSdk 29 + allowBackup=false), `DiscouragedApi` on `screenOrientation="unspecified"` (kept for PLATFORM-NOTES fidelity; the value is the platform default anyway), 2× `NewerVersionAvailable` on Kotlin (ADR-11). Note: renaming a res folder leaves stale incremental merge state — `./gradlew :app:clean` was needed once. **Still owed: the 0.3 device checklist** (wallpaper visible through the window, no flash on rotation, Home key returns to Fox).
 - 2026-09-17 — 0.2 done. Wrapper 9.7.1 (dist SHA-256 pinned), settings/root/app build files, full `libs.versions.toml`, `gradle.properties`, minimal manifest + placeholder `FoxApp`/`strings`/`themes`. Two deviations from the phase doc, both recorded as ADRs: AGP 9 has built-in Kotlin and hard-errors on `org.jetbrains.kotlin.android` (ADR-11), and current AndroidX requires compileSdk 37, so the flake moved to platform 37 / build-tools 37.0.0 (ADR-12). Kotlin held at 2.3.21 because KSP has no 2.4 line yet. Gate green: `:app:testDebugUnitTest :app:lintDebug assembleDebug` (0 tests exist yet; lint reports 5 warnings, 0 errors — `MissingApplicationIcon` goes away in 0.3). Debug APK 36 MB. Next: 0.3.

@@ -11,10 +11,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import dagger.hilt.android.AndroidEntryPoint
 import dev.foxlauncher.core.common.FoxLog
 import dev.foxlauncher.core.ui.theme.FoxTheme
 import dev.foxlauncher.feature.home.HomeRoot
+import dev.foxlauncher.feature.home.HomeViewModel
 import dev.foxlauncher.feature.home.isDefaultLauncher
 import dev.foxlauncher.feature.home.requestDefaultLauncherRole
 
@@ -23,6 +26,7 @@ import dev.foxlauncher.feature.home.requestDefaultLauncherRole
  * it must never be recreated: a launcher that restarts looks like a crash. See
  * docs/PLATFORM-NOTES.md section H.
  */
+@AndroidEntryPoint
 class HomeActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -31,6 +35,8 @@ class HomeActivity : ComponentActivity() {
 
         setContent {
             FoxTheme {
+                val viewModel: HomeViewModel = hiltViewModel()
+
                 var isDefault by remember { mutableStateOf(isDefaultLauncher()) }
 
                 val roleRequest = rememberLauncherForActivityResult(
@@ -41,6 +47,8 @@ class HomeActivity : ComponentActivity() {
                 // or by an OEM dialog that returns no result), so re-read it on every resume.
                 LifecycleResumeEffect(Unit) {
                     isDefault = isDefaultLauncher()
+                    // Idempotent: the ViewModel ignores this once first run is recorded.
+                    if (isDefault) viewModel.onLauncherReady()
                     onPauseOrDispose {}
                 }
 
