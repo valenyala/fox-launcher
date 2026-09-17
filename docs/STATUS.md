@@ -2,8 +2,8 @@
 
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
-**Current phase:** 0 — Toolchain & scaffold
-**Next task:** 0.6 CI workflow
+**Current phase:** 1 — App catalog & drawer (phase 0 code complete; its device checklist is still owed)
+**Next task:** 1.1 AppEntry + AppRepository
 
 ## Environment facts (verified 2026-09-17)
 
@@ -18,7 +18,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] 0.3 HOME activity, theme, default-launcher prompt
 - [x] 0.4 Base libraries and DI
 - [x] 0.5 Test infrastructure
-- [ ] 0.6 CI workflow
+- [x] 0.6 CI workflow
 - [ ] Device checklist passed on: —
 
 ## Phase 1 — App catalog & drawer
@@ -110,6 +110,21 @@ Update this file at the end of every session. Keep it terse. Newest session note
 (none)
 
 ## Session notes
+
+- 2026-09-17 — 0.6 done, **no remote run observed**. `.github/workflows/ci.yml`: push to main / PR / manual dispatch,
+  `ubuntu-latest`, concurrency-cancel, read-only token, checkout v5 → setup-java v5 (temurin 17) →
+  `android-actions/setup-android@v3` + an explicit `sdkmanager --install "platforms;android-37" "build-tools;37.0.0"`
+  (the runner image ships older ones, and ADR-12 needs 37) → `gradle/actions/setup-gradle@v4` (wrapper validation on,
+  cache read-only off main) → `./gradlew check assembleDebug :app:compileDebugAndroidTestKotlin --no-daemon --stacktrace`.
+  `check` covers unit tests and lint; the androidTest compile is added explicitly because nothing else compiles those
+  sources without a device. Artifacts: debug APK, plus `app/build/reports/**` and `app/build/test-results/**` on
+  `always()`. The YAML parses (`uv run --with pyyaml`) and the exact Gradle command is green locally.
+  `origin` is github.com/valenyala/fox-launcher and has commits up to 0.3, but 0.4–0.6 are **unpushed**, so CI has never
+  run — confirm the first run is green after the next push.
+
+  Phase 0 code is complete. Still owed on a device: the 0.3 checklist (wallpaper through the window, no flash on
+  rotation, Home returns to Fox), the 0.4 runtime Hilt/WorkManager start, and the first `connectedDebugAndroidTest`
+  (`HomeRootTest` has only ever been compiled).
 
 - 2026-09-17 — 0.5 done. Test deps were already in the catalog from 0.2, so this was source only (plus
   `androidTestImplementation(kotlin-test)`). Added `Collation` in `core/common` (pure JVM, `java.text.Collator`,
