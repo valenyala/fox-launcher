@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 0 — Toolchain & scaffold
-**Next task:** 0.5 Test infrastructure
+**Next task:** 0.6 CI workflow
 
 ## Environment facts (verified 2026-09-17)
 
@@ -17,7 +17,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] 0.2 Gradle project skeleton
 - [x] 0.3 HOME activity, theme, default-launcher prompt
 - [x] 0.4 Base libraries and DI
-- [ ] 0.5 Test infrastructure
+- [x] 0.5 Test infrastructure
 - [ ] 0.6 CI workflow
 - [ ] Device checklist passed on: —
 
@@ -110,6 +110,20 @@ Update this file at the end of every session. Keep it terse. Newest session note
 (none)
 
 ## Session notes
+
+- 2026-09-17 — 0.5 done. Test deps were already in the catalog from 0.2, so this was source only (plus
+  `androidTestImplementation(kotlin-test)`). Added `Collation` in `core/common` (pure JVM, `java.text.Collator`,
+  SECONDARY strength + raw-string tie-break) as the label ordering Phase 1's drawer will sort with, and
+  `MainDispatcherRule` in the test source set (`UnconfinedTestDispatcher` by default, swappable for a
+  `StandardTestDispatcher`). **8 unit tests pass** (`CollationTest` ×7 — case, accents, case-only ties, digits, empty
+  label, locale-dependent ordering for sv vs en; `MainDispatcherRuleTest` ×1 smoke). `compileDebugAndroidTestKotlin`
+  compiles `HomeRootTest` (3 Compose UI tests over the stateless `HomeRoot`, role state injected, no `RoleManager`).
+  Instrumentation runner stays the default `AndroidJUnitRunner` — no instrumented test needs Hilt yet.
+  Two deprecations dealt with: `MainDispatcherRule` needs `@OptIn(ExperimentalCoroutinesApi::class)` for
+  `setMain`/`resetMain`, and `createComposeRule` is deprecated in favour of `androidx.compose.ui.test.junit4.v2`, which
+  schedules with `StandardTestDispatcher` instead of Unconfined — the v2 rule is in use and compiles, but **it has never
+  been run** (no device), so if `HomeRootTest` needs explicit synchronization that will only show up on the first
+  `connectedDebugAndroidTest`. Gate green; lint unchanged at 5 warnings, 0 errors.
 
 - 2026-09-17 — 0.4 done, **desk-verified only, no device**. Hilt graph up: `@HiltAndroidApp FoxApp` is now also
   `Configuration.Provider` (injected `HiltWorkerFactory`) and Coil 3's `SingletonImageLoader.Factory` (memory cache 15 % of
