@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 1 — App catalog & drawer (phase 0 code complete; its device checklist is still owed)
-**Next task:** 1.1 AppEntry + AppRepository
+**Next task:** 1.2 IconCache
 
 ## Environment facts (verified 2026-09-17)
 
@@ -22,7 +22,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [ ] Device checklist passed on: —
 
 ## Phase 1 — App catalog & drawer
-- [ ] 1.1 AppEntry + AppRepository
+- [x] 1.1 AppEntry + AppRepository
 - [ ] 1.2 IconCache
 - [ ] 1.3 App drawer screen
 - [ ] 1.4 Minimal home + swipe-up drawer
@@ -110,6 +110,17 @@ Update this file at the end of every session. Keep it terse. Newest session note
 (none)
 
 ## Session notes
+
+- 2026-09-22 — 1.1 done, **desk-verified only, no device** (device checklist not run). `AppEntry` (+ `key` =
+  `component|serial`), `AppRepository` (LauncherApps across `userProfiles`, callback on a `HandlerThread`, 250 ms
+  debounced refresh via a `SharedFlow`, `Mutex`-guarded refresh on IO, `UserHandle` map by serial), `sortEntries`
+  (label via `Collation`, then component, then serial) and `AppSearch` (NFD + strip marks + lowercase; `rank()` returns
+  LABEL_PREFIX / WORD_PREFIX / SUBSTRING, `match()` is `rank != null`). Additions beyond the task text: `isLoaded`
+  StateFlow (drawer needs loading vs. empty), `isSystemApp()` for the 1.3 popup, `userFor(serial)`. `versionCode` comes
+  from `getPackageInfo(MATCH_UNINSTALLED_PACKAGES)`, 0 when unresolvable — it only feeds icon-cache keys. Manifest gains
+  `QUERY_ALL_PACKAGES` (lint-ignored, reason in comment) and `REQUEST_DELETE_PACKAGES`. Temporary app-count log in
+  `HomeViewModel` (TODO(1.4)). 20 unit tests pass. Lint 6 warnings, 0 errors: the one new warning is
+  `AndroidGradlePluginVersion` — a newer AGP was published since 0.2, unrelated to this change.
 
 - 2026-09-17 — 0.6 reworked: **CI is local, not GitHub Actions** (ADR-13). The workflow from the first pass was
   verified and then removed at the user's request. `scripts/ci.sh` runs `check assembleDebug
