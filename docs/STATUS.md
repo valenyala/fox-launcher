@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 2 — Home grid (phases 0 and 1 code complete; both device checklists still owed)
-**Next task:** 2.1 Room schema + repository
+**Next task:** 2.2 GridLayoutEngine
 
 ## Environment facts (verified 2026-09-17)
 
@@ -31,7 +31,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [ ] Device checklist passed on: —
 
 ## Phase 2 — Home grid
-- [ ] 2.1 Room schema + repository
+- [x] 2.1 Room schema + repository
 - [ ] 2.2 GridLayoutEngine
 - [ ] 2.3 Page + dock rendering, wallpaper offsets
 - [ ] 2.4 Drag & drop
@@ -110,6 +110,18 @@ Update this file at the end of every session. Keep it terse. Newest session note
 (none)
 
 ## Session notes
+
+- 2026-09-22 — 2.1 done. Schema v2 (`app/schemas/.../2.json`): `home_items` (CLAUDE.md shape + `createdAt`, index
+  `(container, page)` and `folderId`, enums stored as TEXT by Room) and `folders`. `AutoMigration(1→2)` with a
+  `@DeleteTable("key_value")` spec: the Phase 0 placeholder table had no users, so it is gone along with its DAO.
+  **There is no migration test yet:** it needs `room-testing` (a new dependency) and a device. Add both when the first
+  real-data migration (v2→v3) happens. `HomeDao` is an abstract class so `moveItems` can be `@Transaction open`.
+  `deleteByPackage` matches the prefix with `substr(...) = pkg || '/'`, not LIKE, because `_` is a LIKE wildcard.
+  Folder children have `container = FOLDER` and the folder's `folderId`, with rank in `col`. Shortcut rows store
+  `component = "<pkg>/"`, so `deleteByPackage` catches them too. Model: `core/model/HomeItem.kt` (sealed `HomeItem`,
+  `HomePosition`, `HomePage`, `HomeLayout` with at least one page). Pure `HomeLayoutMapper` + `orphanedAppItemIds`
+  (11 tests); an empty catalog never prunes. `HomeRepository` (layout flow, addApp/move/remove, orphan pruning once
+  `isLoaded`) exists but nothing injects it until 2.3.
 
 - 2026-09-22 — 1.6 done, **hide/unhide not verified on device**. Pure `applyHidden(list, hidden, query)` in
   `core/apps/HiddenApps.kt` (7 tests). Hiding is per profile (`AppEntry.key`). A hidden app is revealed only when the

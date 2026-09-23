@@ -19,5 +19,5 @@ object DatabaseModule {
         Room.databaseBuilder(context, FoxDatabase::class.java, FoxDatabase.NAME).build()
 
     @Provides
-    fun provideKeyValueDao(database: FoxDatabase): KeyValueDao = database.keyValueDao()
+    fun provideHomeDao(database: FoxDatabase): HomeDao = database.homeDao()
 }
