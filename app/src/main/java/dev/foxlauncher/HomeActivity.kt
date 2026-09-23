@@ -12,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -27,6 +28,7 @@ import dev.foxlauncher.feature.home.HomeScreen
 import dev.foxlauncher.feature.home.HomeViewModel
 import dev.foxlauncher.feature.home.isDefaultLauncher
 import dev.foxlauncher.feature.home.requestDefaultLauncherRole
+import dev.foxlauncher.feature.settings.HiddenAppsScreen
 import javax.inject.Inject
 
 /**
@@ -50,6 +52,9 @@ class HomeActivity : ComponentActivity() {
             FoxTheme {
                 val viewModel: HomeViewModel = hiltViewModel()
                 val drawerViewModel: DrawerViewModel = hiltViewModel()
+                // A single settings screen does not justify a NavHost yet; this becomes a route
+                // once settings grow (Phase 3 gesture settings).
+                var showHiddenApps by rememberSaveable { mutableStateOf(false) }
 
                 var isDefault by remember { mutableStateOf(isDefaultLauncher()) }
 
@@ -75,7 +80,10 @@ class HomeActivity : ComponentActivity() {
                             homeKeyPresses = homeKeyPresses,
                             onDrawerClosed = drawerViewModel::clearQuery,
                         ) { autoFocusSearch ->
-                            DrawerScreen(drawerViewModel, autoFocusSearch)
+                            DrawerScreen(drawerViewModel, autoFocusSearch, onOpenHiddenApps = { showHiddenApps = true })
+                        }
+                        if (showHiddenApps) {
+                            HiddenAppsScreen(hiltViewModel(), onBack = { showHiddenApps = false })
                         }
                     }
                 }

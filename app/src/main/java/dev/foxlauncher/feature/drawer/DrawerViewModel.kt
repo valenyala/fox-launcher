@@ -10,6 +10,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.foxlauncher.core.apps.AppRepository
+import dev.foxlauncher.core.apps.applyHidden
 import dev.foxlauncher.core.common.DefaultDispatcher
 import dev.foxlauncher.core.data.settings.FoxSettings
 import dev.foxlauncher.core.model.AppEntry
@@ -48,7 +49,7 @@ data class DrawerPopup(val entry: AppEntry, val canUninstall: Boolean)
 @HiltViewModel
 class DrawerViewModel @Inject constructor(
     private val appRepository: AppRepository,
-    settings: FoxSettings,
+    private val settings: FoxSettings,
     @param:DefaultDispatcher private val default: CoroutineDispatcher,
 ) : ViewModel() {
 
@@ -71,8 +72,8 @@ class DrawerViewModel @Inject constructor(
 
     private val layout = combine(settings.drawerColumns, settings.iconSizeDp, ::Pair)
 
-    private val sections = combine(appRepository.apps, query, tab) { apps, query, tab ->
-        buildSections(appsForTab(apps, tab, query), query)
+    private val sections = combine(appRepository.apps, settings.hiddenApps, query, tab) { apps, hidden, query, tab ->
+        buildSections(appsForTab(applyHidden(apps, hidden, query), tab, query), query)
     }.flowOn(default)
 
     private val profile = combine(appRepository.workProfile, tab) { work, tab ->
@@ -133,6 +134,11 @@ class DrawerViewModel @Inject constructor(
     fun onAppInfo(entry: AppEntry, sourceBounds: Rect?) {
         popup.value = null
         appRepository.openAppInfo(entry, sourceBounds)
+    }
+
+    fun onHide(entry: AppEntry) {
+        popup.value = null
+        viewModelScope.launch { settings.setHidden(entry.key, hidden = true) }
     }
 
     fun onUninstall(entry: AppEntry) {

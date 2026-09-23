@@ -31,6 +31,8 @@ import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SecondaryTabRow
@@ -41,8 +43,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,6 +63,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
@@ -82,6 +87,7 @@ object DrawerTestTags {
     const val SEARCH = "drawer_search"
     const val RAIL = "drawer_rail"
     const val TABS = "drawer_tabs"
+    const val OVERFLOW = "drawer_overflow"
 }
 
 /** The drawer wired to its ViewModel. [autoFocusSearch] is true only when opened by a search action. */
@@ -89,6 +95,7 @@ object DrawerTestTags {
 fun DrawerScreen(
     viewModel: DrawerViewModel,
     autoFocusSearch: Boolean,
+    onOpenHiddenApps: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -105,6 +112,8 @@ fun DrawerScreen(
         onDismissPopup = viewModel::dismissPopup,
         onAppInfo = { entry, bounds -> viewModel.onAppInfo(entry, bounds?.let { launchSource(view, it).sourceBounds }) },
         onUninstall = viewModel::onUninstall,
+        onHide = viewModel::onHide,
+        onOpenHiddenApps = onOpenHiddenApps,
         onTabSelected = viewModel::onTabSelected,
         onWorkPausedChange = viewModel::onWorkPausedChange,
         modifier = modifier,
@@ -126,6 +135,8 @@ fun DrawerContent(
     onAppInfo: (AppEntry, Rect?) -> Unit,
     onUninstall: (AppEntry) -> Unit,
     modifier: Modifier = Modifier,
+    onHide: (AppEntry) -> Unit = {},
+    onOpenHiddenApps: () -> Unit = {},
     onTabSelected: (DrawerTab) -> Unit = {},
     onWorkPausedChange: (Boolean) -> Unit = {},
     iconContent: @Composable (AppEntry) -> Unit = { AppIcon(it, state.iconSizeDp.dp) },
@@ -155,6 +166,7 @@ fun DrawerContent(
             OutlinedTextField(
                 state = searchState,
                 placeholder = { Text(stringResource(R.string.drawer_search_hint)) },
+                trailingIcon = { DrawerOverflowMenu(onOpenHiddenApps) },
                 lineLimits = TextFieldLineLimits.SingleLine,
                 shape = MaterialTheme.shapes.extraLarge,
                 modifier = Modifier
@@ -180,6 +192,7 @@ fun DrawerContent(
                         onDismissPopup = onDismissPopup,
                         onAppInfo = onAppInfo,
                         onUninstall = onUninstall,
+                        onHide = onHide,
                         iconContent = iconContent,
                         modifier = Modifier.weight(1f),
                     )
@@ -188,6 +201,25 @@ fun DrawerContent(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun DrawerOverflowMenu(onOpenHiddenApps: () -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { expanded = true }, modifier = Modifier.testTag(DrawerTestTags.OVERFLOW)) {
+            Icon(painterResource(R.drawable.ic_more_vert), stringResource(R.string.drawer_more_options))
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.hidden_apps_title)) },
+                onClick = {
+                    expanded = false
+                    onOpenHiddenApps()
+                },
+            )
         }
     }
 }
@@ -263,6 +295,7 @@ private fun AppGrid(
     onDismissPopup: () -> Unit,
     onAppInfo: (AppEntry, Rect?) -> Unit,
     onUninstall: (AppEntry) -> Unit,
+    onHide: (AppEntry) -> Unit,
     iconContent: @Composable (AppEntry) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -295,6 +328,7 @@ private fun AppGrid(
                         onDismissPopup = onDismissPopup,
                         onAppInfo = onAppInfo,
                         onUninstall = onUninstall,
+                        onHide = onHide,
                         iconContent = iconContent,
                     )
                 }
@@ -318,6 +352,7 @@ private fun DrawerItem(
     onDismissPopup: () -> Unit,
     onAppInfo: (AppEntry, Rect?) -> Unit,
     onUninstall: (AppEntry) -> Unit,
+    onHide: (AppEntry) -> Unit,
     iconContent: @Composable (AppEntry) -> Unit,
 ) {
     val holder = remember { BoundsHolder() }
@@ -360,6 +395,10 @@ private fun DrawerItem(
                     onClick = { onUninstall(entry) },
                 )
             }
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.popup_hide)) },
+                onClick = { onHide(entry) },
+            )
             // Placeholder for Phase 2; shown disabled so the menu's final shape is visible now.
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.popup_add_to_home)) },

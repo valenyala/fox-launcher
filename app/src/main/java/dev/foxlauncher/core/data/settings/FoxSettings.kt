@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
@@ -43,11 +44,23 @@ class FoxSettings @Inject constructor(
     /** Columns in the app drawer grid. */
     val drawerColumns: Flow<Int> = dataStore.data.map { it[Keys.DRAWER_COLUMNS] ?: DEFAULT_DRAWER_COLUMNS }
 
+    /** Apps hidden from the drawer, as `AppEntry.key` (`component|serial`). */
+    val hiddenApps: Flow<Set<String>> = dataStore.data.map { it[Keys.HIDDEN_APPS].orEmpty() }
+
+    suspend fun setHidden(appKey: String, hidden: Boolean) = withContext(io) {
+        dataStore.edit {
+            val current = it[Keys.HIDDEN_APPS].orEmpty()
+            it[Keys.HIDDEN_APPS] = if (hidden) current + appKey else current - appKey
+        }
+        Unit
+    }
+
     private object Keys {
         val IS_FIRST_RUN = booleanPreferencesKey("is_first_run")
         val ICON_SHAPE = stringPreferencesKey("icon_shape")
         val ICON_SIZE_DP = intPreferencesKey("icon_size_dp")
         val DRAWER_COLUMNS = intPreferencesKey("drawer_columns")
+        val HIDDEN_APPS = stringSetPreferencesKey("hidden_apps")
     }
 
     companion object {

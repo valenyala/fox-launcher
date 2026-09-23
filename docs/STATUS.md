@@ -2,8 +2,8 @@
 
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
-**Current phase:** 1 — App catalog & drawer (phase 0 code complete; its device checklist is still owed)
-**Next task:** 1.6 Hidden apps
+**Current phase:** 2 — Home grid (phases 0 and 1 code complete; both device checklists still owed)
+**Next task:** 2.1 Room schema + repository
 
 ## Environment facts (verified 2026-09-17)
 
@@ -27,7 +27,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] 1.3 App drawer screen
 - [x] 1.4 Minimal home + swipe-up drawer
 - [x] 1.5 Work profiles (not verified on device)
-- [ ] 1.6 Hidden apps
+- [x] 1.6 Hidden apps
 - [ ] Device checklist passed on: —
 
 ## Phase 2 — Home grid
@@ -110,6 +110,19 @@ Update this file at the end of every session. Keep it terse. Newest session note
 (none)
 
 ## Session notes
+
+- 2026-09-22 — 1.6 done, **hide/unhide not verified on device**. Pure `applyHidden(list, hidden, query)` in
+  `core/apps/HiddenApps.kt` (7 tests). Hiding is per profile (`AppEntry.key`). A hidden app is revealed only when the
+  trimmed query equals its label, ignoring case and accents. `FoxSettings.hiddenApps` is a string-set key with
+  `setHidden(key, hidden)`. The drawer popup gains "Hide". A ⋮ trailing icon on the search field opens a menu with
+  "Hidden apps", which shows `feature/settings/HiddenAppsScreen` (checkbox list, `HiddenAppsContentTest`). **No
+  NavHost yet:** the screen is a `rememberSaveable` overlay flag in `HomeActivity` with its own `BackHandler`; make it a
+  route when settings grow (3.5). Icons are two local vector drawables (`ic_more_vert`, `ic_arrow_back`), because
+  material3 1.4 does not pull in material-icons. They tint with `?android:attr/colorControlNormal`: the app attr form
+  needs AppCompat and fails resource linking.
+
+  **Phase 1 code complete.** 44 unit tests; 13 instrumented tests compile and none has ever run. Lint 6 warnings, 0
+  errors. Still owed on a device: the Phase 0 and Phase 1 checklists and the first `connectedDebugAndroidTest`.
 
 - 2026-09-22 — 1.5 done, **not verified on device** (no device, no TestDPC work profile). `AppRepository.workProfile`
   (`WorkProfile(serial, isPaused)`, first non-own profile, from quiet mode) and `setWorkPaused()`

@@ -13,4 +13,9 @@
     <string name="drawer_tab_work">Work</string>
     <string name="work_pause">Pause work apps</string>
     <string name="work_paused_message">Work apps are paused. They won\'t send notifications or use data.</string>
+    <string name="popup_hide">Hide</string>
+    <string name="drawer_more_options">More options</string>
+    <string name="hidden_apps_title">Hidden apps</string>
+    <string name="hidden_apps_explainer">Hidden apps stay out of the drawer. Type an app\'s full name in search to still find it.</string>
+    <string name="navigate_back">Back</string>
 </resources>
