@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 2 — Home grid (phases 0 and 1 code complete; both device checklists still owed)
-**Next task:** 2.2 GridLayoutEngine
+**Next task:** 2.3 Page + dock rendering, wallpaper offsets
 
 ## Environment facts (verified 2026-09-17)
 
@@ -32,7 +32,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 
 ## Phase 2 — Home grid
 - [x] 2.1 Room schema + repository
-- [ ] 2.2 GridLayoutEngine
+- [x] 2.2 GridLayoutEngine
 - [ ] 2.3 Page + dock rendering, wallpaper offsets
 - [ ] 2.4 Drag & drop
 - [ ] 2.5 Folders
@@ -110,6 +110,11 @@ Update this file at the end of every session. Keep it terse. Newest session note
 (none)
 
 ## Session notes
+
+- 2026-09-22 — 2.2 done. `feature/home/grid/`: `GridSpec` (validated; `DEFAULT` = 5×6, 5 dock slots), `CellRect`
+  (+ `overlaps`), `PxRect`, `GridLayoutEngine` with every function the task lists plus `fits()`. Occupancy is
+  `[row][col]` and clips items that hang off the grid. `nearestFreeTo` searches square rings outward. Within a ring
+  the smallest Euclidean distance wins, then the upper cell, then the left, so results are deterministic. 18 tests.
 
 - 2026-09-22 — 2.1 done. Schema v2 (`app/schemas/.../2.json`): `home_items` (CLAUDE.md shape + `createdAt`, index
   `(container, page)` and `folderId`, enums stored as TEXT by Room) and `folders`. `AutoMigration(1→2)` with a
