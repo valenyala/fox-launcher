@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 1 — App catalog & drawer (phase 0 code complete; its device checklist is still owed)
-**Next task:** 1.3 App drawer screen
+**Next task:** 1.4 Minimal home + swipe-up drawer
 
 ## Environment facts (verified 2026-09-17)
 
@@ -24,7 +24,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 ## Phase 1 — App catalog & drawer
 - [x] 1.1 AppEntry + AppRepository
 - [x] 1.2 IconCache
-- [ ] 1.3 App drawer screen
+- [x] 1.3 App drawer screen
 - [ ] 1.4 Minimal home + swipe-up drawer
 - [ ] 1.5 Work profiles
 - [ ] 1.6 Hidden apps
@@ -110,6 +110,17 @@ Update this file at the end of every session. Keep it terse. Newest session note
 (none)
 
 ## Session notes
+
+- 2026-09-22 — 1.3 code done, **device checklist not run**. `DrawerContentTest` (3 Compose tests, including the
+  required "ma" filter test) compiles but has **never run** (no device). Sectioning is a pure `buildSections(apps,
+  query)` with 6 unit tests. A blank query gives letter sections (accents stripped, non-letters go under `#`). A query
+  gives one headerless section ordered by `AppSearch.Rank`. Deviations: `DrawerViewModel` owns a `TextFieldState`
+  (`searchState`) instead of feeding the text field from `uiState.query`, because an async flow drops keystrokes;
+  `uiState.query` is derived from it. The popup is a `DropdownMenu` anchored on the item: App info, Uninstall (only
+  when not `FLAG_SYSTEM`), and a disabled "Add to home screen" placeholder. The rail is hidden during search. Launch
+  animation is `core/ui/LaunchAnimation.kt` (clip reveal + screen-space `sourceBounds`). Icons come from `AppIcon` via
+  `LocalIconCache`, which 1.4 provides; the drawer is not reachable in the app until 1.4. New setting `drawerColumns`
+  (default 5).
 
 - 2026-09-22 — 1.2 done, **desk-verified only**: the "< 5 ms per disk hit" timing and the scroll-jank check both
   need a device (the `FoxLog.d` timing line is in `IconCache.load`). `IconShapes.kt` is pure data (`PathCommand` list per

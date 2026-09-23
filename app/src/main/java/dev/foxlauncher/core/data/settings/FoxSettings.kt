@@ -40,14 +40,19 @@ class FoxSettings @Inject constructor(
     /** Icon edge length in dp, shared by home and drawer. */
     val iconSizeDp: Flow<Int> = dataStore.data.map { it[Keys.ICON_SIZE_DP] ?: DEFAULT_ICON_SIZE_DP }
 
+    /** Columns in the app drawer grid. */
+    val drawerColumns: Flow<Int> = dataStore.data.map { it[Keys.DRAWER_COLUMNS] ?: DEFAULT_DRAWER_COLUMNS }
+
     private object Keys {
         val IS_FIRST_RUN = booleanPreferencesKey("is_first_run")
         val ICON_SHAPE = stringPreferencesKey("icon_shape")
         val ICON_SIZE_DP = intPreferencesKey("icon_size_dp")
+        val DRAWER_COLUMNS = intPreferencesKey("drawer_columns")
     }
 
     companion object {
         const val DEFAULT_IS_FIRST_RUN: Boolean = true
         const val DEFAULT_ICON_SIZE_DP: Int = 56
+        const val DEFAULT_DRAWER_COLUMNS: Int = 5
     }
 }

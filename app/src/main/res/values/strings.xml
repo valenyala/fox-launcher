@@ -3,4 +3,10 @@
     <string name="app_name">Fox</string>
     <string name="default_launcher_explainer">Fox is not your home screen yet. Make it the default launcher to start using it.</string>
     <string name="set_as_default_launcher">Set as default launcher</string>
+    <string name="drawer_search_hint">Search apps</string>
+    <string name="drawer_no_results">No apps match</string>
+    <string name="drawer_no_apps">No apps found</string>
+    <string name="popup_app_info">App info</string>
+    <string name="popup_uninstall">Uninstall</string>
+    <string name="popup_add_to_home">Add to home screen</string>
 </resources>
