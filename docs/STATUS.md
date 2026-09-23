@@ -35,6 +35,11 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] 2.2 GridLayoutEngine
 - [x] 2.3 Page + dock rendering, wallpaper offsets (desk only)
 - [ ] 2.4 Drag & drop
+  - [x] `DragResolver` + tests (pure drop rules)
+  - [ ] `HomeDragState`, long-press pick-up, `DragOverlay`, target highlight, edge page-flip
+  - [ ] Apply `DropAction`s in `HomeRepository` (move, dock, create/add folder, remove)
+  - [ ] Remove zone, drag from drawer, page creation / empty-page cleanup
+  - [ ] Device checklist
 - [ ] 2.5 Folders
 - [ ] 2.6 Item popup: shortcuts, app info, remove, uninstall
 - [ ] 2.7 First-run default layout
@@ -110,6 +115,16 @@ Update this file at the end of every session. Keep it terse. Newest session note
 (none)
 
 ## Session notes
+
+- 2026-09-22 — 2.4 checkpoint 1 of 5: `feature/home/drag/DragResolver.kt` (pure) + 18 tests. Types: `DragKind`
+  (APP/SHORTCUT/FOLDER/WIDGET), `DraggedItem(id?, kind, span)` (id null = new from the drawer), `PlacedItem`,
+  `DropTarget` (Cell/DockSlot/RemoveZone/Outside) → `DropAction` (MoveToPage/MoveToDock/CreateFolder/AddToFolder/
+  Remove/Cancel). Rules: the dragged item's own cell counts as free. App/shortcut onto a 1×1 app/shortcut creates a
+  folder; onto a folder it joins. Folders never nest. Anything else on an occupied cell goes to
+  `nearestFreeTo`, and a block that doesn't fit shifts to the nearest block that does. The dock is 1×1 only (no
+  widgets); a taken slot sends the item to the nearest free slot, preferring the left. A new item dropped on Remove is
+  discarded. **Stopped here on purpose:** the rest of 2.4 is pointer handling, overlay and page-flip timing, which is
+  guesswork without a device. Next session should start with the second sub-bullet, ideally with a phone attached.
 
 - 2026-09-22 — 2.3 code done, **"Done when" not met: device needed** (items rendering in the right cell, parallax,
   paging). `HomeScreen` is now a Column inside `safeDrawing` insets: `HorizontalPager` (`beyondViewportPageCount = 1`,
