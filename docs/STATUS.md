@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 1 — App catalog & drawer (phase 0 code complete; its device checklist is still owed)
-**Next task:** 1.4 Minimal home + swipe-up drawer
+**Next task:** 1.5 Work profiles
 
 ## Environment facts (verified 2026-09-17)
 
@@ -25,7 +25,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] 1.1 AppEntry + AppRepository
 - [x] 1.2 IconCache
 - [x] 1.3 App drawer screen
-- [ ] 1.4 Minimal home + swipe-up drawer
+- [x] 1.4 Minimal home + swipe-up drawer
 - [ ] 1.5 Work profiles
 - [ ] 1.6 Hidden apps
 - [ ] Device checklist passed on: —
@@ -110,6 +110,18 @@ Update this file at the end of every session. Keep it terse. Newest session note
 (none)
 
 ## Session notes
+
+- 2026-09-22 — 1.4 code done, **device checklist not run** (finger-follow, Home closes, Back closes). `HomeScreen`
+  has a translucent "Search apps" pill and the drawer as an overlay. Its `progress` is an `Animatable`
+  (0..1, `graphicsLayer` translation + alpha). The drag detector is `detectVerticalDragGestures` with a `VelocityTracker`
+  and a `TODO(phase3)`. Release snaps open past 30 % or on an upward fling over 1200 px/s, and closes on a fast
+  downward fling. The pill opens the drawer with search auto-focused; a swipe opens it without focus. Closing clears the
+  query. The Home key increments `homeKeyPresses` in `onNewIntent(ACTION_MAIN)`, and `HomeScreen` closes on each change.
+  `BackHandler(enabled = isOpen)`. `HomeActivity` injects `IconCache` and provides `LocalIconCache`. **`HomeRoot` now
+  takes a `home` slot** instead of drawing the placeholder "Fox" label. `HomeRootTest`'s third test now asserts the slot
+  content instead of the removed label; the invariant is unchanged (no prompt when default). A fourth test covers the
+  inverse. New `HomeScreenTest` (4 Compose tests: closed at start, pill → focus=true, swipe → focus=false, Home key
+  closes). No instrumented test has run yet. Temporary app-count log removed from `HomeViewModel`.
 
 - 2026-09-22 — 1.3 code done, **device checklist not run**. `DrawerContentTest` (3 Compose tests, including the
   required "ma" filter test) compiles but has **never run** (no device). Sectioning is a pure `buildSections(apps,

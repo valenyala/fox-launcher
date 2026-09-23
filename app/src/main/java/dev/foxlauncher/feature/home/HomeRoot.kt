@@ -15,43 +15,32 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.foxlauncher.R
 
 /**
- * The whole home screen, for now. Stateless on purpose: the role state is passed in so this can be
- * exercised from a Compose UI test without touching `RoleManager`.
+ * Top of the home UI. Until Fox holds the home role it shows only the "set as default" prompt;
+ * after that, [home]. Stateless on purpose: the role state is passed in so this can be exercised
+ * from a Compose UI test without touching `RoleManager`.
  */
 @Composable
 fun HomeRoot(
     isDefaultLauncher: Boolean,
     onRequestDefaultLauncher: () -> Unit,
     modifier: Modifier = Modifier,
+    home: @Composable () -> Unit,
 ) {
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .windowInsetsPadding(WindowInsets.safeDrawing),
-        contentAlignment = Alignment.Center,
-    ) {
-        if (isDefaultLauncher) {
-            // Placeholder chrome until the home grid lands in Phase 2. White with a shadow,
-            // because it sits directly on an arbitrary wallpaper.
-            Text(
-                text = stringResource(R.string.app_name),
-                style = MaterialTheme.typography.labelLarge.copy(
-                    shadow = Shadow(color = Color.Black.copy(alpha = 0.6f), blurRadius = 6f),
-                ),
-                color = Color.White,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 24.dp),
-            )
-        } else {
+    if (isDefaultLauncher) {
+        Box(modifier.fillMaxSize()) { home() }
+    } else {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.safeDrawing),
+            contentAlignment = Alignment.Center,
+        ) {
             SetDefaultLauncherPrompt(onRequestDefaultLauncher)
         }
     }

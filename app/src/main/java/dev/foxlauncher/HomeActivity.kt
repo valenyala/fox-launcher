@@ -7,19 +7,27 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import dagger.hilt.android.AndroidEntryPoint
+import dev.foxlauncher.core.apps.IconCache
 import dev.foxlauncher.core.common.FoxLog
+import dev.foxlauncher.core.ui.LocalIconCache
 import dev.foxlauncher.core.ui.theme.FoxTheme
+import dev.foxlauncher.feature.drawer.DrawerScreen
+import dev.foxlauncher.feature.drawer.DrawerViewModel
 import dev.foxlauncher.feature.home.HomeRoot
+import dev.foxlauncher.feature.home.HomeScreen
 import dev.foxlauncher.feature.home.HomeViewModel
 import dev.foxlauncher.feature.home.isDefaultLauncher
 import dev.foxlauncher.feature.home.requestDefaultLauncherRole
+import javax.inject.Inject
 
 /**
  * The one and only activity. It is `singleTask` and handles every configuration change itself, so
@@ -29,6 +37,11 @@ import dev.foxlauncher.feature.home.requestDefaultLauncherRole
 @AndroidEntryPoint
 class HomeActivity : ComponentActivity() {
 
+    @Inject lateinit var iconCache: IconCache
+
+    /** Bumped by every Home key press that reaches us while in front; the home screen reacts to it. */
+    private var homeKeyPresses by mutableIntStateOf(0)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -36,6 +49,7 @@ class HomeActivity : ComponentActivity() {
         setContent {
             FoxTheme {
                 val viewModel: HomeViewModel = hiltViewModel()
+                val drawerViewModel: DrawerViewModel = hiltViewModel()
 
                 var isDefault by remember { mutableStateOf(isDefaultLauncher()) }
 
@@ -52,21 +66,31 @@ class HomeActivity : ComponentActivity() {
                     onPauseOrDispose {}
                 }
 
-                HomeRoot(
-                    isDefaultLauncher = isDefault,
-                    onRequestDefaultLauncher = { requestDefaultLauncherRole(roleRequest) },
-                )
+                CompositionLocalProvider(LocalIconCache provides iconCache) {
+                    HomeRoot(
+                        isDefaultLauncher = isDefault,
+                        onRequestDefaultLauncher = { requestDefaultLauncherRole(roleRequest) },
+                    ) {
+                        HomeScreen(
+                            homeKeyPresses = homeKeyPresses,
+                            onDrawerClosed = drawerViewModel::clearQuery,
+                        ) { autoFocusSearch ->
+                            DrawerScreen(drawerViewModel, autoFocusSearch)
+                        }
+                    }
+                }
             }
         }
     }
 
     /**
-     * Pressing Home while already home arrives here, because of `singleTask`. Later phases close
-     * the drawer and scroll back to the default page; never finish or recreate the activity.
+     * Pressing Home while already home arrives here, because of `singleTask`. It closes the drawer
+     * (and, from Phase 2, scrolls back to the default page); never finish or recreate the activity.
      */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         FoxLog.d("onNewIntent: ${intent.action}")
+        if (intent.action == Intent.ACTION_MAIN) homeKeyPresses++
     }
 }
