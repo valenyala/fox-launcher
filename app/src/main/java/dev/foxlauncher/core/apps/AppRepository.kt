@@ -34,7 +34,9 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
@@ -66,6 +68,14 @@ class AppRepository @Inject constructor(
     /** False until the first [refresh] has completed, so consumers can tell "loading" from "no apps". */
     val isLoaded: StateFlow<Boolean> = _isLoaded.asStateFlow()
 
+    private val _packageChanges = MutableSharedFlow<PackageChange>(
+        extraBufferCapacity = PACKAGE_CHANGE_BUFFER,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+
+    /** Every package added, removed or changed, as it happens (not debounced). The icon cache listens here. */
+    val packageChanges: SharedFlow<PackageChange> = _packageChanges.asSharedFlow()
+
     /** `UserHandle` objects are not stable across reboots; they live here, keyed by serial, for launching. */
     private val users = ConcurrentHashMap<Long, UserHandle>()
 
@@ -78,11 +88,12 @@ class AppRepository @Inject constructor(
     private val callbackThread = HandlerThread("FoxLauncherApps").apply { start() }
 
     private val callback = object : LauncherApps.Callback() {
-        override fun onPackageRemoved(packageName: String, user: UserHandle) = requestRefresh()
-        override fun onPackageAdded(packageName: String, user: UserHandle) = requestRefresh()
-        override fun onPackageChanged(packageName: String, user: UserHandle) = requestRefresh()
-        override fun onPackagesAvailable(packageNames: Array<out String>, user: UserHandle, replacing: Boolean) =
-            requestRefresh()
+        override fun onPackageRemoved(packageName: String, user: UserHandle) = packageChanged(packageName, user)
+        override fun onPackageAdded(packageName: String, user: UserHandle) = packageChanged(packageName, user)
+        override fun onPackageChanged(packageName: String, user: UserHandle) = packageChanged(packageName, user)
+        override fun onPackagesAvailable(packageNames: Array<out String>, user: UserHandle, replacing: Boolean) {
+            packageNames.forEach { packageChanged(it, user) }
+        }
         override fun onPackagesUnavailable(packageNames: Array<out String>, user: UserHandle, replacing: Boolean) =
             requestRefresh()
         override fun onPackagesSuspended(packageNames: Array<out String>, user: UserHandle) = requestRefresh()
@@ -94,6 +105,11 @@ class AppRepository @Inject constructor(
         launcherApps.registerCallback(callback, Handler(callbackThread.looper))
         // Directly, not via requestRefresh(): the debounce collector may not be subscribed yet.
         scope.launch { refresh() }
+    }
+
+    private fun packageChanged(packageName: String, user: UserHandle) {
+        _packageChanges.tryEmit(PackageChange(packageName, userManager.getSerialNumberForUser(user)))
+        requestRefresh()
     }
 
     @OptIn(FlowPreview::class)
@@ -214,5 +230,9 @@ class AppRepository @Inject constructor(
 
     private companion object {
         const val REFRESH_DEBOUNCE_MS = 250L
+        const val PACKAGE_CHANGE_BUFFER = 64
     }
 }
+
+/** A package that was added, removed or changed in the profile with serial [userSerial]. */
+data class PackageChange(val packageName: String, val userSerial: Long)

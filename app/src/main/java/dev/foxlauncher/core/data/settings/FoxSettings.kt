@@ -4,6 +4,8 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
@@ -32,11 +34,20 @@ class FoxSettings @Inject constructor(
         Unit
     }
 
+    /** Mask shape id for adaptive icons (`IconShape.id`); unknown ids fall back to the default shape. */
+    val iconShapeId: Flow<String?> = dataStore.data.map { it[Keys.ICON_SHAPE] }
+
+    /** Icon edge length in dp, shared by home and drawer. */
+    val iconSizeDp: Flow<Int> = dataStore.data.map { it[Keys.ICON_SIZE_DP] ?: DEFAULT_ICON_SIZE_DP }
+
     private object Keys {
         val IS_FIRST_RUN = booleanPreferencesKey("is_first_run")
+        val ICON_SHAPE = stringPreferencesKey("icon_shape")
+        val ICON_SIZE_DP = intPreferencesKey("icon_size_dp")
     }
 
     companion object {
         const val DEFAULT_IS_FIRST_RUN: Boolean = true
+        const val DEFAULT_ICON_SIZE_DP: Int = 56
     }
 }

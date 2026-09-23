@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 1 — App catalog & drawer (phase 0 code complete; its device checklist is still owed)
-**Next task:** 1.2 IconCache
+**Next task:** 1.3 App drawer screen
 
 ## Environment facts (verified 2026-09-17)
 
@@ -23,7 +23,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 
 ## Phase 1 — App catalog & drawer
 - [x] 1.1 AppEntry + AppRepository
-- [ ] 1.2 IconCache
+- [x] 1.2 IconCache
 - [ ] 1.3 App drawer screen
 - [ ] 1.4 Minimal home + swipe-up drawer
 - [ ] 1.5 Work profiles
@@ -110,6 +110,17 @@ Update this file at the end of every session. Keep it terse. Newest session note
 (none)
 
 ## Session notes
+
+- 2026-09-22 — 1.2 done, **desk-verified only**: the "< 5 ms per disk hit" timing and the scroll-jank check both
+  need a device (the `FoxLog.d` timing line is in `IconCache.load`). `IconShapes.kt` is pure data (`PathCommand` list per
+  `IconShape`: circle = 4 cubics, squircle = 96-segment superellipse n=4, rounded square r = 20 %), with 8 tests.
+  `IconRenderer` turns commands into an `android.graphics.Path` and clips the adaptive layers with it, which replaces the
+  system mask. Legacy icons get 8 % padding and no mask. Disk layout differs slightly from the task text: files go in
+  `filesDir/icons/<sizePx>-<shape>/<pkg>@<serial>@<sha1(key)[:16]>.png`. The prefix lets `invalidate(pkg, serial)`
+  delete by package. The per-config directory lets a settings change wipe every stale icon. The key still includes
+  size and shape. `AppRepository.packageChanges` (new SharedFlow, not debounced) drives invalidation. `IconCache.generation`
+  (StateFlow) bumps on every invalidation so the UI can re-fetch. New settings keys: `iconShapeId`, `iconSizeDp`
+  (default 56); no UI sets them until 7.1. In-flight loads are de-duplicated per key and run in the app scope.
 
 - 2026-09-22 — 1.1 done, **desk-verified only, no device** (device checklist not run). `AppEntry` (+ `key` =
   `component|serial`), `AppRepository` (LauncherApps across `userProfiles`, callback on a `HandlerThread`, 250 ms
