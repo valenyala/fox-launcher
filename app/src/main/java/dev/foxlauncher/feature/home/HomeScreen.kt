@@ -6,12 +6,16 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -28,6 +32,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -37,6 +42,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.foxlauncher.R
+import dev.foxlauncher.core.model.HomeItem
+import dev.foxlauncher.feature.home.grid.GridLayoutEngine
 import kotlinx.coroutines.launch
 
 /** Drag progress past which a released drawer snaps open instead of closed. */
@@ -47,9 +54,15 @@ private const val FLING_VELOCITY = 1_200f
 
 private const val PILL_ALPHA = 0.35f
 
+private const val DEFAULT_PAGE = 0
+
+/** Dock height on top of the icon: room for a label and padding. */
+private val DOCK_EXTRA_HEIGHT = 32.dp
+
 object HomeTestTags {
     const val SEARCH_PILL = "home_search_pill"
     const val DRAWER = "home_drawer"
+    const val PAGER = "home_pager"
 }
 
 /**
@@ -62,9 +75,17 @@ fun HomeScreen(
     homeKeyPresses: Int,
     onDrawerClosed: () -> Unit,
     modifier: Modifier = Modifier,
+    state: HomeUiState = HomeUiState(),
+    onItemClick: (HomeItem, Rect?) -> Unit = { _, _ -> },
     drawer: @Composable (autoFocusSearch: Boolean) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
+    val pagerState = rememberPagerState(pageCount = { state.layout.pages.size })
+    val engine = remember(state.gridSpec) { GridLayoutEngine(state.gridSpec) }
+    val iconSize = state.iconSizeDp.dp
+    val itemContent: @Composable (HomeItem) -> Unit = { item ->
+        HomeItemView(item, state.apps, iconSize, state.showLabels, onItemClick)
+    }
     // 0 = closed, 1 = fully open. The settled state is saved separately, since Animatable is not.
     val progress = remember { Animatable(0f) }
     var isOpen by rememberSaveable { mutableStateOf(false) }
@@ -85,7 +106,14 @@ fun HomeScreen(
     }
 
     LaunchedEffect(Unit) { if (isOpen) progress.snapTo(1f) }
-    LaunchedEffect(homeKeyPresses) { if (homeKeyPresses > 0) settle(open = false) }
+    // Home while home: close the drawer and go back to the default page (0 until it is a setting).
+    LaunchedEffect(homeKeyPresses) {
+        if (homeKeyPresses > 0) {
+            settle(open = false)
+            pagerState.animateScrollToPage(DEFAULT_PAGE)
+        }
+    }
+    WallpaperOffsetsEffect(pagerState)
     BackHandler(enabled = isOpen) { settle(open = false) }
 
     Box(
@@ -118,17 +146,47 @@ fun HomeScreen(
                 )
             },
     ) {
-        SearchPill(
-            onClick = {
-                openedBySearch = true
-                settle(open = true)
-            },
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .windowInsetsPadding(WindowInsets.navigationBars)
-                .padding(horizontal = 32.dp, vertical = 24.dp)
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.safeDrawing)
                 .graphicsLayer { alpha = 1f - progress.value },
-        )
+        ) {
+            HorizontalPager(
+                state = pagerState,
+                beyondViewportPageCount = 1,
+                key = { state.layout.pages[it].index },
+                modifier = Modifier
+                    .weight(1f)
+                    .testTag(HomeTestTags.PAGER),
+            ) { page ->
+                HomePage(
+                    items = state.layout.pages[page].items,
+                    engine = engine,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 8.dp),
+                    itemContent = itemContent,
+                )
+            }
+            PageIndicator(pagerState)
+            Dock(
+                items = state.layout.dock.items,
+                slots = state.gridSpec.dockSlots,
+                modifier = Modifier
+                    .height(iconSize + DOCK_EXTRA_HEIGHT)
+                    .padding(horizontal = 8.dp),
+                itemContent = itemContent,
+            )
+            SearchPill(
+                onClick = {
+                    openedBySearch = true
+                    settle(open = true)
+                },
+                modifier = Modifier.padding(horizontal = 32.dp, vertical = 12.dp),
+            )
+        }
         if (isDrawerShown) {
             Box(
                 Modifier

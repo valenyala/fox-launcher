@@ -14,12 +14,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalView
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
 import dev.foxlauncher.core.apps.IconCache
 import dev.foxlauncher.core.common.FoxLog
 import dev.foxlauncher.core.ui.LocalIconCache
+import dev.foxlauncher.core.ui.launchSource
 import dev.foxlauncher.core.ui.theme.FoxTheme
 import dev.foxlauncher.feature.drawer.DrawerScreen
 import dev.foxlauncher.feature.drawer.DrawerViewModel
@@ -51,6 +54,8 @@ class HomeActivity : ComponentActivity() {
         setContent {
             FoxTheme {
                 val viewModel: HomeViewModel = hiltViewModel()
+                val homeState by viewModel.uiState.collectAsStateWithLifecycle()
+                val view = LocalView.current
                 val drawerViewModel: DrawerViewModel = hiltViewModel()
                 // A single settings screen does not justify a NavHost yet; this becomes a route
                 // once settings grow (Phase 3 gesture settings).
@@ -79,8 +84,19 @@ class HomeActivity : ComponentActivity() {
                         HomeScreen(
                             homeKeyPresses = homeKeyPresses,
                             onDrawerClosed = drawerViewModel::clearQuery,
+                            state = homeState,
+                            onItemClick = { item, bounds ->
+                                val source = bounds?.let { launchSource(view, it) }
+                                viewModel.onItemClick(item, source?.sourceBounds, source?.options)
+                            },
                         ) { autoFocusSearch ->
-                            DrawerScreen(drawerViewModel, autoFocusSearch, onOpenHiddenApps = { showHiddenApps = true })
+                            DrawerScreen(
+                                viewModel = drawerViewModel,
+                                autoFocusSearch = autoFocusSearch,
+                                onOpenHiddenApps = { showHiddenApps = true },
+                                // TODO(2.7): remove with the first-run layout.
+                                onAddTestItems = viewModel::addTestItems.takeIf { BuildConfig.DEBUG },
+                            )
                         }
                         if (showHiddenApps) {
                             HiddenAppsScreen(hiltViewModel(), onBack = { showHiddenApps = false })

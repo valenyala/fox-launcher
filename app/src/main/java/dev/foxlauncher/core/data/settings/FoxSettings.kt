@@ -44,6 +44,18 @@ class FoxSettings @Inject constructor(
     /** Columns in the app drawer grid. */
     val drawerColumns: Flow<Int> = dataStore.data.map { it[Keys.DRAWER_COLUMNS] ?: DEFAULT_DRAWER_COLUMNS }
 
+    /** Home grid columns, rows and dock slots, in that order. */
+    val homeGrid: Flow<Triple<Int, Int, Int>> = dataStore.data.map {
+        Triple(
+            it[Keys.HOME_COLUMNS] ?: DEFAULT_HOME_COLUMNS,
+            it[Keys.HOME_ROWS] ?: DEFAULT_HOME_ROWS,
+            it[Keys.DOCK_SLOTS] ?: DEFAULT_DOCK_SLOTS,
+        )
+    }
+
+    /** Whether home and dock items show their label under the icon. */
+    val showHomeLabels: Flow<Boolean> = dataStore.data.map { it[Keys.SHOW_HOME_LABELS] ?: DEFAULT_SHOW_HOME_LABELS }
+
     /** Apps hidden from the drawer, as `AppEntry.key` (`component|serial`). */
     val hiddenApps: Flow<Set<String>> = dataStore.data.map { it[Keys.HIDDEN_APPS].orEmpty() }
 
@@ -61,11 +73,19 @@ class FoxSettings @Inject constructor(
         val ICON_SIZE_DP = intPreferencesKey("icon_size_dp")
         val DRAWER_COLUMNS = intPreferencesKey("drawer_columns")
         val HIDDEN_APPS = stringSetPreferencesKey("hidden_apps")
+        val HOME_COLUMNS = intPreferencesKey("home_columns")
+        val HOME_ROWS = intPreferencesKey("home_rows")
+        val DOCK_SLOTS = intPreferencesKey("dock_slots")
+        val SHOW_HOME_LABELS = booleanPreferencesKey("show_home_labels")
     }
 
     companion object {
         const val DEFAULT_IS_FIRST_RUN: Boolean = true
         const val DEFAULT_ICON_SIZE_DP: Int = 56
         const val DEFAULT_DRAWER_COLUMNS: Int = 5
+        const val DEFAULT_HOME_COLUMNS: Int = 5
+        const val DEFAULT_HOME_ROWS: Int = 6
+        const val DEFAULT_DOCK_SLOTS: Int = 5
+        const val DEFAULT_SHOW_HOME_LABELS: Boolean = true
     }
 }

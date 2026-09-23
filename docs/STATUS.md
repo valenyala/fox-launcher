@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 2 — Home grid (phases 0 and 1 code complete; both device checklists still owed)
-**Next task:** 2.3 Page + dock rendering, wallpaper offsets
+**Next task:** 2.4 Drag & drop
 
 ## Environment facts (verified 2026-09-17)
 
@@ -33,7 +33,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 ## Phase 2 — Home grid
 - [x] 2.1 Room schema + repository
 - [x] 2.2 GridLayoutEngine
-- [ ] 2.3 Page + dock rendering, wallpaper offsets
+- [x] 2.3 Page + dock rendering, wallpaper offsets (desk only)
 - [ ] 2.4 Drag & drop
 - [ ] 2.5 Folders
 - [ ] 2.6 Item popup: shortcuts, app info, remove, uninstall
@@ -110,6 +110,22 @@ Update this file at the end of every session. Keep it terse. Newest session note
 (none)
 
 ## Session notes
+
+- 2026-09-22 — 2.3 code done, **"Done when" not met: device needed** (items rendering in the right cell, parallax,
+  paging). `HomeScreen` is now a Column inside `safeDrawing` insets: `HorizontalPager` (`beyondViewportPageCount = 1`,
+  keyed by page index), `PageIndicator` (hidden with one page), `Dock` (equal slots, `col` = slot), then the 1.4 search
+  pill, which stays until 2.7 puts a drawer pill in the dock. The 1.4 swipe-up detector wraps it all. `HomePage` is a
+  custom `Layout`: cell = available size ÷ `GridSpec`, placement from `GridLayoutEngine.pxOf`, items keyed by id.
+  `HomePageTest` (instrumented, not run) checks positions and spans. `HomeItemView`: app icon + white shadowed label.
+  A missing app shows a dim grey disc until 2.8. Shortcuts use their app's icon until 2.6. Folders get a 2×2 preview
+  on a translucent tile, and tapping one does nothing until 2.5. Widgets are placeholder tiles. Taps launch with clip
+  reveal. Shortcuts go through the new `AppRepository.startShortcut`, which logs failures.
+  `WallpaperOffsetsEffect`: `setWallpaperOffsetSteps(1/(n-1), 1)` and `setWallpaperOffsets(token, x, 0f)` from a
+  conflated `snapshotFlow`. A single page reports x = 0.5 (centred), which the notes do not specify. The Home key now
+  also animates to page 0. New settings: `homeGrid` (5×6, 5 dock slots) and `showHomeLabels`; no UI for them yet.
+  **Temporary debug action:** drawer ⋮ → "Add test items (debug)", shown only when `BuildConfig.DEBUG`
+  (`HomeViewModel.addTestItems`, TODO(2.7)). It fills the dock, two rows of page 0 and three cells of page 1.
+  `HomeRepository` is now injected, so orphan pruning is live.
 
 - 2026-09-22 — 2.2 done. `feature/home/grid/`: `GridSpec` (validated; `DEFAULT` = 5×6, 5 dock slots), `CellRect`
   (+ `overlaps`), `PxRect`, `GridLayoutEngine` with every function the task lists plus `fits()`. Occupancy is

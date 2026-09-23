@@ -18,4 +18,5 @@
     <string name="hidden_apps_title">Hidden apps</string>
     <string name="hidden_apps_explainer">Hidden apps stay out of the drawer. Type an app\'s full name in search to still find it.</string>
     <string name="navigate_back">Back</string>
+    <string name="folder_untitled">Folder</string>
 </resources>

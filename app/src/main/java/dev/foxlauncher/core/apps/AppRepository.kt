@@ -188,6 +188,23 @@ class AppRepository @Inject constructor(
         }
     }
 
+    /**
+     * Starts a pinned or dynamic app shortcut. Only works while Fox is the default launcher
+     * (`hasShortcutHostPermission`); otherwise the failure is logged and nothing happens.
+     */
+    fun startShortcut(packageName: String, shortcutId: String, userSerial: Long, sourceBounds: Rect?, opts: Bundle?) {
+        val user = userFor(userSerial) ?: return
+        try {
+            launcherApps.startShortcut(packageName, shortcutId, sourceBounds, opts, user)
+        } catch (e: ActivityNotFoundException) {
+            FoxLog.w("Shortcut $packageName/$shortcutId is gone", e)
+        } catch (e: IllegalStateException) {
+            FoxLog.w("Shortcut $packageName/$shortcutId not startable (user locked?)", e)
+        } catch (e: SecurityException) {
+            FoxLog.w("Not allowed to start shortcut $packageName/$shortcutId", e)
+        }
+    }
+
     fun openAppInfo(entry: AppEntry, sourceBounds: Rect?) {
         val component = ComponentName.unflattenFromString(entry.component) ?: return
         val user = userFor(entry.userSerial) ?: return

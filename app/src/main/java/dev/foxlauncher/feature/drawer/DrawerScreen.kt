@@ -97,6 +97,7 @@ fun DrawerScreen(
     autoFocusSearch: Boolean,
     onOpenHiddenApps: () -> Unit,
     modifier: Modifier = Modifier,
+    onAddTestItems: (() -> Unit)? = null,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val view = LocalView.current
@@ -114,6 +115,7 @@ fun DrawerScreen(
         onUninstall = viewModel::onUninstall,
         onHide = viewModel::onHide,
         onOpenHiddenApps = onOpenHiddenApps,
+        onAddTestItems = onAddTestItems,
         onTabSelected = viewModel::onTabSelected,
         onWorkPausedChange = viewModel::onWorkPausedChange,
         modifier = modifier,
@@ -137,6 +139,7 @@ fun DrawerContent(
     modifier: Modifier = Modifier,
     onHide: (AppEntry) -> Unit = {},
     onOpenHiddenApps: () -> Unit = {},
+    onAddTestItems: (() -> Unit)? = null,
     onTabSelected: (DrawerTab) -> Unit = {},
     onWorkPausedChange: (Boolean) -> Unit = {},
     iconContent: @Composable (AppEntry) -> Unit = { AppIcon(it, state.iconSizeDp.dp) },
@@ -166,7 +169,7 @@ fun DrawerContent(
             OutlinedTextField(
                 state = searchState,
                 placeholder = { Text(stringResource(R.string.drawer_search_hint)) },
-                trailingIcon = { DrawerOverflowMenu(onOpenHiddenApps) },
+                trailingIcon = { DrawerOverflowMenu(onOpenHiddenApps, onAddTestItems) },
                 lineLimits = TextFieldLineLimits.SingleLine,
                 shape = MaterialTheme.shapes.extraLarge,
                 modifier = Modifier
@@ -206,7 +209,7 @@ fun DrawerContent(
 }
 
 @Composable
-private fun DrawerOverflowMenu(onOpenHiddenApps: () -> Unit) {
+private fun DrawerOverflowMenu(onOpenHiddenApps: () -> Unit, onAddTestItems: (() -> Unit)?) {
     var expanded by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { expanded = true }, modifier = Modifier.testTag(DrawerTestTags.OVERFLOW)) {
@@ -220,6 +223,16 @@ private fun DrawerOverflowMenu(onOpenHiddenApps: () -> Unit) {
                     onOpenHiddenApps()
                 },
             )
+            if (onAddTestItems != null) {
+                DropdownMenuItem(
+                    // Debug builds only; not translated on purpose.
+                    text = { Text("Add test items (debug)") },
+                    onClick = {
+                        expanded = false
+                        onAddTestItems()
+                    },
+                )
+            }
         }
     }
 }
