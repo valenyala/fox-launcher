@@ -11,6 +11,19 @@ import kotlinx.collections.immutable.toImmutableList
 @Immutable
 data class DrawerSection(val letter: String, val apps: ImmutableList<AppEntry>)
 
+/** The drawer's profile tabs, shown only when a work profile exists. */
+enum class DrawerTab { PERSONAL, WORK }
+
+/**
+ * The apps a drawer tab lists. A search always covers every profile (work results carry the
+ * badge), so tabs only filter the unsearched list.
+ */
+fun appsForTab(apps: List<AppEntry>, tab: DrawerTab, query: String): List<AppEntry> = when {
+    query.isNotBlank() -> apps
+    tab == DrawerTab.WORK -> apps.filter { it.isWorkProfile }
+    else -> apps.filterNot { it.isWorkProfile }
+}
+
 /** Header used for labels that do not start with a letter (digits, symbols, emoji). */
 const val OTHER_SECTION: String = "#"
 

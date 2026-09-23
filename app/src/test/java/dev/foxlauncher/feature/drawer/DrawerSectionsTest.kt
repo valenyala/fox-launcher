@@ -55,12 +55,31 @@ class DrawerSectionsTest {
         assertEquals("Ж", sectionLetter("журнал"))
     }
 
-    private fun app(label: String) = AppEntry(
+    @Test
+    fun personalTabHidesWorkApps() {
+        val mixed = listOf(app("Maps"), app("Maps", work = true), app("Slack", work = true))
+        assertEquals(listOf(mixed[0]), appsForTab(mixed, DrawerTab.PERSONAL, ""))
+    }
+
+    @Test
+    fun workTabShowsOnlyWorkApps() {
+        val mixed = listOf(app("Maps"), app("Maps", work = true), app("Slack", work = true))
+        assertEquals(mixed.drop(1), appsForTab(mixed, DrawerTab.WORK, ""))
+    }
+
+    @Test
+    fun searchCoversEveryProfileWhateverTheTab() {
+        val mixed = listOf(app("Maps"), app("Slack", work = true))
+        assertEquals(mixed, appsForTab(mixed, DrawerTab.PERSONAL, "s"))
+        assertEquals(mixed, appsForTab(mixed, DrawerTab.WORK, "s"))
+    }
+
+    private fun app(label: String, work: Boolean = false) = AppEntry(
         component = "pkg.${label.hashCode()}/.Main",
-        userSerial = 0,
+        userSerial = if (work) 10 else 0,
         label = label,
         packageName = "pkg.${label.hashCode()}",
-        isWorkProfile = false,
+        isWorkProfile = work,
         isSuspended = false,
         isAvailable = true,
         versionCode = 1,

@@ -11,6 +11,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import dev.foxlauncher.R
 import dev.foxlauncher.core.model.AppEntry
 import dev.foxlauncher.core.ui.theme.FoxTheme
 import kotlin.test.assertEquals
@@ -24,6 +26,8 @@ class DrawerContentTest {
 
     @get:Rule
     val composeRule = createComposeRule()
+
+    private val context = InstrumentationRegistry.getInstrumentation().targetContext
 
     private val apps = listOf(app("Calendar"), app("Mail"), app("Maps"))
 
@@ -55,31 +59,68 @@ class DrawerContentTest {
         assertEquals(listOf("Maps"), clicked.map { it.label })
     }
 
+    @Test
+    fun tabsAppearOnlyWithAWorkProfile() {
+        setDrawer(query = "")
+        composeRule.onNodeWithTag(DrawerTestTags.TABS).assertDoesNotExist()
+    }
+
+    @Test
+    fun workTabListsWorkAppsAndThePauseToggle() {
+        val mixed = apps + app("Slack", work = true)
+        val state = DrawerUiState(
+            sections = buildSections(appsForTab(mixed, DrawerTab.WORK, ""), ""),
+            isLoading = false,
+            work = WorkUiState(isPaused = false),
+            tab = DrawerTab.WORK,
+        )
+        val pauses = mutableListOf<Boolean>()
+        setDrawer(state, onWorkPausedChange = { pauses += it })
+
+        composeRule.onNodeWithTag(DrawerTestTags.TABS).assertIsDisplayed()
+        composeRule.onNodeWithText("Slack").assertIsDisplayed()
+        composeRule.onNodeWithText("Maps").assertDoesNotExist()
+        composeRule.onNodeWithText(context.getString(R.string.work_pause)).performClick()
+
+        assertEquals(listOf(true), pauses)
+    }
+
     private fun setDrawer(query: String, onAppClick: (AppEntry) -> Unit = {}) {
-        val state = DrawerUiState(query = query, sections = buildSections(apps, query), isLoading = false)
+        setDrawer(
+            DrawerUiState(query = query, sections = buildSections(apps, query), isLoading = false),
+            onAppClick = onAppClick,
+        )
+    }
+
+    private fun setDrawer(
+        state: DrawerUiState,
+        onAppClick: (AppEntry) -> Unit = {},
+        onWorkPausedChange: (Boolean) -> Unit = {},
+    ) {
         composeRule.setContent {
             FoxTheme {
                 DrawerContent(
                     state = state,
-                    searchState = TextFieldState(query),
+                    searchState = TextFieldState(state.query),
                     autoFocusSearch = false,
                     onAppClick = { entry, _ -> onAppClick(entry) },
                     onAppLongClick = {},
                     onDismissPopup = {},
                     onAppInfo = { _, _ -> },
                     onUninstall = {},
+                    onWorkPausedChange = onWorkPausedChange,
                     iconContent = { Box(Modifier.size(48.dp)) },
                 )
             }
         }
     }
 
-    private fun app(label: String) = AppEntry(
+    private fun app(label: String, work: Boolean = false) = AppEntry(
         component = "test.${label.lowercase()}/.Main",
-        userSerial = 0,
+        userSerial = if (work) 10 else 0,
         label = label,
         packageName = "test.${label.lowercase()}",
-        isWorkProfile = false,
+        isWorkProfile = work,
         isSuspended = false,
         isAvailable = true,
         versionCode = 1,

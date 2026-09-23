@@ -26,13 +26,17 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -45,6 +49,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInWindow
@@ -55,6 +60,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -75,6 +81,7 @@ object DrawerTestTags {
     const val GRID = "drawer_grid"
     const val SEARCH = "drawer_search"
     const val RAIL = "drawer_rail"
+    const val TABS = "drawer_tabs"
 }
 
 /** The drawer wired to its ViewModel. [autoFocusSearch] is true only when opened by a search action. */
@@ -98,6 +105,8 @@ fun DrawerScreen(
         onDismissPopup = viewModel::dismissPopup,
         onAppInfo = { entry, bounds -> viewModel.onAppInfo(entry, bounds?.let { launchSource(view, it).sourceBounds }) },
         onUninstall = viewModel::onUninstall,
+        onTabSelected = viewModel::onTabSelected,
+        onWorkPausedChange = viewModel::onWorkPausedChange,
         modifier = modifier,
     )
 }
@@ -117,6 +126,8 @@ fun DrawerContent(
     onAppInfo: (AppEntry, Rect?) -> Unit,
     onUninstall: (AppEntry) -> Unit,
     modifier: Modifier = Modifier,
+    onTabSelected: (DrawerTab) -> Unit = {},
+    onWorkPausedChange: (Boolean) -> Unit = {},
     iconContent: @Composable (AppEntry) -> Unit = { AppIcon(it, state.iconSizeDp.dp) },
 ) {
     val gridState = rememberLazyGridState()
@@ -134,7 +145,7 @@ fun DrawerContent(
         }
     }
     // A new query should show its best match, not wherever the list was scrolled to.
-    LaunchedEffect(state.query) { gridState.scrollToItem(0) }
+    LaunchedEffect(state.query, state.tab) { gridState.scrollToItem(0) }
 
     Surface(
         color = MaterialTheme.colorScheme.surface.copy(alpha = SCRIM_ALPHA),
@@ -152,6 +163,11 @@ fun DrawerContent(
                     .focusRequester(focusRequester)
                     .testTag(DrawerTestTags.SEARCH),
             )
+            val work = state.work
+            if (work != null && state.query.isBlank()) {
+                ProfileTabs(state.tab, onTabSelected)
+                if (state.tab == DrawerTab.WORK) WorkPauseRow(work.isPaused, onWorkPausedChange)
+            }
             when {
                 state.isLoading -> Unit
                 state.sections.isEmpty() -> EmptyMessage(state.query.isNotBlank())
@@ -173,6 +189,56 @@ fun DrawerContent(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ProfileTabs(selected: DrawerTab, onTabSelected: (DrawerTab) -> Unit) {
+    SecondaryTabRow(
+        selectedTabIndex = selected.ordinal,
+        containerColor = Color.Transparent,
+        modifier = Modifier.testTag(DrawerTestTags.TABS),
+    ) {
+        DrawerTab.entries.forEach { tab ->
+            Tab(
+                selected = tab == selected,
+                onClick = { onTabSelected(tab) },
+                text = {
+                    Text(
+                        stringResource(
+                            when (tab) {
+                                DrawerTab.PERSONAL -> R.string.drawer_tab_personal
+                                DrawerTab.WORK -> R.string.drawer_tab_work
+                            },
+                        ),
+                    )
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun WorkPauseRow(isPaused: Boolean, onPausedChange: (Boolean) -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .toggleable(value = isPaused, role = Role.Switch, onValueChange = onPausedChange)
+            .padding(horizontal = 20.dp, vertical = 8.dp),
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(R.string.work_pause), style = MaterialTheme.typography.bodyLarge)
+            if (isPaused) {
+                Text(
+                    stringResource(R.string.work_paused_message),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        // The row handles the toggle, so the switch itself is display-only.
+        Switch(checked = isPaused, onCheckedChange = null)
     }
 }
 

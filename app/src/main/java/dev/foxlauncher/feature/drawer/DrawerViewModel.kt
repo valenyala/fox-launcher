@@ -33,7 +33,13 @@ data class DrawerUiState(
     val columns: Int = FoxSettings.DEFAULT_DRAWER_COLUMNS,
     val iconSizeDp: Int = FoxSettings.DEFAULT_ICON_SIZE_DP,
     val popup: DrawerPopup? = null,
+    /** Null when the device has no work profile; then there are no tabs. */
+    val work: WorkUiState? = null,
+    val tab: DrawerTab = DrawerTab.PERSONAL,
 )
+
+@Immutable
+data class WorkUiState(val isPaused: Boolean)
 
 /** The long-press menu, open on [entry]. */
 @Immutable
@@ -56,17 +62,31 @@ class DrawerViewModel @Inject constructor(
 
     private val popup = MutableStateFlow<DrawerPopup?>(null)
 
+    private val selectedTab = MutableStateFlow(DrawerTab.PERSONAL)
+
+    /** Without a work profile there is only the personal list, whatever tab was last picked. */
+    private val tab = combine(selectedTab, appRepository.workProfile) { tab, work ->
+        if (work == null) DrawerTab.PERSONAL else tab
+    }
+
     private val layout = combine(settings.drawerColumns, settings.iconSizeDp, ::Pair)
 
-    private val sections = combine(appRepository.apps, query, ::buildSections).flowOn(default)
+    private val sections = combine(appRepository.apps, query, tab) { apps, query, tab ->
+        buildSections(appsForTab(apps, tab, query), query)
+    }.flowOn(default)
+
+    private val profile = combine(appRepository.workProfile, tab) { work, tab ->
+        work?.let { WorkUiState(isPaused = it.isPaused) } to tab
+    }
+
+    private val content = combine(sections, query, appRepository.isLoaded, ::Triple)
 
     val uiState: StateFlow<DrawerUiState> = combine(
-        sections,
-        query,
-        appRepository.isLoaded,
+        content,
         layout,
         popup,
-    ) { sections, query, isLoaded, (columns, iconSizeDp), popup ->
+        profile,
+    ) { (sections, query, isLoaded), (columns, iconSizeDp), popup, (work, tab) ->
         DrawerUiState(
             query = query,
             sections = sections,
@@ -74,6 +94,8 @@ class DrawerViewModel @Inject constructor(
             columns = columns,
             iconSizeDp = iconSizeDp,
             popup = popup,
+            work = work,
+            tab = tab,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), DrawerUiState())
 
@@ -83,6 +105,14 @@ class DrawerViewModel @Inject constructor(
 
     fun clearQuery() {
         searchState.clearText()
+    }
+
+    fun onTabSelected(tab: DrawerTab) {
+        selectedTab.value = tab
+    }
+
+    fun onWorkPausedChange(paused: Boolean) {
+        viewModelScope.launch { appRepository.setWorkPaused(paused) }
     }
 
     fun onAppClick(entry: AppEntry, sourceBounds: Rect?, options: Bundle?) {

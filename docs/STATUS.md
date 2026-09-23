@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 1 — App catalog & drawer (phase 0 code complete; its device checklist is still owed)
-**Next task:** 1.5 Work profiles
+**Next task:** 1.6 Hidden apps
 
 ## Environment facts (verified 2026-09-17)
 
@@ -26,7 +26,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] 1.2 IconCache
 - [x] 1.3 App drawer screen
 - [x] 1.4 Minimal home + swipe-up drawer
-- [ ] 1.5 Work profiles
+- [x] 1.5 Work profiles (not verified on device)
 - [ ] 1.6 Hidden apps
 - [ ] Device checklist passed on: —
 
@@ -110,6 +110,20 @@ Update this file at the end of every session. Keep it terse. Newest session note
 (none)
 
 ## Session notes
+
+- 2026-09-22 — 1.5 done, **not verified on device** (no device, no TestDPC work profile). `AppRepository.workProfile`
+  (`WorkProfile(serial, isPaused)`, first non-own profile, from quiet mode) and `setWorkPaused()`
+  (`requestQuietModeEnabled` on IO; a `SecurityException` is logged, not thrown). A runtime receiver
+  (`ContextCompat.registerReceiver`, NOT_EXPORTED, on the callback thread) listens for
+  `MANAGED_PROFILE_ADDED/REMOVED/AVAILABLE/UNAVAILABLE/UNLOCKED` and requests a refresh. Drawer: Personal/Work
+  `SecondaryTabRow` only when a work profile exists and the query is blank. **Search covers every profile**
+  (pure `appsForTab`, 3 new tests), which goes beyond the task text. The Work tab has a "Pause work apps" switch row plus
+  an explainer when paused. Paused and suspended apps are dimmed by `AppIcon`; badges came in 1.2. The "only when default
+  launcher" condition holds because the drawer is only reachable once `HomeRoot` has the role. Known gaps: every
+  non-own profile is treated as "work", so an OEM clone/dual-app profile would land in the Work tab. Android 15 private
+  space is not listed, since `userProfiles` hides it from launchers without `ACCESS_HIDDEN_PROFILES`; this is from
+  memory and needs checking on a device. `DrawerContentTest` +2 tests (no tabs without work; Work tab lists work apps
+  and the toggle reports `true`).
 
 - 2026-09-22 — 1.4 code done, **device checklist not run** (finger-follow, Home closes, Back closes). `HomeScreen`
   has a translucent "Search apps" pill and the drawer as an overlay. Its `progress` is an `Animatable`

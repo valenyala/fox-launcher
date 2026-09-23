@@ -1,9 +1,11 @@
 package dev.foxlauncher.core.apps
 
 import android.content.ActivityNotFoundException
+import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ApplicationInfo
 import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
@@ -16,6 +18,7 @@ import android.os.HandlerThread
 import android.os.Process
 import android.os.UserHandle
 import android.os.UserManager
+import androidx.core.content.ContextCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.foxlauncher.core.common.ApplicationScope
 import dev.foxlauncher.core.common.Collation
@@ -76,6 +79,11 @@ class AppRepository @Inject constructor(
     /** Every package added, removed or changed, as it happens (not debounced). The icon cache listens here. */
     val packageChanges: SharedFlow<PackageChange> = _packageChanges.asSharedFlow()
 
+    private val _workProfile = MutableStateFlow<WorkProfile?>(null)
+
+    /** The work (managed) profile, or null when the device has none. */
+    val workProfile: StateFlow<WorkProfile?> = _workProfile.asStateFlow()
+
     /** `UserHandle` objects are not stable across reboots; they live here, keyed by serial, for launching. */
     private val users = ConcurrentHashMap<Long, UserHandle>()
 
@@ -100,9 +108,26 @@ class AppRepository @Inject constructor(
         override fun onPackagesUnsuspended(packageNames: Array<out String>, user: UserHandle) = requestRefresh()
     }
 
+    /** Profiles come and go (work profile created, removed, paused, resumed) without any package event. */
+    private val profileReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            FoxLog.d("Profile broadcast: ${intent.action}")
+            requestRefresh()
+        }
+    }
+
     init {
         scope.launch { debouncedRefreshes() }
-        launcherApps.registerCallback(callback, Handler(callbackThread.looper))
+        val callbackHandler = Handler(callbackThread.looper)
+        launcherApps.registerCallback(callback, callbackHandler)
+        ContextCompat.registerReceiver(
+            context,
+            profileReceiver,
+            IntentFilter().apply { PROFILE_ACTIONS.forEach(::addAction) },
+            null,
+            callbackHandler,
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
         // Directly, not via requestRefresh(): the debounce collector may not be subscribed yet.
         scope.launch { refresh() }
     }
@@ -127,11 +152,13 @@ class AppRepository @Inject constructor(
         refreshMutex.withLock {
             val myUser = Process.myUserHandle()
             val versionCodes = HashMap<String, Long>()
+            var work: WorkProfile? = null
             val entries = buildList {
                 for (user in userManager.userProfiles) {
                     val serial = userManager.getSerialNumberForUser(user)
                     users[serial] = user
                     val available = !userManager.isQuietModeEnabled(user)
+                    if (user != myUser && work == null) work = WorkProfile(serial, isPaused = !available)
                     for (info in launcherApps.getActivityList(null, user)) {
                         val pkg = info.componentName.packageName
                         val versionCode = versionCodes.getOrPut(pkg) { versionCodeOf(pkg) }
@@ -141,6 +168,7 @@ class AppRepository @Inject constructor(
             }
             val sorted = sortEntries(entries, Collation.labelComparator()).toImmutableList()
             _apps.value = sorted
+            _workProfile.value = work
             _isLoaded.value = true
             FoxLog.d("AppRepository: ${sorted.size} apps across ${userManager.userProfiles.size} profiles")
         }
@@ -183,6 +211,21 @@ class AppRepository @Inject constructor(
         } catch (e: ActivityNotFoundException) {
             FoxLog.w("No uninstaller for ${entry.packageName}", e)
         }
+    }
+
+    /**
+     * Pauses or resumes the work profile. Only the default launcher may do this; resuming can make
+     * the system ask for the work challenge first, in which case the profile changes later and the
+     * profile broadcast refreshes us.
+     */
+    suspend fun setWorkPaused(paused: Boolean) = withContext(io) {
+        val user = _workProfile.value?.let { userFor(it.userSerial) } ?: return@withContext
+        try {
+            userManager.requestQuietModeEnabled(paused, user)
+        } catch (e: SecurityException) {
+            FoxLog.w("Not allowed to change work profile quiet mode (not the default launcher?)", e)
+        }
+        requestRefresh()
     }
 
     /** True for apps that ship with the system image and so cannot be uninstalled from the launcher. */
@@ -231,8 +274,19 @@ class AppRepository @Inject constructor(
     private companion object {
         const val REFRESH_DEBOUNCE_MS = 250L
         const val PACKAGE_CHANGE_BUFFER = 64
+
+        val PROFILE_ACTIONS = listOf(
+            Intent.ACTION_MANAGED_PROFILE_ADDED,
+            Intent.ACTION_MANAGED_PROFILE_REMOVED,
+            Intent.ACTION_MANAGED_PROFILE_AVAILABLE,
+            Intent.ACTION_MANAGED_PROFILE_UNAVAILABLE,
+            Intent.ACTION_MANAGED_PROFILE_UNLOCKED,
+        )
     }
 }
 
 /** A package that was added, removed or changed in the profile with serial [userSerial]. */
 data class PackageChange(val packageName: String, val userSerial: Long)
+
+/** The work profile's serial and whether it is paused (quiet mode). */
+data class WorkProfile(val userSerial: Long, val isPaused: Boolean)

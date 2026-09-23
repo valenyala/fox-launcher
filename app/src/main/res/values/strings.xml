@@ -9,4 +9,8 @@
     <string name="popup_app_info">App info</string>
     <string name="popup_uninstall">Uninstall</string>
     <string name="popup_add_to_home">Add to home screen</string>
+    <string name="drawer_tab_personal">Personal</string>
+    <string name="drawer_tab_work">Work</string>
+    <string name="work_pause">Pause work apps</string>
+    <string name="work_paused_message">Work apps are paused. They won\'t send notifications or use data.</string>
 </resources>
