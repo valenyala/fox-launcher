@@ -94,6 +94,23 @@ abstract class HomeDao {
         return folderId
     }
 
+    /** Inserts [item] and merges it with [targetId] into a new folder. Keeps nothing if [targetId] is gone. */
+    @Transaction
+    open suspend fun insertIntoNewFolder(item: HomeItemEntity, targetId: Long, title: String, createdAt: Long): Long? {
+        val id = insert(item)
+        return createFolder(targetId, id, title, createdAt) ?: run {
+            deleteByIds(listOf(id))
+            null
+        }
+    }
+
+    /** Inserts [item] straight into the folder whose tile is [folderItemId]. Keeps nothing if it is gone. */
+    @Transaction
+    open suspend fun insertIntoFolder(item: HomeItemEntity, folderItemId: Long): Boolean {
+        val id = insert(item)
+        return addToFolder(folderItemId, id).also { added -> if (!added) deleteByIds(listOf(id)) }
+    }
+
     /** Appends [itemId] to the folder whose tile is [folderItemId]. False when either row is gone. */
     @Transaction
     open suspend fun addToFolder(folderItemId: Long, itemId: Long): Boolean {

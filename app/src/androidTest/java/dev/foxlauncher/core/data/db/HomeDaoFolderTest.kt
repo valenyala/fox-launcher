@@ -83,6 +83,33 @@ class HomeDaoFolderTest {
         assertTrue(dao.getFolderChildren(folderId).isEmpty())
     }
 
+    @Test
+    fun insertIntoNewFolderAddsTheNewItemAfterTheTarget() = runBlocking {
+        val target = dao.insert(app(HomeContainer.DOCK, page = 0, col = 2, row = 0))
+
+        val folderId = assertNotNull(dao.insertIntoNewFolder(app(HomeContainer.PAGE, 0, 0, 0), target, title = "", createdAt = 0))
+
+        val children = dao.getFolderChildren(folderId).sortedBy { it.col }
+        assertEquals(2, children.size)
+        assertEquals(target, children.first().id)
+        val tile = dao.getAll().single { it.type == HomeItemType.FOLDER }
+        assertEquals(listOf(HomeContainer.DOCK, 2), listOf(tile.container, tile.col))
+    }
+
+    @Test
+    fun insertIntoNewFolderKeepsNothingWhenTheTargetIsGone() = runBlocking {
+        assertNull(dao.insertIntoNewFolder(app(HomeContainer.PAGE, 0, 0, 0), targetId = 999, title = "", createdAt = 0))
+
+        assertTrue(dao.getAll().isEmpty())
+    }
+
+    @Test
+    fun insertIntoFolderKeepsNothingWhenTheFolderIsGone() = runBlocking {
+        assertEquals(false, dao.insertIntoFolder(app(HomeContainer.PAGE, 0, 0, 0), folderItemId = 999))
+
+        assertTrue(dao.getAll().isEmpty())
+    }
+
     private fun app(container: HomeContainer, page: Int, col: Int, row: Int) = HomeItemEntity(
         container = container,
         page = page,

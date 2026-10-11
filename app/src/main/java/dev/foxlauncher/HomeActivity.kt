@@ -83,7 +83,7 @@ class HomeActivity : ComponentActivity() {
                     ) {
                         HomeScreen(
                             homeKeyPresses = homeKeyPresses,
-                            onDrawerClosed = drawerViewModel::clearQuery,
+                            onDrawerClosed = drawerViewModel::onDrawerClosed,
                             state = homeState,
                             onItemClick = { item, bounds ->
                                 val source = bounds?.let { launchSource(view, it) }
@@ -97,6 +97,7 @@ class HomeActivity : ComponentActivity() {
                                 onOpenHiddenApps = { showHiddenApps = true },
                                 // TODO(2.7): remove with the first-run layout.
                                 onAddTestItems = viewModel::addTestItems.takeIf { BuildConfig.DEBUG },
+                                onAppLongPress = ::onAppLongPress,
                             )
                         }
                         if (showHiddenApps) {

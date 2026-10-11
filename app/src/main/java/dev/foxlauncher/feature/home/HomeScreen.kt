@@ -18,18 +18,22 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -44,17 +48,22 @@ import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.foxlauncher.R
+import dev.foxlauncher.core.model.AppEntry
 import dev.foxlauncher.core.model.HomeItem
 import dev.foxlauncher.feature.home.drag.DragOverlay
 import dev.foxlauncher.feature.home.drag.DropAction
 import dev.foxlauncher.feature.home.drag.DropHighlight
 import dev.foxlauncher.feature.home.drag.HomeDragState
+import dev.foxlauncher.feature.home.drag.RemoveZone
 import dev.foxlauncher.feature.home.drag.homeDragLayer
+import dev.foxlauncher.feature.home.drag.newAppItem
 import dev.foxlauncher.feature.home.drag.rememberHomeDragState
 import dev.foxlauncher.feature.home.grid.GridLayoutEngine
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -85,13 +94,25 @@ object HomeTestTags {
     const val DRAWER = "home_drawer"
     const val PAGER = "home_pager"
     const val DOCK = "home_dock"
+    const val REMOVE_ZONE = "home_remove_zone"
+}
+
+/** What the drawer slot can ask of the home screen. */
+@Stable
+fun interface DrawerScope {
+    /**
+     * A long press on [entry] in the drawer. If the finger then moves, the drawer gets out of the
+     * way and the app is dragged onto the home screen (task 2.4).
+     */
+    fun onAppLongPress(entry: AppEntry)
 }
 
 /**
  * The home surface: wallpaper through the window, a "Search apps" pill, and the app drawer as an
  * overlay that follows the finger. [homeKeyPresses] increments on every Home key press while Fox
  * is in front, which closes the drawer. [drawer] receives whether the search field should focus.
- * Long-pressing an item drags it; [onDrop] receives what the drop should do (task 2.4).
+ * Long-pressing an item drags it, and so does long-pressing then moving an app in the drawer
+ * ([DrawerScope]); [onDrop] receives what the drop should do (task 2.4). Removing a folder asks first.
  */
 @Composable
 fun HomeScreen(
@@ -101,13 +122,23 @@ fun HomeScreen(
     state: HomeUiState = HomeUiState(),
     onItemClick: (HomeItem, Rect?) -> Unit = { _, _ -> },
     onDrop: (HomeItem, DropAction) -> Unit = { _, _ -> },
-    drawer: @Composable (autoFocusSearch: Boolean) -> Unit,
+    drawer: @Composable DrawerScope.(autoFocusSearch: Boolean) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
-    val pagerState = rememberPagerState(pageCount = { state.layout.pages.size })
     val engine = remember(state.gridSpec) { GridLayoutEngine(state.gridSpec) }
     val iconSize = state.iconSizeDp.dp
-    val dragState = rememberHomeDragState(state.layout, engine, onDrop)
+    var folderToRemove by remember { mutableStateOf<HomeItem.Folder?>(null) }
+    val dragState = rememberHomeDragState(state.layout, engine) { item, action ->
+        // A folder takes its apps with it: ask first.
+        if (action is DropAction.Remove && item is HomeItem.Folder) folderToRemove = item else onDrop(item, action)
+    }
+    val layout by rememberUpdatedState(state.layout)
+    // While dragging, an empty page waits past the last one, unless the dragged item would leave
+    // the last page empty anyway. Dropping there creates it; otherwise it vanishes again.
+    val hasExtraPage by remember {
+        derivedStateOf { dragState.dragging?.let { dragged -> layout.pages.last().items.any { it.id != dragged.id } } == true }
+    }
+    val pagerState = rememberPagerState(pageCount = { layout.pages.size + if (hasExtraPage) 1 else 0 })
     val itemContent: @Composable (HomeItem) -> Unit = { item ->
         HomeItemView(
             item = item,
@@ -126,6 +157,15 @@ fun HomeScreen(
     var openedBySearch by rememberSaveable { mutableStateOf(false) }
     var heightPx by remember { mutableFloatStateOf(1f) }
     val isDrawerShown by remember { derivedStateOf { progress.value > 0f } }
+
+    /** A drag leaving the drawer: drop it at once so the home screen is the drop surface. */
+    fun closeDrawerNow() {
+        if (isOpen) onDrawerClosed()
+        isOpen = false
+        scope.launch { progress.snapTo(0f) }
+    }
+
+    val drawerScope = DrawerScope { entry -> dragState.arm(newAppItem(entry), ::closeDrawerNow) }
 
     fun settle(open: Boolean, velocity: Float = 0f) {
         if (isOpen && !open) onDrawerClosed()
@@ -206,14 +246,14 @@ fun HomeScreen(
             HorizontalPager(
                 state = pagerState,
                 beyondViewportPageCount = 1,
-                key = { state.layout.pages[it].index },
+                key = { it },
                 modifier = Modifier
                     .weight(1f)
                     .testTag(HomeTestTags.PAGER),
             ) { page ->
                 DisposableEffect(page) { onDispose { dragState.unregisterPage(page) } }
                 HomePage(
-                    items = state.layout.pages[page].items,
+                    items = state.layout.pages.getOrNull(page)?.items ?: persistentListOf(),
                     engine = engine,
                     modifier = Modifier
                         .fillMaxSize()
@@ -241,6 +281,7 @@ fun HomeScreen(
                 modifier = Modifier.padding(horizontal = 32.dp, vertical = 12.dp),
             )
         }
+        RemoveZone(dragState, Modifier.testTag(HomeTestTags.REMOVE_ZONE))
         DragOverlay(dragState) { item ->
             HomeItemView(item, state.apps, iconSize, state.showLabels, onClick = null)
         }
@@ -254,10 +295,33 @@ fun HomeScreen(
                     }
                     .testTag(HomeTestTags.DRAWER),
             ) {
-                drawer(openedBySearch)
+                drawerScope.drawer(openedBySearch)
             }
         }
     }
+    folderToRemove?.let { folder ->
+        RemoveFolderDialog(
+            folder = folder,
+            onConfirm = {
+                folderToRemove = null
+                onDrop(folder, DropAction.Remove(folder.id))
+            },
+            onDismiss = { folderToRemove = null },
+        )
+    }
+}
+
+@Composable
+private fun RemoveFolderDialog(folder: HomeItem.Folder, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(R.string.home_remove)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) } },
+        title = { Text(stringResource(R.string.home_remove_folder_title)) },
+        text = {
+            Text(pluralStringResource(R.plurals.home_remove_folder_message, folder.items.size, folder.items.size))
+        },
+    )
 }
 
 /**

@@ -19,4 +19,10 @@
     <string name="hidden_apps_explainer">Hidden apps stay out of the drawer. Type an app\'s full name in search to still find it.</string>
     <string name="navigate_back">Back</string>
     <string name="folder_untitled">Folder</string>
+    <string name="home_remove">Remove</string>
+    <string name="home_remove_folder_title">Remove folder?</string>
+    <plurals name="home_remove_folder_message">
+        <item quantity="one">The folder and its %1$d app leave the home screen. The app stays installed.</item>
+        <item quantity="other">The folder and the %1$d apps in it leave the home screen. The apps stay installed.</item>
+    </plurals>
 </resources>

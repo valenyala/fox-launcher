@@ -18,6 +18,7 @@ import javax.inject.Inject
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -62,6 +63,7 @@ class DrawerViewModel @Inject constructor(
     private val query = snapshotFlow { searchState.text.toString() }
 
     private val popup = MutableStateFlow<DrawerPopup?>(null)
+    private var popupJob: Job? = null
 
     private val selectedTab = MutableStateFlow(DrawerTab.PERSONAL)
 
@@ -108,6 +110,12 @@ class DrawerViewModel @Inject constructor(
         searchState.clearText()
     }
 
+    /** The drawer closed (swipe, Home, a drag leaving it): start fresh next time. */
+    fun onDrawerClosed() {
+        clearQuery()
+        dismissPopup()
+    }
+
     fun onTabSelected(tab: DrawerTab) {
         selectedTab.value = tab
     }
@@ -122,12 +130,15 @@ class DrawerViewModel @Inject constructor(
     }
 
     fun onAppLongClick(entry: AppEntry) {
-        viewModelScope.launch {
+        popupJob?.cancel()
+        popupJob = viewModelScope.launch {
             popup.value = DrawerPopup(entry, canUninstall = !appRepository.isSystemApp(entry))
         }
     }
 
     fun dismissPopup() {
+        // A popup still waiting for its system-app check must not open after this.
+        popupJob?.cancel()
         popup.value = null
     }
 

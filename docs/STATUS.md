@@ -38,9 +38,9 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] 2.3 Page + dock rendering, wallpaper offsets (device-verified 2026-10-10)
 - [ ] 2.4 Drag & drop
   - [x] `DragResolver` + tests (pure drop rules)
-  - [x] `HomeDragState`, long-press pick-up, `DragOverlay`, target highlight, edge page-flip (not device-verified)
+  - [x] `HomeDragState`, long-press pick-up, `DragOverlay`, target highlight, edge page-flip (user: works, flips smoothly)
   - [x] Apply `DropAction`s in `HomeRepository` (move, dock, create/add folder, remove) (not device-verified)
-  - [ ] Remove zone, drag from drawer, page creation / empty-page cleanup
+  - [x] Remove zone, drag from drawer, page creation / empty-page cleanup (not device-verified)
   - [ ] Device checklist
 - [ ] 2.5 Folders
 - [ ] 2.6 Item popup: shortcuts, app info, remove, uninstall
@@ -117,6 +117,28 @@ Update this file at the end of every session. Keep it terse. Newest session note
 (none)
 
 ## Session notes
+
+- 2026-10-10 — 2.4 checkpoint 4 of 5, **code done, not device-verified** (phone locked again). The user confirmed
+  checkpoint 2/3 on the phone: home drag works and edge flips are smooth. They expected long-press in the drawer to
+  drag, which is this checkpoint.
+  **Drawer drag:** a drawer long press still opens the popup and also calls `DrawerScope.onAppLongPress` (new receiver of
+  `HomeScreen`'s `drawer` slot) → `HomeDragState.arm(newAppItem(entry))`. The root layer then owns the finger. Lifting
+  without moving leaves the popup. Moving past touch slop begins the drag: the overlay is home-cell sized and centred on
+  the finger, and the drawer snaps shut (`onDrawerClosed`, which now also dismisses the popup and cancels a pending
+  popup job). **Unverified risk:** the popup is its own window; if the platform cancels our gesture when it appears, the
+  arm never fires, and the fallback is to open the popup on release instead. A new item has id `NEW_ITEM_ID` (0, Room's
+  "generate" id). `DraggedItem.id` becomes null, `applyDrop` inserts it, and folder drops go through
+  `insertIntoNewFolder`/`insertIntoFolder`, which keep nothing if the target is gone. There is no separate cancel strip:
+  dropping below the dock (where the pill is) is `Outside`, which discards a new item.
+  **Remove zone:** a strip across the top (status bar + 64 dp) while a home item is dragged. It is hit-tested by the
+  finger, not the overlay centre, and turns red when hovered. A folder dropped there opens a confirm dialog; the
+  item stays until confirmed.
+  **Pages:** while dragging, the pager offers one extra empty page after the last, unless the dragged item is alone on
+  the last page. Dropping there creates it; otherwise it vanishes again. The pager key is now the index. After every
+  drop `closePageGaps()` renumbers pages with pure `pageRenumbering` (+4 unit tests), so empty pages before or between
+  others go away.
+  Tests: `HomeScreenDragTest` +4 (Remove zone, folder confirm, right-edge new page, drawer long-press-and-move);
+  `HomeDaoFolderTest` +3. Still none run.
 
 - 2026-10-10 — 2.4 checkpoints 2 + 3 of 5, **code done, not device-verified** (the phone was locked when they were
   ready). `feature/home/drag/HomeDragState.kt`: items use `combinedClickable` (long-press haptic is built in since

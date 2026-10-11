@@ -112,6 +112,16 @@ object HomeLayoutMapper {
 }
 
 /**
+ * New indices that close the gaps between [usedPages]: the pages that hold something become
+ * 0, 1, 2… in order, so no empty page stays before or between others. Only the indices that
+ * change are returned.
+ */
+fun pageRenumbering(usedPages: Collection<Int>): Map<Int, Int> =
+    usedPages.toSortedSet().withIndex()
+        .filter { (new, old) -> new != old }
+        .associate { (new, old) -> old to new }
+
+/**
  * Ids of APP rows whose `component|serial` is not in [installedAppKeys] (`AppEntry.key`).
  * An empty catalog prunes nothing: a transient empty `LauncherApps` answer must never wipe the
  * user's layout.

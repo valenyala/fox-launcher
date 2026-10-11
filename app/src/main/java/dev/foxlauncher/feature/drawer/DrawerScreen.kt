@@ -90,7 +90,10 @@ object DrawerTestTags {
     const val OVERFLOW = "drawer_overflow"
 }
 
-/** The drawer wired to its ViewModel. [autoFocusSearch] is true only when opened by a search action. */
+/**
+ * The drawer wired to its ViewModel. [autoFocusSearch] is true only when opened by a search action.
+ * [onAppLongPress] hears every long press, alongside the popup it opens.
+ */
 @Composable
 fun DrawerScreen(
     viewModel: DrawerViewModel,
@@ -98,6 +101,7 @@ fun DrawerScreen(
     onOpenHiddenApps: () -> Unit,
     modifier: Modifier = Modifier,
     onAddTestItems: (() -> Unit)? = null,
+    onAppLongPress: (AppEntry) -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val view = LocalView.current
@@ -109,7 +113,11 @@ fun DrawerScreen(
             val source = bounds?.let { launchSource(view, it) }
             viewModel.onAppClick(entry, source?.sourceBounds, source?.options)
         },
-        onAppLongClick = viewModel::onAppLongClick,
+        onAppLongClick = { entry ->
+            viewModel.onAppLongClick(entry)
+            // The home screen turns this into a drag if the finger moves on (task 2.4).
+            onAppLongPress(entry)
+        },
         onDismissPopup = viewModel::dismissPopup,
         onAppInfo = { entry, bounds -> viewModel.onAppInfo(entry, bounds?.let { launchSource(view, it).sourceBounds }) },
         onUninstall = viewModel::onUninstall,

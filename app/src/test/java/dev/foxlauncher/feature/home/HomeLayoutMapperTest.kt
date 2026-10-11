@@ -111,6 +111,26 @@ class HomeLayoutMapperTest {
         assertEquals(emptyList(), orphanedAppItemIds(listOf(app(1)), emptySet()))
     }
 
+    @Test
+    fun contiguousPagesNeedNoRenumbering() {
+        assertEquals(emptyMap(), pageRenumbering(listOf(0, 0, 1, 2)))
+    }
+
+    @Test
+    fun anEmptyMiddlePageIsClosedUp() {
+        assertEquals(mapOf(2 to 1, 3 to 2), pageRenumbering(listOf(0, 2, 3, 3)))
+    }
+
+    @Test
+    fun anEmptyFirstPageIsClosedUp() {
+        assertEquals(mapOf(1 to 0, 4 to 1), pageRenumbering(listOf(4, 1)))
+    }
+
+    @Test
+    fun noPagesNeedNoRenumbering() {
+        assertEquals(emptyMap(), pageRenumbering(emptyList()))
+    }
+
     private fun app(
         id: Long,
         container: HomeContainer = HomeContainer.PAGE,

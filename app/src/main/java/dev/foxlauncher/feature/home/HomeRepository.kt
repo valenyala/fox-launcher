@@ -12,6 +12,7 @@ import dev.foxlauncher.core.model.HomeLayout
 import dev.foxlauncher.core.model.HomePosition
 import dev.foxlauncher.feature.home.drag.DragResolver
 import dev.foxlauncher.feature.home.drag.DropAction
+import dev.foxlauncher.feature.home.drag.NEW_ITEM_ID
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
@@ -71,8 +72,17 @@ class HomeRepository @Inject constructor(
         dao.deleteByIds(itemIds)
     }
 
-    /** Persists a drop that [DragResolver] decided for the existing home item [item]. */
+    /**
+     * Persists a drop that [DragResolver] decided. [item] is new (a drawer app) when its id is
+     * [NEW_ITEM_ID]. Afterwards pages left empty between others are closed up.
+     */
     suspend fun applyDrop(item: HomeItem, action: DropAction) {
+        if (action == DropAction.Cancel) return
+        if (item.id == NEW_ITEM_ID) addDropped(item, action) else moveDropped(item, action)
+        closePageGaps()
+    }
+
+    private suspend fun moveDropped(item: HomeItem, action: DropAction) {
         when (action) {
             is DropAction.MoveToPage -> {
                 val cell = action.cell
@@ -86,6 +96,38 @@ class HomeRepository @Inject constructor(
                 if (item is HomeItem.Folder) dao.deleteFolderWithItems(item.id) else dao.deleteByIds(listOf(item.id))
             DropAction.Cancel -> Unit
         }
+    }
+
+    private suspend fun addDropped(item: HomeItem, action: DropAction) {
+        val now = System.currentTimeMillis()
+        val row = HomeLayoutMapper.toEntity(item, createdAt = now)
+        when (action) {
+            is DropAction.MoveToPage -> {
+                val cell = action.cell
+                dao.insert(
+                    row.copy(
+                        container = HomeContainer.PAGE,
+                        page = action.page,
+                        col = cell.col,
+                        row = cell.row,
+                        spanX = cell.spanX,
+                        spanY = cell.spanY,
+                    ),
+                )
+            }
+            is DropAction.MoveToDock -> dao.insert(row.copy(container = HomeContainer.DOCK, page = 0, col = action.slot, row = 0))
+            is DropAction.CreateFolder -> dao.insertIntoNewFolder(row, action.targetId, title = "", createdAt = now)
+            is DropAction.AddToFolder -> dao.insertIntoFolder(row, action.folderItemId)
+            // A new item has nothing to remove; the resolver never pairs the two.
+            is DropAction.Remove, DropAction.Cancel -> Unit
+        }
+    }
+
+    private suspend fun closePageGaps() {
+        val onPages = dao.getAll().filter { it.container == HomeContainer.PAGE }
+        val renumbering = pageRenumbering(onPages.map { it.page })
+        if (renumbering.isEmpty()) return
+        dao.moveItems(onPages.mapNotNull { row -> renumbering[row.page]?.let { row.copy(page = it) } })
     }
 
     suspend fun lastPageIndex(): Int = dao.maxPage() ?: 0
