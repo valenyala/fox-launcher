@@ -98,7 +98,8 @@ fun FolderSheet(
                 .widthIn(max = CARD_MAX_WIDTH)
                 .fillMaxWidth()
                 .onPlaced(dragState::registerFolderCard)
-                .swallowPointers(),
+                .swallowPointers()
+                .testTag(HomeTestTags.FOLDER_CARD),
         ) {
             Column(
                 Modifier

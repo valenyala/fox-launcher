@@ -80,7 +80,8 @@ class HomeScreenFolderTest {
         setHome()
         openFolder()
         val from = folderCellCenter(1)
-        val belowCard = Offset(center(HomeTestTags.FOLDER_SHEET).x, bottomOf(HomeTestTags.PAGER) - 8f)
+        // In the margin under the card: off it in either orientation, and nowhere near the Remove strip.
+        val belowCard = Offset(center(HomeTestTags.FOLDER_CARD).x, (bottomOf(HomeTestTags.FOLDER_CARD) + bottomOf(HomeTestTags.FOLDER_SHEET)) / 2)
 
         composeRule.onRoot().performTouchInput { down(from) }
         composeRule.mainClock.advanceTimeBy(LONG_PRESS_WAIT_MS)

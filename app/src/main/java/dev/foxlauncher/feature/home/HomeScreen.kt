@@ -46,10 +46,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.input.pointer.util.addPointerInputChange
@@ -60,6 +64,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import dev.foxlauncher.R
 import dev.foxlauncher.core.model.AppEntry
@@ -121,6 +126,7 @@ object HomeTestTags {
     const val DOCK = "home_dock"
     const val REMOVE_ZONE = "home_remove_zone"
     const val FOLDER_SHEET = "home_folder_sheet"
+    const val FOLDER_CARD = "home_folder_card"
     const val FOLDER_TITLE = "home_folder_title"
     const val FOLDER_GRID = "home_folder_grid"
 }
@@ -203,9 +209,11 @@ fun HomeScreen(
     var heightPx by remember { mutableFloatStateOf(1f) }
     val isDrawerShown by remember { derivedStateOf { progress.value > 0f } }
 
+    val currentOnDrawerClosed by rememberUpdatedState(onDrawerClosed)
+
     /** A drag leaving the drawer: drop it at once so the home screen is the drop surface. */
     fun closeDrawerNow() {
-        if (isOpen) onDrawerClosed()
+        if (isOpen) currentOnDrawerClosed()
         isOpen = false
         scope.launch { progress.snapTo(0f) }
     }
@@ -213,7 +221,7 @@ fun HomeScreen(
     val drawerScope = DrawerScope { entry -> dragState.arm(newAppItem(entry), ::closeDrawerNow) }
 
     fun settle(open: Boolean, velocity: Float = 0f) {
-        if (isOpen && !open) onDrawerClosed()
+        if (isOpen && !open) currentOnDrawerClosed()
         isOpen = open
         scope.launch {
             progress.animateTo(
@@ -222,6 +230,17 @@ fun HomeScreen(
                 initialVelocity = velocity,
             )
         }
+    }
+
+    val density = LocalDensity.current
+    val drawerPull = remember(density) {
+        DrawerPullConnection(
+            progress = { progress.value },
+            heightPx = { heightPx },
+            flingPx = { with(density) { FLING_VELOCITY.toPx() } },
+            snapTo = { target -> scope.launch { progress.snapTo(target) } },
+            settle = { open, velocity -> settle(open, velocity) },
+        )
     }
 
     LaunchedEffect(Unit) { if (isOpen) progress.snapTo(1f) }
@@ -369,6 +388,7 @@ fun HomeScreen(
             Box(
                 Modifier
                     .fillMaxSize()
+                    .nestedScroll(drawerPull)
                     .graphicsLayer {
                         translationY = (1f - progress.value) * size.height
                         alpha = progress.value
@@ -436,6 +456,60 @@ private fun RemoveFolderDialog(folder: HomeItem.Folder, onConfirm: () -> Unit, o
             Text(pluralStringResource(R.plurals.home_remove_folder_message, folder.items.size, folder.items.size))
         },
     )
+}
+
+/**
+ * Pull-down-to-close for the drawer's lists. A list takes every vertical drag, so the home swipe
+ * never sees one that starts on it; this takes what the list leaves over once it is at its top
+ * and pulls the drawer down with the finger. Release rules match the home swipe: a fling either
+ * way, otherwise close once pulled past [OPEN_THRESHOLD] of the height.
+ */
+private class DrawerPullConnection(
+    private val progress: () -> Float,
+    private val heightPx: () -> Float,
+    private val flingPx: () -> Float,
+    private val snapTo: (Float) -> Unit,
+    private val settle: (open: Boolean, velocity: Float) -> Unit,
+) : NestedScrollConnection {
+    /** Where the pulled drawer is, kept in step with each delta; null when not pulling. */
+    private var pulled: Float? = null
+
+    override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+        val current = pulled ?: return Offset.Zero
+        if (source != NestedScrollSource.UserInput || available.y >= 0f) return Offset.Zero
+        // The finger goes back up while the drawer is pulled down: raise the drawer before the list scrolls.
+        val target = (current - available.y / heightPx()).coerceAtMost(1f)
+        pulled = target
+        snapTo(target)
+        return Offset(0f, -(target - current) * heightPx())
+    }
+
+    override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+        if (source != NestedScrollSource.UserInput || available.y <= 0f) return Offset.Zero
+        val target = ((pulled ?: progress()) - available.y / heightPx()).coerceAtLeast(0f)
+        snapTo(target)
+        if (target > 0f) {
+            pulled = target
+        } else {
+            // Fully pulled away: the drawer leaves composition, and its list may never report the release.
+            pulled = null
+            settle(false, 0f)
+        }
+        return Offset(0f, available.y)
+    }
+
+    override suspend fun onPreFling(available: Velocity): Velocity {
+        val current = pulled ?: return Velocity.Zero
+        pulled = null
+        val open = when {
+            available.y > flingPx() -> false
+            available.y < -flingPx() -> true
+            else -> current > 1f - OPEN_THRESHOLD
+        }
+        settle(open, -available.y / heightPx())
+        // The list must not fling as well.
+        return available
+    }
 }
 
 /**

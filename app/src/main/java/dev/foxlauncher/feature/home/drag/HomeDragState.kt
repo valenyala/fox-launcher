@@ -354,9 +354,10 @@ class HomeDragState internal constructor(
     private fun locate(item: HomeItem): DropTarget {
         val layer = layer?.takeIf { it.isAttached } ?: return DropTarget.Outside
         val engine = engine()
-        // The remove zone goes by the finger: it is a strip the finger is aimed at, not a cell.
+        // The remove zone goes by the finger: it is a strip the finger is aimed at, not a cell. It never
+        // reaches into the pages: where they cannot shrink clear of it (landscape), the cells win.
         removeZone?.takeIf { it.isAttached }?.let { zone ->
-            if (layer.localBoundingBoxOf(zone).contains(pointer)) return DropTarget.RemoveZone
+            if (layer.localBoundingBoxOf(zone).contains(pointer) && pointer.y < pagesTop(layer)) return DropTarget.RemoveZone
         }
         val center = overlayTopLeft + Offset(itemSize.width / 2, itemSize.height / 2)
         // An open folder covers the home: its grid, or nothing until the finger has left long enough to close it.
@@ -474,6 +475,14 @@ class HomeDragState internal constructor(
     }
 
     private class FolderShape(val grid: LayoutCoordinates, val cols: Int, val rows: Int, val count: Int)
+
+    /**
+     * Top edge of the pages on screen, scaled as they are; infinity when none shows. Off-screen
+     * neighbours clip to an empty box at the origin, so they must not count.
+     */
+    private fun pagesTop(layer: LayoutCoordinates): Float =
+        pages.values.filter { it.isAttached }.map { layer.localBoundingBoxOf(it) }.filterNot { it.isEmpty }
+            .minOfOrNull { it.top } ?: Float.POSITIVE_INFINITY
 
     /** One home cell, measured from any composed page. */
     private fun homeCellSize(): Size? {

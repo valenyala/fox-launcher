@@ -129,6 +129,25 @@ Update this file at the end of every session. Keep it terse. Newest session note
 
 ## Session notes
 
+- 2026-10-11 — Two drawer requests from the user, plus landscape findings.
+  **Drawer labels were invisible in dark mode** (the phone is in night mode). `DrawerContent`'s Surface used
+  `surface.copy(alpha = 0.9f)`; `contentColorFor` matches only exact theme colours, so content fell back to
+  `LocalContentColor`'s default, black. Now `contentColor = onSurface`. `DrawerContentTest.appNamesUseTheThemesOnSurfaceColour`
+  failed on the phone before the fix (black vs. #E2E1EC) and passes after. Any other see-through Surface needs an
+  explicit `contentColor` too.
+  **Pull down to close:** the drawer's lazy grid takes every vertical drag, so the 1.4 swipe never saw one starting on
+  it. `DrawerPullConnection` (`NestedScrollConnection` on the drawer box) takes what the list leaves over at its top:
+  the drawer follows the finger and pre-scroll re-raises it before the list scrolls. A release (pre-fling) closes on a
+  downward fling over 300 dp/s or once pulled 20 % down, and consumes the fling so the list does not fling too.
+  Reaching 0 settles closed at once, because the list leaves composition and may never report the release.
+  +2 `HomeScreenTest` (at the top: closes; scrolled: only scrolls).
+  **Landscape:** one suite run happened in landscape (the phone was turned). It showed (a) `HomePageTest` again assumed
+  a large screen (now 240×300 dp, fits both orientations); (b) a **real bug**: in landscape the pages are too short to
+  shrink clear of the Remove strip (clamped at 0.7), so a top-row drop removed the item. Now Remove only counts above
+  the top of the visible pages. Empty clipped boxes of off-screen pages must be skipped, or that top is 0 and Remove
+  never fires (caught by the portrait run). (c) The drag-out folder test aimed at a point that lies on the card in
+  landscape; it now aims at the margin under the tagged card. Portrait: 40/40 pass. **Landscape not re-run yet.**
+
 - 2026-10-10 — 2.5 Folders, **code done; device checklist pending.** Tapping a folder tile opens `FolderSheet`: a
   dark-glass card (dark so the white wallpaper-style labels stay readable in any theme) over a 35 % scrim, inside the
   home drag layer. The scrim and card swallow pointers so the home and the drawer swipe never react; tapping the scrim
