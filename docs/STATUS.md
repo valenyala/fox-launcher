@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 2 — Home grid (phases 0 and 1 code complete; both device checklists still owed)
-**Next task:** 2.6 Item popup: shortcuts, app info, remove, uninstall
+**Next task:** performance pass requested by the user (pulls Phase 8.1–8.3 forward), then 2.7
 
 ## Environment facts (verified 2026-09-17)
 
@@ -44,11 +44,11 @@ Update this file at the end of every session. Keep it terse. Newest session note
   - [x] Remove zone, drag from drawer, page creation / empty-page cleanup (user: drawer drag, Remove, new page, rotation OK)
   - [x] Device checklist (user, 2026-10-10: pick-up, page flips, free cell, folder from a top-row app, Remove, drawer drag, rotation)
 - [x] 2.5 Folders (device checklist passed 2026-10-11, POCO F3)
-- [ ] 2.6 Item popup: shortcuts, app info, remove, uninstall
+- [x] 2.6 Item popup: shortcuts, app info, remove, uninstall (device checklist passed 2026-10-11)
   - [x] Popup (App info / Remove / Uninstall); a long press arms the drag (not device-verified)
   - [x] App shortcuts in the popup (UI tested; the LauncherApps query not yet seen on the phone)
   - [x] Drag a shortcut out → pinned `Shortcut` item, pin sync, shortcut icons (not device-verified)
-  - [ ] Device checklist
+  - [x] Device checklist (user: shortcuts for Messages/Chrome, open, pin by drag, survives reboot, remove)
 - [ ] 2.7 First-run default layout
 - [ ] 2.8 Missing / suspended app handling
 - [ ] Device checklist passed on: —
