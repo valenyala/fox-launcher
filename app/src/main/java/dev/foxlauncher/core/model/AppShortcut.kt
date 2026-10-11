@@ -13,4 +13,11 @@ data class AppShortcut(
     val userSerial: Long,
     val shortLabel: String,
     val longLabel: String?,
-)
+) {
+    /** Same shape as `HomeItem.Shortcut.shortcutKey`, to find a shortcut item's icon. */
+    val key: String get() = keyOf(packageName, id, userSerial)
+
+    companion object {
+        fun keyOf(packageName: String, id: String, userSerial: Long): String = "$packageName|$id|$userSerial"
+    }
+}

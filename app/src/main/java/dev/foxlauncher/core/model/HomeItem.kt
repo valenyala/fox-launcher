@@ -41,7 +41,10 @@ sealed interface HomeItem {
         val shortcutId: String,
         val userSerial: Long,
         val title: String,
-    ) : HomeItem
+    ) : HomeItem {
+        /** Same shape as [AppShortcut.key], to look its icon up. */
+        val shortcutKey: String get() = AppShortcut.keyOf(packageName, shortcutId, userSerial)
+    }
 
     data class Folder(
         override val id: Long,

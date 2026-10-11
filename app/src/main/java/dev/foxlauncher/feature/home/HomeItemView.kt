@@ -1,5 +1,6 @@
 package dev.foxlauncher.feature.home
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -22,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
@@ -38,9 +40,13 @@ import dev.foxlauncher.core.model.HomeItem
 import dev.foxlauncher.core.ui.AppIcon
 import dev.foxlauncher.core.ui.UNAVAILABLE_ICON_ALPHA
 import kotlinx.collections.immutable.ImmutableMap
+import kotlinx.collections.immutable.persistentMapOf
 
 private const val FOLDER_BACKGROUND_ALPHA = 0.3f
 private const val FOLDER_PREVIEW_COUNT = 4
+
+/** Size of the app badge on a shortcut's icon, as a fraction of the icon. */
+private const val SHORTCUT_BADGE_SCALE = 0.4f
 
 /** Label style for anything drawn straight onto the wallpaper: white with a soft shadow. */
 @Composable
@@ -73,6 +79,7 @@ fun HomeItemView(
     onClick: ((HomeItem, Rect?) -> Unit)?,
     modifier: Modifier = Modifier,
     onLongClick: ((HomeItem, LayoutCoordinates) -> Unit)? = null,
+    shortcutIcons: ImmutableMap<String, ImageBitmap> = persistentMapOf(),
 ) {
     val bounds = remember { IconBounds() }
     val coordinates = remember { ItemCoordinates() }
@@ -93,7 +100,7 @@ fun HomeItemView(
             .padding(4.dp),
     ) {
         Box(Modifier.onGloballyPositioned { bounds.value = it.boundsInWindow() }) {
-            ItemIcon(item, apps, iconSize)
+            ItemIcon(item, apps, shortcutIcons, iconSize)
         }
         if (showLabel) {
             Spacer(Modifier.height(4.dp))
@@ -109,11 +116,16 @@ fun HomeItemView(
 }
 
 @Composable
-private fun ItemIcon(item: HomeItem, apps: ImmutableMap<String, AppEntry>, iconSize: Dp) {
+private fun ItemIcon(
+    item: HomeItem,
+    apps: ImmutableMap<String, AppEntry>,
+    shortcutIcons: ImmutableMap<String, ImageBitmap>,
+    iconSize: Dp,
+) {
     when (item) {
         is HomeItem.App -> AppOrMissingIcon(apps[item.appKey], iconSize)
-        is HomeItem.Shortcut -> AppOrMissingIcon(appOfShortcut(item, apps), iconSize)
-        is HomeItem.Folder -> FolderIcon(item, apps, iconSize)
+        is HomeItem.Shortcut -> ShortcutIcon(shortcutIcons[item.shortcutKey], appOfShortcut(item, apps), iconSize)
+        is HomeItem.Folder -> FolderIcon(item, apps, shortcutIcons, iconSize)
         is HomeItem.AppWidget, is HomeItem.NativeWidget -> Box(
             Modifier
                 .size(iconSize)
@@ -137,13 +149,33 @@ private fun AppOrMissingIcon(entry: AppEntry?, size: Dp) {
     }
 }
 
-/** Until 2.6 loads real shortcut icons, a shortcut shows its app's icon. */
+/**
+ * A shortcut's own icon with its app's icon as a badge in the corner, as Launcher3 draws them;
+ * its app's icon alone until (or unless) the shortcut icon loads.
+ */
+@Composable
+private fun ShortcutIcon(icon: ImageBitmap?, app: AppEntry?, size: Dp) {
+    if (icon == null) {
+        AppOrMissingIcon(app, size)
+        return
+    }
+    Box(Modifier.size(size)) {
+        Image(icon, contentDescription = null, modifier = Modifier.size(size))
+        if (app != null) AppIcon(app, size * SHORTCUT_BADGE_SCALE, Modifier.align(Alignment.BottomEnd))
+    }
+}
+
 private fun appOfShortcut(item: HomeItem.Shortcut, apps: ImmutableMap<String, AppEntry>): AppEntry? =
     apps.values.firstOrNull { it.packageName == item.packageName && it.userSerial == item.userSerial }
 
 /** A 2×2 preview of the folder's first items on a translucent tile. 2.5 builds the rest. */
 @Composable
-private fun FolderIcon(folder: HomeItem.Folder, apps: ImmutableMap<String, AppEntry>, size: Dp) {
+private fun FolderIcon(
+    folder: HomeItem.Folder,
+    apps: ImmutableMap<String, AppEntry>,
+    shortcutIcons: ImmutableMap<String, ImageBitmap>,
+    size: Dp,
+) {
     val preview = folder.items.take(FOLDER_PREVIEW_COUNT)
     val mini = size * 0.4f
     Column(
@@ -158,7 +190,8 @@ private fun FolderIcon(folder: HomeItem.Folder, apps: ImmutableMap<String, AppEn
                 row.forEach { child ->
                     when (child) {
                         is HomeItem.App -> AppOrMissingIcon(apps[child.appKey], mini)
-                        is HomeItem.Shortcut -> AppOrMissingIcon(appOfShortcut(child, apps), mini)
+                        is HomeItem.Shortcut -> shortcutIcons[child.shortcutKey]?.let { Image(it, contentDescription = null, modifier = Modifier.size(mini)) }
+                            ?: AppOrMissingIcon(appOfShortcut(child, apps), mini)
                         else -> Spacer(Modifier.size(mini))
                     }
                 }

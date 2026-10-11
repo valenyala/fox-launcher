@@ -80,6 +80,7 @@ import dev.foxlauncher.feature.home.drag.REMOVE_ZONE_HEIGHT
 import dev.foxlauncher.feature.home.drag.RemoveZone
 import dev.foxlauncher.feature.home.drag.homeDragLayer
 import dev.foxlauncher.feature.home.drag.newAppItem
+import dev.foxlauncher.feature.home.drag.newShortcutItem
 import dev.foxlauncher.feature.home.drag.rememberHomeDragState
 import dev.foxlauncher.feature.home.grid.GridLayoutEngine
 import kotlinx.collections.immutable.persistentListOf
@@ -216,6 +217,7 @@ fun HomeScreen(
             apps = state.apps,
             iconSize = iconSize,
             showLabel = state.showLabels,
+            shortcutIcons = state.shortcutIcons,
             onClick = { clicked, bounds ->
                 if (clicked is HomeItem.Folder) openFolderId = clicked.id else onItemClick(clicked, bounds)
             },
@@ -397,6 +399,7 @@ fun HomeScreen(
                 apps = state.apps,
                 iconSize = iconSize,
                 showLabel = true,
+                shortcutIcons = state.shortcutIcons,
                 onClick = { clicked, bounds ->
                     openFolderId = null
                     onItemClick(clicked, bounds)
@@ -422,11 +425,13 @@ fun HomeScreen(
                     }
                 },
                 onDismiss = { popup = null },
+                // Dragged out, a shortcut becomes a pinned shortcut item; the popup closes as the drag begins.
+                onShortcutLongPress = { shortcut -> dragState.arm(newShortcutItem(shortcut), onDragStart = { popup = null }) },
             )
         }
         RemoveZone(dragState, Modifier.testTag(HomeTestTags.REMOVE_ZONE))
         DragOverlay(dragState) { item ->
-            HomeItemView(item, state.apps, iconSize, state.showLabels, onClick = null)
+            HomeItemView(item, state.apps, iconSize, state.showLabels, onClick = null, shortcutIcons = state.shortcutIcons)
         }
         if (isDrawerShown) {
             Box(

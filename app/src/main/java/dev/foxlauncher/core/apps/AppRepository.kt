@@ -243,6 +243,22 @@ class AppRepository @Inject constructor(
             }.firstOrNull()
         }
 
+    /**
+     * Makes [shortcutIds] exactly the set of [packageName]'s shortcuts Fox keeps pinned in profile
+     * [userSerial] (an empty set unpins them all). Pinned shortcuts outlive reboots and app updates.
+     */
+    suspend fun pinShortcuts(packageName: String, userSerial: Long, shortcutIds: List<String>) = withContext(io) {
+        if (!launcherApps.hasShortcutHostPermission()) return@withContext
+        val user = userFor(userSerial) ?: return@withContext
+        try {
+            launcherApps.pinShortcuts(packageName, shortcutIds, user)
+        } catch (e: SecurityException) {
+            FoxLog.w("Not allowed to pin shortcuts of $packageName", e)
+        } catch (e: IllegalStateException) {
+            FoxLog.w("Could not pin shortcuts of $packageName (user locked?)", e)
+        }
+    }
+
     /** Shortcuts need the host permission, which only the default launcher has; a locked profile throws. */
     private fun queryShortcuts(
         packageName: String,

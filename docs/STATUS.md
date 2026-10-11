@@ -47,7 +47,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [ ] 2.6 Item popup: shortcuts, app info, remove, uninstall
   - [x] Popup (App info / Remove / Uninstall); a long press arms the drag (not device-verified)
   - [x] App shortcuts in the popup (UI tested; the LauncherApps query not yet seen on the phone)
-  - [ ] Drag a shortcut out → pinned `Shortcut` item, pin sync, shortcut icons
+  - [x] Drag a shortcut out → pinned `Shortcut` item, pin sync, shortcut icons (not device-verified)
   - [ ] Device checklist
 - [ ] 2.7 First-run default layout
 - [ ] 2.8 Missing / suspended app handling
@@ -132,6 +132,20 @@ Update this file at the end of every session. Keep it terse. Newest session note
   `-Pandroid.injected.androidTest.leaveApksInstalledAfterRun=true` on a personal phone, or the launcher is uninstalled.
 
 ## Session notes
+
+- 2026-10-11 — 2.6 checkpoint 3 of 3, **code done; device checklist pending.** Long-pressing a shortcut row arms a
+  drag of `newShortcutItem(shortcut)` (id `NEW_ITEM_ID`, title = short label); moving on closes the popup. A drop
+  inserts it through the usual `addDropped`. **Pinning:** `applyDrop` snapshots `pinnedShortcutIds` (pure: every
+  SHORTCUT row on pages, dock and in folders, per package+profile) before and after, and calls
+  `AppRepository.pinShortcuts` for each owner whose set changed (`pinChanges`, pure, +4 tests). `pinShortcuts`
+  replaces an owner's whole set, so the last one leaving pins an empty set: unpinned. Removal by popup, by the Remove
+  strip, or by deleting a folder holding shortcuts all go through `applyDrop`. Shortcut items now show the shortcut's
+  own icon with the app icon as a 40 % badge; folder previews use it too. The view model loads the icons
+  (`HomeUiState.shortcutIcons`, keyed by `HomeItem.Shortcut.shortcutKey` = `AppShortcut.key`) again whenever the set
+  of shortcuts or the icon cache generation changes. Not handled yet: `LauncherApps.Callback.onShortcutsChanged`
+  (an app disabling a pinned shortcut leaves a dead item; 2.8 covers missing items). On the phone,
+  `dumpsys shortcut` shows Messages (15), WhatsApp (11), Gmail (5) and others publishing shortcuts, and lists
+  `dev.foxlauncher` as a launcher. Tests: `HomeScreenPopupTest` +1 (7); 47 instrumented and 109 unit tests pass.
 
 - 2026-10-11 — 2.6 checkpoint 2 of 3: app shortcuts in the popup. `AppRepository.shortcutsFor(entry)` queries
   `LauncherApps` (`setActivity` = the app's component, `FLAG_MATCH_DYNAMIC | FLAG_MATCH_MANIFEST`), keeps enabled ones,

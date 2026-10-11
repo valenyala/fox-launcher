@@ -31,7 +31,7 @@ import kotlinx.coroutines.launch
 @Singleton
 class HomeRepository @Inject constructor(
     private val dao: HomeDao,
-    appRepository: AppRepository,
+    private val appRepository: AppRepository,
     @param:ApplicationScope scope: CoroutineScope,
     @param:DefaultDispatcher default: CoroutineDispatcher,
 ) {
@@ -77,14 +77,18 @@ class HomeRepository @Inject constructor(
 
     /**
      * Persists a drop that [DragResolver] decided. [item] is new (a drawer app) when its id is
-     * [NEW_ITEM_ID]. Afterwards folders down to one item collapse, empty ones go, and pages left
-     * empty between others are closed up.
+     * [NEW_ITEM_ID]. Afterwards folders down to one item collapse, empty ones go, pages left empty
+     * between others are closed up, and the shortcuts Fox keeps pinned follow what is on the home.
      */
     suspend fun applyDrop(item: HomeItem, action: DropAction) {
         if (action == DropAction.Cancel) return
+        val pinnedBefore = pinnedShortcutIds(dao.getAll())
         if (item.id == NEW_ITEM_ID) addDropped(item, action) else moveDropped(item, action)
         closeFolders()
         closePageGaps()
+        pinChanges(pinnedBefore, pinnedShortcutIds(dao.getAll())).forEach { (owner, ids) ->
+            appRepository.pinShortcuts(owner.packageName, owner.userSerial, ids.toList())
+        }
     }
 
     suspend fun renameFolder(folderId: Long, title: String) {

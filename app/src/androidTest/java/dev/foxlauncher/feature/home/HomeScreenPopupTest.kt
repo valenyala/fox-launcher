@@ -23,6 +23,7 @@ import dev.foxlauncher.core.model.HomePage
 import dev.foxlauncher.core.model.HomePosition
 import dev.foxlauncher.core.ui.theme.FoxTheme
 import dev.foxlauncher.feature.home.drag.DropAction
+import dev.foxlauncher.feature.home.drag.newShortcutItem
 import dev.foxlauncher.feature.home.grid.CellRect
 import dev.foxlauncher.feature.home.grid.GridSpec
 import kotlin.test.assertEquals
@@ -91,6 +92,30 @@ class HomeScreenPopupTest {
         composeRule.waitForIdle()
 
         assertEquals(listOf<Pair<HomeItem, PopupAction>>(app to PopupAction.OpenShortcut(compose)), actions)
+    }
+
+    @Test
+    fun aShortcutDraggedOutOfThePopupLandsAsANewShortcutItem() {
+        val compose = AppShortcut("com.example", "compose", 0, shortLabel = "New", longLabel = "New message")
+        setHome(ItemPopupModel(shortcuts = persistentListOf(PopupShortcut(compose, null))))
+        longPress(cellCenter(1, 2))
+        val row = with(composeRule.density) {
+            val bounds = composeRule.onNodeWithText("New message").getBoundsInRoot()
+            Offset(((bounds.left + bounds.right) / 2).toPx(), ((bounds.top + bounds.bottom) / 2).toPx())
+        }
+
+        composeRule.onRoot().performTouchInput { down(row) }
+        composeRule.mainClock.advanceTimeBy(LONG_PRESS_WAIT_MS)
+        composeRule.onRoot().performTouchInput { moveBy(Offset(0f, 40f)) }
+        val target = cellCenter(3, 4)
+        composeRule.onRoot().performTouchInput {
+            moveTo(target)
+            up()
+        }
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag(HomeTestTags.ITEM_POPUP).assertDoesNotExist()
+        assertEquals(listOf<Pair<HomeItem, DropAction>>(newShortcutItem(compose) to DropAction.MoveToPage(0, CellRect(3, 4))), drops)
     }
 
     @Test

@@ -2,6 +2,7 @@ package dev.foxlauncher.feature.home
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -70,7 +71,8 @@ sealed interface PopupAction {
  * A home item's long-press popup next to [anchor], the item's bounds in the home drag layer:
  * above it when there is room, otherwise below, and always on screen. It is drawn inside the drag
  * layer rather than in a window of its own, so a finger that moves on from the long press still
- * drags the item. Any tap outside the card calls [onDismiss].
+ * drags the item, and a shortcut row can be long-pressed and dragged out ([onShortcutLongPress]).
+ * Any tap outside the card calls [onDismiss].
  */
 @Composable
 fun ItemPopup(
@@ -79,10 +81,11 @@ fun ItemPopup(
     onAction: (PopupAction) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    onShortcutLongPress: (AppShortcut) -> Unit = {},
 ) {
     val topInset = WindowInsets.statusBars.getTop(LocalDensity.current)
     Layout(
-        content = { PopupCard(model, onAction) },
+        content = { PopupCard(model, onAction, onShortcutLongPress) },
         modifier = modifier
             .fillMaxSize()
             .swallowPointers()
@@ -105,7 +108,7 @@ fun ItemPopup(
 }
 
 @Composable
-private fun PopupCard(model: ItemPopupModel, onAction: (PopupAction) -> Unit) {
+private fun PopupCard(model: ItemPopupModel, onAction: (PopupAction) -> Unit, onShortcutLongPress: (AppShortcut) -> Unit) {
     Surface(
         shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -119,7 +122,9 @@ private fun PopupCard(model: ItemPopupModel, onAction: (PopupAction) -> Unit) {
         Column(Modifier.padding(vertical = 8.dp)) {
             // The app's own shortcuts first, then what Fox can do with the item, as in Launcher3.
             model.shortcuts.forEach { (shortcut, icon) ->
-                ShortcutRow(shortcut, icon) { onAction(PopupAction.OpenShortcut(shortcut)) }
+                ShortcutRow(shortcut, icon, onLongClick = { onShortcutLongPress(shortcut) }) {
+                    onAction(PopupAction.OpenShortcut(shortcut))
+                }
             }
             if (model.shortcuts.isNotEmpty()) HorizontalDivider(Modifier.padding(vertical = 4.dp))
             if (model.canOpenAppInfo) PopupRow(stringResource(R.string.popup_app_info)) { onAction(PopupAction.AppInfo) }
@@ -130,12 +135,12 @@ private fun PopupCard(model: ItemPopupModel, onAction: (PopupAction) -> Unit) {
 }
 
 @Composable
-private fun ShortcutRow(shortcut: AppShortcut, icon: ImageBitmap?, onClick: () -> Unit) {
+private fun ShortcutRow(shortcut: AppShortcut, icon: ImageBitmap?, onLongClick: () -> Unit, onClick: () -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .combinedClickable(onLongClick = onLongClick, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
         if (icon != null) {

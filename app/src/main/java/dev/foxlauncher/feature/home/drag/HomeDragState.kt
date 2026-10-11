@@ -26,6 +26,7 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.unit.toSize
 import dev.foxlauncher.core.model.AppEntry
+import dev.foxlauncher.core.model.AppShortcut
 import dev.foxlauncher.core.model.HomeContainer
 import dev.foxlauncher.core.model.HomeItem
 import dev.foxlauncher.core.model.HomeLayout
@@ -51,6 +52,16 @@ fun newAppItem(entry: AppEntry): HomeItem.App = HomeItem.App(
     position = HomePosition(HomeContainer.PAGE, page = 0, col = 0, row = 0),
     component = entry.component,
     userSerial = entry.userSerial,
+)
+
+/** One of an app's shortcuts as a home item that does not exist yet, ready to be dragged out of a popup. */
+fun newShortcutItem(shortcut: AppShortcut): HomeItem.Shortcut = HomeItem.Shortcut(
+    id = NEW_ITEM_ID,
+    position = HomePosition(HomeContainer.PAGE, page = 0, col = 0, row = 0),
+    packageName = shortcut.packageName,
+    shortcutId = shortcut.id,
+    userSerial = shortcut.userSerial,
+    title = shortcut.shortLabel,
 )
 
 /** Where releasing now would put the dragged item, and what that would do. */

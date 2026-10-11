@@ -3,6 +3,7 @@ package dev.foxlauncher.feature.home
 import android.graphics.Rect
 import android.os.Bundle
 import androidx.compose.runtime.Immutable
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -10,6 +11,7 @@ import dev.foxlauncher.core.apps.AppRepository
 import dev.foxlauncher.core.apps.IconCache
 import dev.foxlauncher.core.data.settings.FoxSettings
 import dev.foxlauncher.core.model.AppEntry
+import dev.foxlauncher.core.model.AppShortcut
 import dev.foxlauncher.core.model.HomeContainer
 import dev.foxlauncher.core.model.HomeItem
 import dev.foxlauncher.core.model.HomeLayout
@@ -23,11 +25,16 @@ import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableMap
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -41,6 +48,8 @@ data class HomeUiState(
     val gridSpec: GridSpec = GridSpec.DEFAULT,
     val iconSizeDp: Int = FoxSettings.DEFAULT_ICON_SIZE_DP,
     val showLabels: Boolean = FoxSettings.DEFAULT_SHOW_HOME_LABELS,
+    /** Icons of the shortcut items, keyed by `HomeItem.Shortcut.shortcutKey`; missing ones show their app's icon. */
+    val shortcutIcons: ImmutableMap<String, ImageBitmap> = persistentMapOf(),
 )
 
 @HiltViewModel
@@ -57,13 +66,25 @@ class HomeViewModel @Inject constructor(
 
     private val look = combine(gridSpec, settings.iconSizeDp, settings.showHomeLabels, ::Triple)
 
+    /** Loaded off the main thread whenever the set of shortcuts on the home changes or icons go stale. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val shortcutIcons: Flow<ImmutableMap<String, ImageBitmap>> = homeRepository.layout
+        .map { layout -> layout.shortcuts() }
+        .distinctUntilChanged()
+        .combine(iconCache.generation) { shortcuts, _ -> shortcuts }
+        .mapLatest { shortcuts ->
+            shortcuts.mapNotNull { shortcut -> iconCache.shortcutIcon(shortcut)?.let { shortcut.key to it } }.toMap().toImmutableMap()
+        }
+        .onStart { emit(persistentMapOf()) }
+
     val uiState: StateFlow<HomeUiState> = combine(
         settings.isFirstRun,
         homeRepository.layout,
         appsByKey,
         look,
-    ) { isFirstRun, layout, apps, (spec, iconSizeDp, showLabels) ->
-        HomeUiState(isFirstRun, layout, apps, spec, iconSizeDp, showLabels)
+        shortcutIcons,
+    ) { isFirstRun, layout, apps, (spec, iconSizeDp, showLabels), icons ->
+        HomeUiState(isFirstRun, layout, apps, spec, iconSizeDp, showLabels, icons)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
@@ -156,6 +177,14 @@ class HomeViewModel @Inject constructor(
             }
         }
     }
+
+    /** Every shortcut item on the home: on pages, in the dock and in folders. */
+    private fun HomeLayout.shortcuts(): Set<AppShortcut> =
+        (pages.asSequence().flatMap { it.items } + dock.items)
+            .flatMap { item -> if (item is HomeItem.Folder) item.items.asSequence() else sequenceOf(item) }
+            .filterIsInstance<HomeItem.Shortcut>()
+            .map { AppShortcut(it.packageName, it.shortcutId, it.userSerial, it.title, longLabel = null) }
+            .toSet()
 
     private companion object {
         const val STOP_TIMEOUT_MS = 5_000L
