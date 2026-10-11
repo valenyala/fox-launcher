@@ -9,6 +9,7 @@ import android.content.IntentFilter
 import android.content.pm.ApplicationInfo
 import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
+import android.content.pm.ShortcutInfo
 import android.content.pm.PackageManager
 import android.graphics.Rect
 import android.net.Uri
@@ -25,6 +26,7 @@ import dev.foxlauncher.core.common.Collation
 import dev.foxlauncher.core.common.FoxLog
 import dev.foxlauncher.core.common.IoDispatcher
 import dev.foxlauncher.core.model.AppEntry
+import dev.foxlauncher.core.model.AppShortcut
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -205,6 +207,62 @@ class AppRepository @Inject constructor(
         }
     }
 
+    /**
+     * Up to [max] of [entry]'s own shortcuts for its popup (task 2.6): enabled ones, manifest
+     * before dynamic, each in the app's rank order. Empty unless Fox is the default launcher.
+     */
+    suspend fun shortcutsFor(entry: AppEntry, max: Int = MAX_POPUP_SHORTCUTS): List<AppShortcut> = withContext(io) {
+        queryShortcuts(entry.packageName, entry.userSerial) {
+            ComponentName.unflattenFromString(entry.component)?.let(::setActivity)
+            setQueryFlags(LauncherApps.ShortcutQuery.FLAG_MATCH_DYNAMIC or LauncherApps.ShortcutQuery.FLAG_MATCH_MANIFEST)
+        }
+            .filter { it.isEnabled }
+            .sortedWith(compareBy({ !it.isDeclaredInManifest }, { it.rank }))
+            .take(max)
+            .map { info ->
+                AppShortcut(
+                    packageName = info.`package`,
+                    id = info.id,
+                    userSerial = entry.userSerial,
+                    shortLabel = info.shortLabel?.toString() ?: info.id,
+                    longLabel = info.longLabel?.toString(),
+                )
+            }
+    }
+
+    /** The platform record of one shortcut of any kind, pinned included; null when it is gone or not ours to see. */
+    internal suspend fun shortcutInfo(packageName: String, shortcutId: String, userSerial: Long): ShortcutInfo? =
+        withContext(io) {
+            queryShortcuts(packageName, userSerial) {
+                setShortcutIds(listOf(shortcutId))
+                setQueryFlags(
+                    LauncherApps.ShortcutQuery.FLAG_MATCH_PINNED or
+                        LauncherApps.ShortcutQuery.FLAG_MATCH_DYNAMIC or
+                        LauncherApps.ShortcutQuery.FLAG_MATCH_MANIFEST,
+                )
+            }.firstOrNull()
+        }
+
+    /** Shortcuts need the host permission, which only the default launcher has; a locked profile throws. */
+    private fun queryShortcuts(
+        packageName: String,
+        userSerial: Long,
+        configure: LauncherApps.ShortcutQuery.() -> Unit,
+    ): List<ShortcutInfo> {
+        if (!launcherApps.hasShortcutHostPermission()) return emptyList()
+        val user = userFor(userSerial) ?: return emptyList()
+        val query = LauncherApps.ShortcutQuery().setPackage(packageName).apply(configure)
+        return try {
+            launcherApps.getShortcuts(query, user).orEmpty()
+        } catch (e: SecurityException) {
+            FoxLog.w("Not allowed to read shortcuts of $packageName", e)
+            emptyList()
+        } catch (e: IllegalStateException) {
+            FoxLog.w("Shortcuts of $packageName unavailable (user locked?)", e)
+            emptyList()
+        }
+    }
+
     fun openAppInfo(entry: AppEntry, sourceBounds: Rect?) {
         val component = ComponentName.unflattenFromString(entry.component) ?: return
         val user = userFor(entry.userSerial) ?: return
@@ -290,6 +348,9 @@ class AppRepository @Inject constructor(
 
     private companion object {
         const val REFRESH_DEBOUNCE_MS = 250L
+
+        /** Launcher3 shows four shortcuts in a popup. */
+        const val MAX_POPUP_SHORTCUTS = 4
         const val PACKAGE_CHANGE_BUFFER = 64
 
         val PROFILE_ACTIONS = listOf(

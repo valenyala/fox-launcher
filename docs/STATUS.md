@@ -46,7 +46,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] 2.5 Folders (device checklist passed 2026-10-11, POCO F3)
 - [ ] 2.6 Item popup: shortcuts, app info, remove, uninstall
   - [x] Popup (App info / Remove / Uninstall); a long press arms the drag (not device-verified)
-  - [ ] App shortcuts in the popup
+  - [x] App shortcuts in the popup (UI tested; the LauncherApps query not yet seen on the phone)
   - [ ] Drag a shortcut out → pinned `Shortcut` item, pin sync, shortcut icons
   - [ ] Device checklist
 - [ ] 2.7 First-run default layout
@@ -132,6 +132,16 @@ Update this file at the end of every session. Keep it terse. Newest session note
   `-Pandroid.injected.androidTest.leaveApksInstalledAfterRun=true` on a personal phone, or the launcher is uninstalled.
 
 ## Session notes
+
+- 2026-10-11 — 2.6 checkpoint 2 of 3: app shortcuts in the popup. `AppRepository.shortcutsFor(entry)` queries
+  `LauncherApps` (`setActivity` = the app's component, `FLAG_MATCH_DYNAMIC | FLAG_MATCH_MANIFEST`), keeps enabled ones,
+  manifest before dynamic, each by rank, at most 4 (Launcher3's count). With no host permission it returns empty;
+  `SecurityException` and `IllegalStateException` (locked profile) are logged. `shortcutInfo(pkg, id, serial)` finds any
+  kind, pinned included (for icons). `IconCache.shortcutIcon` renders `getShortcutIconDrawable` with the app-icon mask
+  and size, in memory only. Its key starts `<pkg>/|<serial>|`, so `invalidate()` drops it with the app's icons. The
+  view model loads icons into `ItemPopupModel.shortcuts` (`PopupShortcut`), so the popup stays pure and tests need no
+  `IconCache`. Rows: icon, long label (falling back to the short one), above a divider. A shortcut item's own popup
+  lists no shortcuts. `HomeScreenPopupTest` +1 (6, all pass on the phone).
 
 - 2026-10-11 — 2.6 checkpoint 1 of 3. A long press on a home or folder item now opens `ItemPopup` and **arms** the
   drag (`HomeDragState.start` is gone): `arm(item, itemCoordinates, onDragStart)` begins once the finger passes touch

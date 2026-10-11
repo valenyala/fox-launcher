@@ -21,6 +21,7 @@ import dev.foxlauncher.core.common.FoxLog
 import dev.foxlauncher.core.common.IoDispatcher
 import dev.foxlauncher.core.data.settings.FoxSettings
 import dev.foxlauncher.core.model.AppEntry
+import dev.foxlauncher.core.model.AppShortcut
 import dev.foxlauncher.core.ui.IconShape
 import java.io.File
 import java.io.IOException
@@ -111,6 +112,24 @@ class IconCache @Inject constructor(
             load.await()
         } finally {
             inFlight.remove(key, load)
+        }
+    }
+
+    /**
+     * [shortcut]'s icon at the home icon size and shape, kept in memory only (apps change them at
+     * will); null when the shortcut is gone or Fox is not the default launcher. The key starts like
+     * an app icon's, `<package>/|<serial>|…`, so [invalidate] drops it with its app's icons.
+     */
+    suspend fun shortcutIcon(shortcut: AppShortcut): ImageBitmap? {
+        val cfg = config
+        val key = listOf("${shortcut.packageName}/", shortcut.userSerial, "shortcut:${shortcut.id}", cfg.sizePx, cfg.shape.id)
+            .joinToString(KEY_SEPARATOR)
+        memory.get(key)?.let { return it }
+        val info = appRepository.shortcutInfo(shortcut.packageName, shortcut.id, shortcut.userSerial) ?: return null
+        return withContext(io) {
+            launcherApps.getShortcutIconDrawable(info, densityDpi)
+                ?.let { IconRenderer.render(it, cfg.sizePx, cfg.shape).asImageBitmap() }
+                ?.also { memory.put(key, it) }
         }
     }
 

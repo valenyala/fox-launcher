@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import dev.foxlauncher.R
+import dev.foxlauncher.core.model.AppShortcut
 import dev.foxlauncher.core.model.HomeContainer
 import dev.foxlauncher.core.model.HomeItem
 import dev.foxlauncher.core.model.HomeLayout
@@ -76,6 +77,20 @@ class HomeScreenPopupTest {
         composeRule.onNodeWithText(context.getString(R.string.popup_app_info)).assertIsDisplayed()
         composeRule.onNodeWithText(context.getString(R.string.home_remove)).assertIsDisplayed()
         composeRule.onNodeWithText(context.getString(R.string.popup_uninstall)).assertDoesNotExist()
+    }
+
+    @Test
+    fun theAppsShortcutsAreListedAndOpenOnTap() {
+        val compose = AppShortcut("com.example", "compose", 0, shortLabel = "New", longLabel = "New message")
+        val search = AppShortcut("com.example", "search", 0, shortLabel = "Search", longLabel = "")
+        setHome(ItemPopupModel(shortcuts = persistentListOf(PopupShortcut(compose, null), PopupShortcut(search, null))))
+
+        longPress(cellCenter(1, 2))
+        composeRule.onNodeWithText("Search").assertIsDisplayed()
+        composeRule.onNodeWithText("New message").performClick()
+        composeRule.waitForIdle()
+
+        assertEquals(listOf<Pair<HomeItem, PopupAction>>(app to PopupAction.OpenShortcut(compose)), actions)
     }
 
     @Test

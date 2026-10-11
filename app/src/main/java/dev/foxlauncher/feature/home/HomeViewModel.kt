@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.foxlauncher.core.apps.AppRepository
+import dev.foxlauncher.core.apps.IconCache
 import dev.foxlauncher.core.data.settings.FoxSettings
 import dev.foxlauncher.core.model.AppEntry
 import dev.foxlauncher.core.model.HomeContainer
@@ -20,6 +21,7 @@ import dev.foxlauncher.feature.home.grid.GridSpec
 import javax.inject.Inject
 import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.persistentMapOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableMap
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -46,6 +48,7 @@ class HomeViewModel @Inject constructor(
     private val settings: FoxSettings,
     private val homeRepository: HomeRepository,
     private val appRepository: AppRepository,
+    private val iconCache: IconCache,
 ) : ViewModel() {
 
     private val appsByKey = appRepository.apps.map { apps -> apps.associateBy { it.key }.toImmutableMap() }
@@ -83,10 +86,16 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    /** What [item]'s long-press popup offers (task 2.6): app info for apps and shortcuts, uninstall for non-system apps. */
+    /**
+     * What [item]'s long-press popup offers (task 2.6): an app's shortcuts, app info for apps and
+     * shortcuts, uninstall for non-system apps.
+     */
     suspend fun popupFor(item: HomeItem): ItemPopupModel {
         val app = appOf(item) ?: return ItemPopupModel()
+        // A shortcut item is itself a shortcut: its popup does not list the app's others.
+        val shortcuts = if (item is HomeItem.App) appRepository.shortcutsFor(app) else emptyList()
         return ItemPopupModel(
+            shortcuts = shortcuts.map { PopupShortcut(it, iconCache.shortcutIcon(it)) }.toImmutableList(),
             canOpenAppInfo = true,
             canUninstall = item is HomeItem.App && !appRepository.isSystemApp(app),
         )
@@ -97,6 +106,9 @@ class HomeViewModel @Inject constructor(
             PopupAction.AppInfo -> appOf(item)?.let { appRepository.openAppInfo(it, sourceBounds) }
             PopupAction.Uninstall -> appOf(item)?.let(appRepository::uninstall)
             PopupAction.Remove -> viewModelScope.launch { homeRepository.applyDrop(item, DropAction.Remove(item.id)) }
+            is PopupAction.OpenShortcut -> action.shortcut.let {
+                appRepository.startShortcut(it.packageName, it.id, it.userSerial, sourceBounds, null)
+            }
         }
     }
 
