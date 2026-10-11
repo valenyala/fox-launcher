@@ -91,6 +91,10 @@ class HomeActivity : ComponentActivity() {
                             },
                             onDrop = viewModel::onDrop,
                             onRenameFolder = viewModel::onRenameFolder,
+                            loadPopup = viewModel::popupFor,
+                            onPopupAction = { item, action, bounds ->
+                                viewModel.onPopupAction(item, action, bounds?.let { launchSource(view, it).sourceBounds })
+                            },
                         ) { autoFocusSearch ->
                             DrawerScreen(
                                 viewModel = drawerViewModel,

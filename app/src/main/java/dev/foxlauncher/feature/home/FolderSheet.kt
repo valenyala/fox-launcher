@@ -183,10 +183,3 @@ private fun FolderGrid(
         }
     }
 }
-
-/** Consumes every pointer change that reaches it, so nothing behind (the home grid, the drawer swipe) reacts. */
-private fun Modifier.swallowPointers(): Modifier = pointerInput(Unit) {
-    awaitPointerEventScope {
-        while (true) awaitPointerEvent().changes.forEach { it.consume() }
-    }
-}

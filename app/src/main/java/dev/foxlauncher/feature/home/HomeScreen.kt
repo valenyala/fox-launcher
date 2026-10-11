@@ -39,6 +39,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -57,6 +58,8 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.input.pointer.util.addPointerInputChange
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -125,11 +128,15 @@ object HomeTestTags {
     const val PAGER = "home_pager"
     const val DOCK = "home_dock"
     const val REMOVE_ZONE = "home_remove_zone"
+    const val ITEM_POPUP = "home_item_popup"
     const val FOLDER_SHEET = "home_folder_sheet"
     const val FOLDER_CARD = "home_folder_card"
     const val FOLDER_TITLE = "home_folder_title"
     const val FOLDER_GRID = "home_folder_grid"
 }
+
+/** An item's open popup: the item, its bounds in the drag layer (the anchor) and in the window. */
+private data class OpenPopup(val item: HomeItem, val anchor: Rect, val windowBounds: Rect)
 
 /** What the drawer slot can ask of the home screen. */
 @Stable
@@ -148,6 +155,8 @@ fun interface DrawerScope {
  * Long-pressing an item drags it, and so does long-pressing then moving an app in the drawer
  * ([DrawerScope]); [onDrop] receives what the drop should do (task 2.4). Removing a folder asks first.
  * Tapping a folder opens its [FolderSheet] (task 2.5); a changed title goes to [onRenameFolder].
+ * A long press that lifts in place opens the item's [ItemPopup] (task 2.6): [loadPopup] says what
+ * it offers and [onPopupAction] receives the choice with the item's window bounds.
  */
 @Composable
 fun HomeScreen(
@@ -158,6 +167,8 @@ fun HomeScreen(
     onItemClick: (HomeItem, Rect?) -> Unit = { _, _ -> },
     onDrop: (HomeItem, DropAction) -> Unit = { _, _ -> },
     onRenameFolder: (HomeItem.Folder, String) -> Unit = { _, _ -> },
+    loadPopup: suspend (HomeItem) -> ItemPopupModel = { ItemPopupModel() },
+    onPopupAction: (HomeItem, PopupAction, Rect?) -> Unit = { _, _, _ -> },
     drawer: @Composable DrawerScope.(autoFocusSearch: Boolean) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -188,6 +199,17 @@ fun HomeScreen(
         (state.layout.pages.asSequence().flatMap { it.items } + state.layout.dock.items).firstOrNull { it.id == id } as? HomeItem.Folder
     }
     SideEffect { dragState.setOpenFolder(openFolder) }
+    var popup by remember { mutableStateOf<OpenPopup?>(null) }
+    val popupItem = popup?.item
+    val popupModel by produceState<ItemPopupModel?>(null, popupItem) {
+        value = null
+        value = popupItem?.let { loadPopup(it) }
+    }
+    // A long press opens the popup and arms a drag; moving on starts the drag, which closes the popup.
+    val onItemLongPress: (HomeItem, LayoutCoordinates) -> Unit = { item, coordinates ->
+        dragState.boundsOf(coordinates)?.let { anchor -> popup = OpenPopup(item, anchor, coordinates.boundsInWindow()) }
+        dragState.arm(item, coordinates) { popup = null }
+    }
     val itemContent: @Composable (HomeItem) -> Unit = { item ->
         HomeItemView(
             item = item,
@@ -199,7 +221,7 @@ fun HomeScreen(
             },
             // The overlay stands in for the dragged item until it has settled.
             modifier = Modifier.graphicsLayer { alpha = if (dragState.dragging?.id == item.id) 0f else 1f },
-            onLongClick = dragState::start,
+            onLongClick = onItemLongPress,
         )
     }
     // 0 = closed, 1 = fully open. The settled state is saved separately, since Animatable is not.
@@ -218,7 +240,7 @@ fun HomeScreen(
         scope.launch { progress.snapTo(0f) }
     }
 
-    val drawerScope = DrawerScope { entry -> dragState.arm(newAppItem(entry), ::closeDrawerNow) }
+    val drawerScope = DrawerScope { entry -> dragState.arm(newAppItem(entry), onDragStart = ::closeDrawerNow) }
 
     fun settle(open: Boolean, velocity: Float = 0f) {
         if (isOpen && !open) currentOnDrawerClosed()
@@ -248,6 +270,7 @@ fun HomeScreen(
     LaunchedEffect(homeKeyPresses) {
         if (homeKeyPresses > 0) {
             dragState.cancel()
+            popup = null
             openFolderId = null
             settle(open = false)
             pagerState.animateScrollToPage(DEFAULT_PAGE)
@@ -257,6 +280,7 @@ fun HomeScreen(
     EdgeFlipEffect(dragState, pagerState)
     BackHandler(enabled = isOpen) { settle(open = false) }
     BackHandler(enabled = openFolder != null) { openFolderId = null }
+    BackHandler(enabled = popup != null) { popup = null }
     val outsideFolder by remember { derivedStateOf { dragState.isOutsideOpenFolder() } }
     LaunchedEffect(outsideFolder) {
         if (outsideFolder) {
@@ -270,8 +294,9 @@ fun HomeScreen(
             .fillMaxSize()
             .onSizeChanged {
                 heightPx = it.height.toFloat().coerceAtLeast(1f)
-                // Rotation or a resize mid-drag: every cell moved, so put the item back.
+                // A resize mid-drag (multi-window, a large screen rotating): every cell moved, so put the item back.
                 dragState.cancel()
+                popup = null
             }
             .homeDragLayer(dragState)
             // TODO(phase3): temporary. GestureArena replaces this detector in task 3.3.
@@ -377,7 +402,26 @@ fun HomeScreen(
                     onItemClick(clicked, bounds)
                 },
                 modifier = Modifier.graphicsLayer { alpha = if (dragState.dragging?.id == item.id) 0f else 1f },
-                onLongClick = dragState::start,
+                onLongClick = onItemLongPress,
+            )
+        }
+        val shownPopup = popup
+        val shownModel = popupModel
+        if (shownPopup != null && shownModel != null) {
+            ItemPopup(
+                anchor = shownPopup.anchor,
+                model = shownModel,
+                onAction = { action ->
+                    popup = null
+                    val item = shownPopup.item
+                    // A folder takes its apps with it: ask first, as when it is dropped on Remove.
+                    if (action == PopupAction.Remove && item is HomeItem.Folder) {
+                        folderToRemove = item
+                    } else {
+                        onPopupAction(item, action, shownPopup.windowBounds)
+                    }
+                },
+                onDismiss = { popup = null },
             )
         }
         RemoveZone(dragState, Modifier.testTag(HomeTestTags.REMOVE_ZONE))

@@ -45,6 +45,10 @@ Update this file at the end of every session. Keep it terse. Newest session note
   - [x] Device checklist (user, 2026-10-10: pick-up, page flips, free cell, folder from a top-row app, Remove, drawer drag, rotation)
 - [x] 2.5 Folders (device checklist passed 2026-10-11, POCO F3)
 - [ ] 2.6 Item popup: shortcuts, app info, remove, uninstall
+  - [x] Popup (App info / Remove / Uninstall); a long press arms the drag (not device-verified)
+  - [ ] App shortcuts in the popup
+  - [ ] Drag a shortcut out → pinned `Shortcut` item, pin sync, shortcut icons
+  - [ ] Device checklist
 - [ ] 2.7 First-run default layout
 - [ ] 2.8 Missing / suspended app handling
 - [ ] Device checklist passed on: —
@@ -128,6 +132,17 @@ Update this file at the end of every session. Keep it terse. Newest session note
   `-Pandroid.injected.androidTest.leaveApksInstalledAfterRun=true` on a personal phone, or the launcher is uninstalled.
 
 ## Session notes
+
+- 2026-10-11 — 2.6 checkpoint 1 of 3. A long press on a home or folder item now opens `ItemPopup` and **arms** the
+  drag (`HomeDragState.start` is gone): `arm(item, itemCoordinates, onDragStart)` begins once the finger passes touch
+  slop. With coordinates the item keeps its size and the finger its grip; without (drawer apps) it is carried at
+  home-cell size, centred. Moving on closes the popup (Launcher3 behaviour). The popup is drawn in the drag layer, not
+  a window, so checkpoint 3 can drag shortcut rows out of it. It sits above the item if there is room below the status
+  bar, else below, clamped on screen; outside taps, Back, Home and resizes close it. Contents come from
+  `HomeViewModel.popupFor` (App info for apps and shortcuts; Uninstall only for non-system apps; Remove always).
+  Remove goes through `applyDrop(Remove)`, so folders collapse and pages close up as after a drag; a folder asks
+  first, through the same dialog. `swallowPointers` moved to `Pointers.kt`. `HomeScreenPopupTest` (5); the full
+  suite (45) passes on the phone.
 
 - 2026-10-11 — **2.5 done.** User confirmed on the phone: create, rename, reorder inside, add a third app, drag out
   down to one item (collapses). Rotation with a folder open is retired by ADR-14.

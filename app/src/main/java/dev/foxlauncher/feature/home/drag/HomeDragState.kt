@@ -58,9 +58,9 @@ fun newAppItem(entry: AppEntry): HomeItem.App = HomeItem.App(
 data class DropPreview(val target: DropTarget, val action: DropAction)
 
 /**
- * Home drag and drop (task 2.4). An item's long press calls [start]; a drawer app's long press
- * calls [arm], which starts the drag once the finger moves. From then on [homeDragLayer] owns the
- * gesture, moves the overlay and drops on release. The finger is tracked
+ * Home drag and drop (task 2.4). A long press calls [arm]; the drag starts once the finger moves,
+ * so a long press that lifts in place leaves its popup open (task 2.6). From then on
+ * [homeDragLayer] owns the gesture, moves the overlay and drops on release. The finger is tracked
  * at the root rather than on the item, so the drag survives the source page leaving composition
  * during an edge flip.
  *
@@ -129,9 +129,10 @@ class HomeDragState internal constructor(
     /** The pointer a drag owns. Its events are swallowed until it lifts, even after [cancel]. */
     private var owned: PointerId? = null
 
-    /** An [arm]ed item waiting for the finger to move, with where it was pressed. */
+    /** An [arm]ed item waiting for the finger to move, with where it was pressed and its own node, if any. */
     private var armed: HomeItem? = null
     private var armedAt = Offset.Zero
+    private var armedCoordinates: LayoutCoordinates? = null
     private var onArmedDragStart: () -> Unit = {}
 
     fun registerPage(index: Int, coordinates: LayoutCoordinates) {
@@ -177,29 +178,27 @@ class HomeDragState internal constructor(
     }
 
     /**
-     * Picks [item] up from where [itemCoordinates] places it. Ignored when no finger is down (an
-     * accessibility long click has nothing to follow) or a drag is already running.
+     * Readies a drag of [item] that begins once the finger moves past touch slop, so a long press
+     * that lifts in place leaves its popup open. With [itemCoordinates] the item keeps its size and
+     * the finger its grip on it; without (a drawer app, see [newAppItem]) it is carried at home-cell
+     * size, centred on the finger. [onDragStart] runs when the drag begins: callers close their
+     * popup or drawer there. Ignored when no finger is down (an accessibility long click has nothing
+     * to follow) or a drag is already running.
      */
-    fun start(item: HomeItem, itemCoordinates: LayoutCoordinates) {
-        val layer = layer?.takeIf { it.isAttached } ?: return
-        val finger = pressed ?: return
-        if (dragging != null || owned != null || !itemCoordinates.isAttached) return
-        owned = finger
-        begin(item, pressedAt, itemCoordinates.size.toSize(), pressedAt - layer.localPositionOf(itemCoordinates, Offset.Zero))
-    }
-
-    /**
-     * Readies a drag of [item] (a drawer app, see [newAppItem]) that only begins once the finger
-     * moves past touch slop, so lifting without moving leaves the drawer's popup open.
-     * [onDragStart] runs when it begins; the caller gets the drawer out of the way there.
-     */
-    fun arm(item: HomeItem, onDragStart: () -> Unit) {
+    fun arm(item: HomeItem, itemCoordinates: LayoutCoordinates? = null, onDragStart: () -> Unit = {}) {
         val finger = pressed ?: return
         if (dragging != null || owned != null) return
         owned = finger
         armed = item
         armedAt = pressedAt
+        armedCoordinates = itemCoordinates
         onArmedDragStart = onDragStart
+    }
+
+    /** Where [coordinates] sit in drag-layer coordinates (to anchor a popup); null when either is detached. */
+    fun boundsOf(coordinates: LayoutCoordinates): Rect? {
+        val layer = layer?.takeIf { it.isAttached } ?: return null
+        return if (coordinates.isAttached) layer.localBoundingBoxOf(coordinates) else null
     }
 
     private fun begin(item: HomeItem, at: Offset, size: Size, grab: Offset) {
@@ -278,9 +277,15 @@ class HomeDragState internal constructor(
         } else if (pending != null) {
             if ((change.position - armedAt).getDistance() > touchSlop) {
                 armed = null
-                // A drawer cell is not a home cell: carry it at home size, centred on the finger.
-                val size = homeCellSize() ?: Size.Zero
-                begin(pending, change.position, size, Offset(size.width / 2, size.height / 2))
+                val node = armedCoordinates?.takeIf { it.isAttached }
+                val layer = layer?.takeIf { it.isAttached }
+                if (node != null && layer != null) {
+                    begin(pending, change.position, node.size.toSize(), armedAt - layer.localPositionOf(node, Offset.Zero))
+                } else {
+                    // A drawer cell is not a home cell: carry it at home size, centred on the finger.
+                    val size = homeCellSize() ?: Size.Zero
+                    begin(pending, change.position, size, Offset(size.width / 2, size.height / 2))
+                }
                 onArmedDragStart()
             }
         } else if (dragging != null && !isSettling) {

@@ -83,6 +83,33 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    /** What [item]'s long-press popup offers (task 2.6): app info for apps and shortcuts, uninstall for non-system apps. */
+    suspend fun popupFor(item: HomeItem): ItemPopupModel {
+        val app = appOf(item) ?: return ItemPopupModel()
+        return ItemPopupModel(
+            canOpenAppInfo = true,
+            canUninstall = item is HomeItem.App && !appRepository.isSystemApp(app),
+        )
+    }
+
+    fun onPopupAction(item: HomeItem, action: PopupAction, sourceBounds: Rect?) {
+        when (action) {
+            PopupAction.AppInfo -> appOf(item)?.let { appRepository.openAppInfo(it, sourceBounds) }
+            PopupAction.Uninstall -> appOf(item)?.let(appRepository::uninstall)
+            PopupAction.Remove -> viewModelScope.launch { homeRepository.applyDrop(item, DropAction.Remove(item.id)) }
+        }
+    }
+
+    /** The installed app behind an app or shortcut item. */
+    private fun appOf(item: HomeItem): AppEntry? {
+        val apps = uiState.value.apps
+        return when (item) {
+            is HomeItem.App -> apps[item.appKey]
+            is HomeItem.Shortcut -> apps.values.firstOrNull { it.packageName == item.packageName && it.userSerial == item.userSerial }
+            is HomeItem.Folder, is HomeItem.AppWidget, is HomeItem.NativeWidget -> null
+        }
+    }
+
     fun onRenameFolder(folder: HomeItem.Folder, title: String) {
         viewModelScope.launch { homeRepository.renameFolder(folder.folderId, title) }
     }
