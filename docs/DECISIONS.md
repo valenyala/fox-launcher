@@ -93,6 +93,15 @@ one machine, no attached device, and every run would re-provision SDK 37 — whi
 same commands the session protocol already requires. Restoring the workflow means reverting this file and
 `git show 75192eb -- .github`.
 
+## ADR-14 The home screen is portrait-only
+The user asked for no landscape home (2026-10-11), as Pixel's launcher does on phones by default. `HomeActivity` sets
+`android:screenOrientation="portrait"` (PLATFORM-NOTES H). It keeps the full `configChanges` set and the
+rotation-safe code (a size change cancels a drag; Remove never reaches into the pages), because coming home from a
+landscape app still changes the configuration, and Android ignores the lock on large screens for targetSdk 36+.
+This retires the phone rotation checks in the device checklists: 0.3 "rotating does not flash", Phase 1 item 4,
+2.4 "rotation mid-drag", and Phase 2 item 6 "rotate with folder open". Instrumented tests still run in whatever
+orientation the test activity gets, so they must not assume one.
+
 ## Dependency log
 (append `- <lib> <version> — reason` when adding a dependency)
 - AGP (com.android.application) 9.4.0 — build system; built-in Kotlin, see ADR-11.

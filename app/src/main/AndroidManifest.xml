@@ -19,7 +19,8 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Fox.Home">
 
-        <!-- See docs/PLATFORM-NOTES.md section H: this manifest block is load-bearing. -->
+        <!-- See docs/PLATFORM-NOTES.md section H: this manifest block is load-bearing.
+             Portrait only by choice (ADR-14), hence the LockedOrientationActivity ignore. -->
         <activity
             android:name=".HomeActivity"
             android:clearTaskOnLaunch="true"
@@ -28,10 +29,11 @@
             android:exported="true"
             android:launchMode="singleTask"
             android:resumeWhilePausing="true"
-            android:screenOrientation="unspecified"
+            android:screenOrientation="portrait"
             android:stateNotNeeded="true"
             android:theme="@style/Theme.Fox.Home"
-            android:windowSoftInputMode="adjustPan">
+            android:windowSoftInputMode="adjustPan"
+            tools:ignore="LockedOrientationActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.HOME" />

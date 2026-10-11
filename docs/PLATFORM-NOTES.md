@@ -14,10 +14,11 @@ here contradicts what you remember, trust this file unless a device proves other
     android:excludeFromRecents="true"
     android:clearTaskOnLaunch="true"
     android:resumeWhilePausing="true"
-    android:screenOrientation="unspecified"
+    android:screenOrientation="portrait"
     android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode|locale|layoutDirection|density|fontScale"
     android:theme="@style/Theme.Fox.Home"
-    android:windowSoftInputMode="adjustPan">
+    android:windowSoftInputMode="adjustPan"
+    tools:ignore="LockedOrientationActivity">
     <intent-filter>
         <action android:name="android.intent.action.MAIN" />
         <category android:name="android.intent.category.HOME" />
@@ -29,6 +30,9 @@ here contradicts what you remember, trust this file unless a device proves other
 
 - `Theme.Fox.Home` must set `android:windowShowWallpaper=true`, `android:windowBackground=@android:color/transparent`,
   `android:windowTranslucentStatus=false`, and use edge-to-edge (`enableEdgeToEdge()` in `onCreate`).
+- Portrait only (ADR-14). `configChanges` still lists `orientation|screenSize`: coming home from a landscape app is a
+  configuration change too, and from targetSdk 36 Android ignores orientation locks on large screens (smallest width
+  ≥ 600 dp: tablets, unfolded foldables), where the home must still rotate without restarting.
 - Home button press while already home arrives in `onNewIntent` (because `singleTask`). Use it to close the drawer /
   scroll to the default page. Do not finish or recreate the activity.
 - Becoming default launcher: `RoleManager.createRequestRoleIntent(RoleManager.ROLE_HOME)`, check with

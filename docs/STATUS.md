@@ -129,6 +129,12 @@ Update this file at the end of every session. Keep it terse. Newest session note
 
 ## Session notes
 
+- 2026-10-11 — **Portrait only (ADR-14)**, at the user's request: `screenOrientation="portrait"` (+ a
+  `LockedOrientationActivity` lint ignore, mirrored in PLATFORM-NOTES H). Checked on the phone: `dumpsys activity`
+  reports `mOrientation=SCREEN_ORIENTATION_PORTRAIT`. `configChanges` and the rotation-safe code stay (see ADR-14).
+  The rotation items of the 0.3, Phase 1, 2.4 and Phase 2 checklists no longer apply on phones. The landscape
+  re-run offered last session is moot.
+
 - 2026-10-11 — Two drawer requests from the user, plus landscape findings.
   **Drawer labels were invisible in dark mode** (the phone is in night mode). `DrawerContent`'s Surface used
   `surface.copy(alpha = 0.9f)`; `contentColorFor` matches only exact theme colours, so content fell back to
