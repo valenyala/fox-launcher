@@ -38,8 +38,8 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] 2.3 Page + dock rendering, wallpaper offsets (device-verified 2026-10-10)
 - [ ] 2.4 Drag & drop
   - [x] `DragResolver` + tests (pure drop rules)
-  - [ ] `HomeDragState`, long-press pick-up, `DragOverlay`, target highlight, edge page-flip
-  - [ ] Apply `DropAction`s in `HomeRepository` (move, dock, create/add folder, remove)
+  - [x] `HomeDragState`, long-press pick-up, `DragOverlay`, target highlight, edge page-flip (not device-verified)
+  - [x] Apply `DropAction`s in `HomeRepository` (move, dock, create/add folder, remove) (not device-verified)
   - [ ] Remove zone, drag from drawer, page creation / empty-page cleanup
   - [ ] Device checklist
 - [ ] 2.5 Folders
@@ -117,6 +117,35 @@ Update this file at the end of every session. Keep it terse. Newest session note
 (none)
 
 ## Session notes
+
+- 2026-10-10 — 2.4 checkpoints 2 + 3 of 5, **code done, not device-verified** (the phone was locked when they were
+  ready). `feature/home/drag/HomeDragState.kt`: items use `combinedClickable` (long-press haptic is built in since
+  foundation 1.7); `onLongClick` hands the item's `LayoutCoordinates` to `HomeDragState.start`. **Deviation:** the
+  task says `detectDragGesturesAfterLongPress` on the item in the Initial pass. That detector has no pass parameter,
+  and it dies with the item once an edge flip disposes the source page. Instead, `Modifier.homeDragLayer` on the
+  `HomeScreen` root watches every event in the Initial pass. It remembers the pressed finger, and once a drag owns that
+  pointer it consumes everything until the finger lifts (even after `cancel()`), so the pager and the drawer swipe never
+  see it. The target is taken from the overlay's centre, not the finger. Below the dock's top edge it is a dock slot, or
+  `Outside` if the centre is not over the dock. Above it, it is the nearest page by its visible (clipped) bounds, with
+  the point clamped into the grid, so the gaps around a page map to its edge cells. Pages and the dock register their
+  `LayoutCoordinates` in plain fields (no recomposition).
+  Every move runs `DragResolver` as a preview, so the highlight shows the real landing cell: a soft tile, or an
+  outlined tile when the drop would merge into a folder. `DropHighlight` is drawn under the grid. Edge flip: 40 dp zone
+  above the dock, 400 ms dwell, repeats. Each flip runs in its own job, so leaving the edge never strands the pager
+  between pages. A release hands the action to `onDrop` first, then the overlay glides (180 ms, scale 1.1 → 1) to the
+  destination cell (or back to its source on `Cancel`). The source view stays hidden (alpha 0) until the glide ends,
+  which covers the Room round trip. A size change (rotation) or the Home key cancels a drag.
+  Apply: `HomeRepository.applyDrop`, with DAO transactions `createFolder` (tile in the target's place, target rank 0,
+  dragged rank 1, untitled), `addToFolder` (rank = max + 1) and `deleteFolderWithItems`. `DropAction.AddToFolder.folderId`
+  was renamed `folderItemId`, because it always held the tile's home-item id, not `folders.id`.
+  Tests: `HomeScreenDragTest` (4 Compose tests: free cell, onto an app → folder, onto a dock slot, a tap still clicks)
+  and `HomeDaoFolderTest` (4, in-memory Room). Both compile; neither has run.
+  Known gaps: Compose reports a pointer cancel as "all fingers up", so a system cancel drops the item where it is
+  instead of putting it back.
+  Dragging past the last page does nothing yet (checkpoint 4).
+  Next: run `connectedDebugAndroidTest` on the POCO F3 (with `-Pandroid.injected.androidTest.leaveApksInstalledAfterRun=true`
+  so the launcher stays installed) and the 2.4 device checklist, then checkpoint 4 (Remove zone, drag from the drawer,
+  page creation / empty-page cleanup).
 
 - 2026-10-10 — **First device session** (POCO F3, Android 13). The app runs; no crash at start, so the 0.4 runtime
   Hilt/WorkManager check passes. The user confirmed: home shows the pill, the drawer opens by swipe, uninstalling an app

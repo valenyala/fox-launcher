@@ -13,6 +13,7 @@ import dev.foxlauncher.core.model.HomeContainer
 import dev.foxlauncher.core.model.HomeItem
 import dev.foxlauncher.core.model.HomeLayout
 import dev.foxlauncher.core.model.HomePosition
+import dev.foxlauncher.feature.home.drag.DropAction
 import dev.foxlauncher.feature.home.grid.CellRect
 import dev.foxlauncher.feature.home.grid.GridLayoutEngine
 import dev.foxlauncher.feature.home.grid.GridSpec
@@ -80,6 +81,11 @@ class HomeViewModel @Inject constructor(
             is HomeItem.Folder -> Unit // TODO(2.5): open the folder sheet.
             is HomeItem.AppWidget, is HomeItem.NativeWidget -> Unit
         }
+    }
+
+    /** A home drag ended; [action] is what `DragResolver` decided. */
+    fun onDrop(item: HomeItem, action: DropAction) {
+        viewModelScope.launch { homeRepository.applyDrop(item, action) }
     }
 
     /**

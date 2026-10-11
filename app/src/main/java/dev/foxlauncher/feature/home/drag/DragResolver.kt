@@ -39,7 +39,8 @@ sealed interface DropAction {
     data class MoveToDock(val slot: Int) : DropAction
     /** Merge the dragged app with the app/shortcut [targetId] into a new folder in its place. */
     data class CreateFolder(val targetId: Long) : DropAction
-    data class AddToFolder(val folderId: Long) : DropAction
+    /** Add the dragged item to the folder whose tile is the home item [folderItemId] (not `HomeItem.Folder.folderId`). */
+    data class AddToFolder(val folderItemId: Long) : DropAction
     data class Remove(val id: Long) : DropAction
     /** Snap back (existing item) or discard (new item). */
     data object Cancel : DropAction

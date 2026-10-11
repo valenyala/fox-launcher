@@ -15,12 +15,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -38,13 +40,22 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.input.pointer.util.addPointerInputChange
+import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.foxlauncher.R
 import dev.foxlauncher.core.model.HomeItem
+import dev.foxlauncher.feature.home.drag.DragOverlay
+import dev.foxlauncher.feature.home.drag.DropAction
+import dev.foxlauncher.feature.home.drag.DropHighlight
+import dev.foxlauncher.feature.home.drag.HomeDragState
+import dev.foxlauncher.feature.home.drag.homeDragLayer
+import dev.foxlauncher.feature.home.drag.rememberHomeDragState
 import dev.foxlauncher.feature.home.grid.GridLayoutEngine
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /** Drag progress past which a released drawer snaps open instead of closed. */
@@ -60,16 +71,27 @@ private const val DEFAULT_PAGE = 0
 /** Dock height on top of the icon: room for a label and padding. */
 private val DOCK_EXTRA_HEIGHT = 32.dp
 
+/** Horizontal padding around each page's grid and the dock. */
+private val GRID_PADDING = 8.dp
+
+/** A dragged item held this close to a side edge flips the page... */
+private val EDGE_FLIP_ZONE = 40.dp
+
+/** ...after resting there this long, and again after each further wait. */
+private const val EDGE_FLIP_DWELL_MS = 400L
+
 object HomeTestTags {
     const val SEARCH_PILL = "home_search_pill"
     const val DRAWER = "home_drawer"
     const val PAGER = "home_pager"
+    const val DOCK = "home_dock"
 }
 
 /**
  * The home surface: wallpaper through the window, a "Search apps" pill, and the app drawer as an
  * overlay that follows the finger. [homeKeyPresses] increments on every Home key press while Fox
  * is in front, which closes the drawer. [drawer] receives whether the search field should focus.
+ * Long-pressing an item drags it; [onDrop] receives what the drop should do (task 2.4).
  */
 @Composable
 fun HomeScreen(
@@ -78,14 +100,25 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
     state: HomeUiState = HomeUiState(),
     onItemClick: (HomeItem, Rect?) -> Unit = { _, _ -> },
+    onDrop: (HomeItem, DropAction) -> Unit = { _, _ -> },
     drawer: @Composable (autoFocusSearch: Boolean) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     val pagerState = rememberPagerState(pageCount = { state.layout.pages.size })
     val engine = remember(state.gridSpec) { GridLayoutEngine(state.gridSpec) }
     val iconSize = state.iconSizeDp.dp
+    val dragState = rememberHomeDragState(state.layout, engine, onDrop)
     val itemContent: @Composable (HomeItem) -> Unit = { item ->
-        HomeItemView(item, state.apps, iconSize, state.showLabels, onItemClick)
+        HomeItemView(
+            item = item,
+            apps = state.apps,
+            iconSize = iconSize,
+            showLabel = state.showLabels,
+            onClick = onItemClick,
+            // The overlay stands in for the dragged item until it has settled.
+            modifier = Modifier.graphicsLayer { alpha = if (dragState.dragging?.id == item.id) 0f else 1f },
+            onLongClick = dragState::start,
+        )
     }
     // 0 = closed, 1 = fully open. The settled state is saved separately, since Animatable is not.
     val progress = remember { Animatable(0f) }
@@ -110,17 +143,24 @@ fun HomeScreen(
     // Home while home: close the drawer and go back to the default page (0 until it is a setting).
     LaunchedEffect(homeKeyPresses) {
         if (homeKeyPresses > 0) {
+            dragState.cancel()
             settle(open = false)
             pagerState.animateScrollToPage(DEFAULT_PAGE)
         }
     }
     WallpaperOffsetsEffect(pagerState)
+    EdgeFlipEffect(dragState, pagerState)
     BackHandler(enabled = isOpen) { settle(open = false) }
 
     Box(
         modifier = modifier
             .fillMaxSize()
-            .onSizeChanged { heightPx = it.height.toFloat().coerceAtLeast(1f) }
+            .onSizeChanged {
+                heightPx = it.height.toFloat().coerceAtLeast(1f)
+                // Rotation or a resize mid-drag: every cell moved, so put the item back.
+                dragState.cancel()
+            }
+            .homeDragLayer(dragState)
             // TODO(phase3): temporary. GestureArena replaces this detector in task 3.3.
             .pointerInput(Unit) {
                 val tracker = VelocityTracker()
@@ -155,6 +195,7 @@ fun HomeScreen(
                 )
             },
     ) {
+        DropHighlight(dragState)
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
@@ -170,12 +211,14 @@ fun HomeScreen(
                     .weight(1f)
                     .testTag(HomeTestTags.PAGER),
             ) { page ->
+                DisposableEffect(page) { onDispose { dragState.unregisterPage(page) } }
                 HomePage(
                     items = state.layout.pages[page].items,
                     engine = engine,
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 8.dp),
+                        .padding(horizontal = GRID_PADDING)
+                        .onPlaced { dragState.registerPage(page, it) },
                     itemContent = itemContent,
                 )
             }
@@ -185,7 +228,9 @@ fun HomeScreen(
                 slots = state.gridSpec.dockSlots,
                 modifier = Modifier
                     .height(iconSize + DOCK_EXTRA_HEIGHT)
-                    .padding(horizontal = 8.dp),
+                    .padding(horizontal = GRID_PADDING)
+                    .onPlaced(dragState::registerDock)
+                    .testTag(HomeTestTags.DOCK),
                 itemContent = itemContent,
             )
             SearchPill(
@@ -195,6 +240,9 @@ fun HomeScreen(
                 },
                 modifier = Modifier.padding(horizontal = 32.dp, vertical = 12.dp),
             )
+        }
+        DragOverlay(dragState) { item ->
+            HomeItemView(item, state.apps, iconSize, state.showLabels, onClick = null)
         }
         if (isDrawerShown) {
             Box(
@@ -208,6 +256,28 @@ fun HomeScreen(
             ) {
                 drawer(openedBySearch)
             }
+        }
+    }
+}
+
+/**
+ * Flips to the neighbouring page while a dragged item rests at a side edge (task 2.4). Each flip
+ * runs in its own job so leaving the edge never stops the pager between two pages.
+ */
+@Composable
+private fun EdgeFlipEffect(dragState: HomeDragState, pagerState: PagerState) {
+    val scope = rememberCoroutineScope()
+    val edgePx = with(LocalDensity.current) { EDGE_FLIP_ZONE.toPx() }
+    val edge by remember(edgePx) { derivedStateOf { dragState.edgeDirection(edgePx) } }
+    LaunchedEffect(edge) {
+        if (edge == 0) return@LaunchedEffect
+        while (true) {
+            delay(EDGE_FLIP_DWELL_MS)
+            val next = pagerState.currentPage + edge
+            if (next !in 0 until pagerState.pageCount) break
+            scope.launch { pagerState.animateScrollToPage(next) }.join()
+            // The finger may not have moved, but the page under it has.
+            dragState.refresh()
         }
     }
 }

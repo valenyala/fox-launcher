@@ -6,6 +6,7 @@ import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
+import dev.foxlauncher.core.model.HomeContainer
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -51,6 +52,15 @@ abstract class HomeDao {
     @Query("SELECT MAX(page) FROM home_items WHERE container = 'PAGE'")
     abstract suspend fun maxPage(): Int?
 
+    @Query("SELECT * FROM home_items WHERE id = :id")
+    abstract suspend fun getById(id: Long): HomeItemEntity?
+
+    @Query("SELECT * FROM home_items WHERE container = 'FOLDER' AND folderId = :folderId")
+    abstract suspend fun getFolderChildren(folderId: Long): List<HomeItemEntity>
+
+    @Query("DELETE FROM home_items WHERE container = 'FOLDER' AND folderId = :folderId")
+    abstract suspend fun deleteFolderChildren(folderId: Long)
+
     @Insert
     abstract suspend fun insertFolder(folder: FolderEntity): Long
 
@@ -59,4 +69,59 @@ abstract class HomeDao {
 
     @Query("DELETE FROM folders WHERE id = :folderId")
     abstract suspend fun deleteFolder(folderId: Long)
+
+    /**
+     * Puts a new folder tile where [targetId] is and moves [targetId] then [draggedId] into it.
+     * Returns the new folder's id, or null (and changes nothing) when either row is gone.
+     */
+    @Transaction
+    open suspend fun createFolder(targetId: Long, draggedId: Long, title: String, createdAt: Long): Long? {
+        val target = getById(targetId) ?: return null
+        val dragged = getById(draggedId) ?: return null
+        val folderId = insertFolder(FolderEntity(title = title))
+        insert(
+            HomeItemEntity(
+                container = target.container,
+                page = target.page,
+                col = target.col,
+                row = target.row,
+                type = HomeItemType.FOLDER,
+                folderId = folderId,
+                createdAt = createdAt,
+            ),
+        )
+        updateAll(listOf(target.intoFolder(folderId, rank = 0), dragged.intoFolder(folderId, rank = 1)))
+        return folderId
+    }
+
+    /** Appends [itemId] to the folder whose tile is [folderItemId]. False when either row is gone. */
+    @Transaction
+    open suspend fun addToFolder(folderItemId: Long, itemId: Long): Boolean {
+        val folderId = getById(folderItemId)?.folderId ?: return false
+        val item = getById(itemId) ?: return false
+        val rank = (getFolderChildren(folderId).maxOfOrNull { it.col } ?: -1) + 1
+        update(item.intoFolder(folderId, rank))
+        return true
+    }
+
+    /** Deletes the folder tile [folderItemId], everything inside it and its folder row. */
+    @Transaction
+    open suspend fun deleteFolderWithItems(folderItemId: Long) {
+        getById(folderItemId)?.folderId?.let { folderId ->
+            deleteFolderChildren(folderId)
+            deleteFolder(folderId)
+        }
+        deleteByIds(listOf(folderItemId))
+    }
+
+    /** Folder children are 1×1, keep their rank in `col`, and ignore page and row. */
+    private fun HomeItemEntity.intoFolder(folderId: Long, rank: Int) = copy(
+        container = HomeContainer.FOLDER,
+        folderId = folderId,
+        page = 0,
+        col = rank,
+        row = 0,
+        spanX = 1,
+        spanY = 1,
+    )
 }

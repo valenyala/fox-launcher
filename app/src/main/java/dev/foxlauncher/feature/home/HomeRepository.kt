@@ -6,9 +6,12 @@ import dev.foxlauncher.core.common.DefaultDispatcher
 import dev.foxlauncher.core.common.FoxLog
 import dev.foxlauncher.core.data.db.HomeDao
 import dev.foxlauncher.core.model.AppEntry
+import dev.foxlauncher.core.model.HomeContainer
 import dev.foxlauncher.core.model.HomeItem
 import dev.foxlauncher.core.model.HomeLayout
 import dev.foxlauncher.core.model.HomePosition
+import dev.foxlauncher.feature.home.drag.DragResolver
+import dev.foxlauncher.feature.home.drag.DropAction
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
@@ -66,6 +69,23 @@ class HomeRepository @Inject constructor(
 
     suspend fun remove(itemIds: List<Long>) {
         dao.deleteByIds(itemIds)
+    }
+
+    /** Persists a drop that [DragResolver] decided for the existing home item [item]. */
+    suspend fun applyDrop(item: HomeItem, action: DropAction) {
+        when (action) {
+            is DropAction.MoveToPage -> {
+                val cell = action.cell
+                move(listOf(item to HomePosition(HomeContainer.PAGE, action.page, cell.col, cell.row, cell.spanX, cell.spanY)))
+            }
+            is DropAction.MoveToDock -> move(listOf(item to HomePosition(HomeContainer.DOCK, 0, action.slot, 0)))
+            is DropAction.CreateFolder ->
+                dao.createFolder(action.targetId, item.id, title = "", createdAt = System.currentTimeMillis())
+            is DropAction.AddToFolder -> dao.addToFolder(action.folderItemId, item.id)
+            is DropAction.Remove ->
+                if (item is HomeItem.Folder) dao.deleteFolderWithItems(item.id) else dao.deleteByIds(listOf(item.id))
+            DropAction.Cancel -> Unit
+        }
     }
 
     suspend fun lastPageIndex(): Int = dao.maxPage() ?: 0

@@ -89,6 +89,7 @@ class HomeActivity : ComponentActivity() {
                                 val source = bounds?.let { launchSource(view, it) }
                                 viewModel.onItemClick(item, source?.sourceBounds, source?.options)
                             },
+                            onDrop = viewModel::onDrop,
                         ) { autoFocusSearch ->
                             DrawerScreen(
                                 viewModel = drawerViewModel,

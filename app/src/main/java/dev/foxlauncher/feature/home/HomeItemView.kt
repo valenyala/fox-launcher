@@ -1,7 +1,7 @@
 package dev.foxlauncher.feature.home
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,8 +23,10 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -52,9 +54,15 @@ private class IconBounds {
     var value: Rect? = null
 }
 
+/** The item's own layout node, read when a long press starts a drag. */
+private class ItemCoordinates {
+    var value: LayoutCoordinates? = null
+}
+
 /**
  * One home or dock item: icon plus optional label. [onClick] receives the icon's bounds in window
- * coordinates for the launch animation.
+ * coordinates for the launch animation; [onLongClick] receives the whole item's coordinates, to
+ * start a drag. Without [onClick] the view is inert: the drag overlay draws one.
  */
 @Composable
 fun HomeItemView(
@@ -62,16 +70,26 @@ fun HomeItemView(
     apps: ImmutableMap<String, AppEntry>,
     iconSize: Dp,
     showLabel: Boolean,
-    onClick: (HomeItem, Rect?) -> Unit,
+    onClick: ((HomeItem, Rect?) -> Unit)?,
     modifier: Modifier = Modifier,
+    onLongClick: ((HomeItem, LayoutCoordinates) -> Unit)? = null,
 ) {
     val bounds = remember { IconBounds() }
+    val coordinates = remember { ItemCoordinates() }
+    val interaction = if (onClick == null) {
+        Modifier
+    } else {
+        Modifier.combinedClickable(
+            onLongClick = onLongClick?.let { longClick -> { coordinates.value?.let { longClick(item, it) } } },
+        ) { onClick(item, bounds.value) }
+    }
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
         modifier = modifier
             .fillMaxSize()
-            .clickable { onClick(item, bounds.value) }
+            .onPlaced { coordinates.value = it }
+            .then(interaction)
             .padding(4.dp),
     ) {
         Box(Modifier.onGloballyPositioned { bounds.value = it.boundsInWindow() }) {
