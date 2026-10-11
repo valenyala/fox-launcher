@@ -43,7 +43,6 @@ private const val MERGE_FILL_ALPHA = 0.3f
 private val HIGHLIGHT_INSET = 4.dp
 private val HIGHLIGHT_CORNER = 16.dp
 private val MERGE_STROKE = 2.dp
-private val REMOVE_ZONE_HEIGHT = 64.dp
 private const val REMOVE_IDLE_ALPHA = 0.35f
 
 /**
@@ -53,7 +52,8 @@ private const val REMOVE_IDLE_ALPHA = 0.35f
 @Composable
 fun DragOverlay(state: HomeDragState, content: @Composable (HomeItem) -> Unit) {
     val item = state.dragging ?: return
-    val scale by animateFloatAsState(if (state.isSettling) 1f else DRAG_SCALE, label = "dragScale")
+    // Settling, it shrinks or grows to the size of the cell or slot it lands in.
+    val scale by animateFloatAsState(if (state.isSettling) state.settleScale else DRAG_SCALE, label = "dragScale")
     val size = with(LocalDensity.current) { state.itemSize.toDpSize() }
     Box(
         Modifier
@@ -91,6 +91,9 @@ fun DropHighlight(state: HomeDragState, modifier: Modifier = Modifier) {
             },
     )
 }
+
+/** Height of the Remove strip below the status bar; the pages shrink out from under it while dragging. */
+val REMOVE_ZONE_HEIGHT = 64.dp
 
 /**
  * The "Remove" strip across the top while a home item is dragged (not a drawer app: it is not on

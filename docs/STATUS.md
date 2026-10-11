@@ -9,7 +9,8 @@ Update this file at the end of every session. Keep it terse. Newest session note
 
 - Host: NixOS x86_64, 12 cores, 31 GB RAM, git 2.54. No JDK, Gradle, adb or Android SDK on PATH → Phase 0.1 must create the flake.
 - Devices: POCO F3 (M2012K11AG, `alioth`), MIUI 14 V816.0.5.0.TKHMIXM, Android 13 (API 33), 1080×2400 @ 440 dpi,
-  wireless adb. First used 2026-10-10. 120 Hz display with a faster touch-sampling rate, so one MotionEvent can carry
+  wireless adb. First used 2026-10-10. MIUI asks "Install via USB" on the phone for a *new* package (the test APK's
+  first install fails with `INSTALL_FAILED_USER_RESTRICTED` if nobody taps Install). 120 Hz display with a faster touch-sampling rate, so one MotionEvent can carry
   several batched samples (see the 2026-10-10 note). Three-button navigation (`force_fsg_nav_bar` = 0).
 - Dev shell (0.1): nixpkgs pinned to b1b8759 (nixos-unstable, 2026-09-16); JDK 17.0.20.1, Android platform 37, build-tools 37.0.0 (bumped from 36 in 0.2, see ADR-12), platform-tools/adb 37.0.1, Gradle 8.14.4 from the shell. The build itself uses the wrapper, Gradle 9.7.1.
 - Toolchain (0.2): AGP 9.4.0, Kotlin 2.3.21, KSP 2.3.12, compose-bom 2026.09.00, compileSdk/targetSdk 37, minSdk 29. AGP 9 rejects the `kotlin.android` plugin (ADR-11).
@@ -40,8 +41,8 @@ Update this file at the end of every session. Keep it terse. Newest session note
   - [x] `DragResolver` + tests (pure drop rules)
   - [x] `HomeDragState`, long-press pick-up, `DragOverlay`, target highlight, edge page-flip (user: works, flips smoothly)
   - [x] Apply `DropAction`s in `HomeRepository` (move, dock, create/add folder, remove) (not device-verified)
-  - [x] Remove zone, drag from drawer, page creation / empty-page cleanup (not device-verified)
-  - [ ] Device checklist
+  - [x] Remove zone, drag from drawer, page creation / empty-page cleanup (user: drawer drag, Remove, new page, rotation OK)
+  - [ ] Device checklist: all confirmed except "drop on app makes folder" (never explicitly tried; row 0 was broken, see 2026-10-10 notes)
 - [ ] 2.5 Folders
 - [ ] 2.6 Item popup: shortcuts, app info, remove, uninstall
 - [ ] 2.7 First-run default layout
@@ -116,7 +117,32 @@ Update this file at the end of every session. Keep it terse. Newest session note
 
 (none)
 
+## Known issues
+
+- `connectedDebugAndroidTest` (AGP 9.4, android-test-engine 1.0.1) ends in BUILD FAILED / "There were failing tests" on
+  the POCO F3 even when every test passes: the JUnit XML and HTML report show 32/32 passing, and `am instrument` prints
+  `OK (32 tests)`, `INSTRUMENTATION_CODE: -1`. `test-result-exit-code.txt` is 1 and `--info` shows no cause. The
+  additional-output dir exists and pulls fine. Until it is understood, judge a run by
+  `app/build/reports/androidTests/connected/debug/index.html` or by
+  `adb shell am instrument -w -r dev.foxlauncher.test/androidx.test.runner.AndroidJUnitRunner`. Always pass
+  `-Pandroid.injected.androidTest.leaveApksInstalledAfterRun=true` on a personal phone, or the launcher is uninstalled.
+
 ## Session notes
+
+- 2026-10-10 — **First instrumented run** (POCO F3): 32 tests. On the first pass 3 failed:
+  - `HomePageTest` assumed a screen at least 400 dp wide; this phone is 392.7 dp, so the box was squeezed. Now 320×400 dp,
+    same assertions scaled to the new size.
+  - `HomeScreenDragTest.dragToAFreeCellMovesTheItemThere` failed once with "Cannot move pointers, no gesture is in
+    progress" right after the long-press wait. It has not come back in three runs since; watch for it.
+  - `dropOnAnotherAppCreatesAFolder` found a **real bug**: the Remove strip (status bar + 64 dp) covered most of grid
+    row 0, so any drop there removed the item. **Fix:** Launcher3's spring-loaded state. While an item is dragged or
+    settling, the pager shrinks around its bottom centre by `1 - (64 dp + 8 dp) / pagerHeight` (not below 0.7; about
+    0.88 here), so row 0 starts below the strip. Geometry already went through `LayoutCoordinates`, which include
+    layer transforms. `cellBounds` now maps both corners, so highlights and glides land on the scaled cells. The
+    overlay settles to `destination width / item width`, so it ends exactly cell- or slot-sized. Test targets on pages
+    are read after the drag starts.
+  Second pass: 32/32 pass (see Known issues for Gradle's exit code). The user tried checkpoint 4 on the phone (drawer
+  drag, Remove, new page, rotation mid-drag): OK. The shrink came after that and is not seen on the phone yet.
 
 - 2026-10-10 — 2.4 checkpoint 4 of 5, **code done, not device-verified** (phone locked again). The user confirmed
   checkpoint 2/3 on the phone: home drag works and edge flips are smooth. They expected long-press in the drawer to

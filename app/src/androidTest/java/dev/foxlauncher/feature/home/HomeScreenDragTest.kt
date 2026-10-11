@@ -53,7 +53,7 @@ class HomeScreenDragTest {
     fun dragToAFreeCellMovesTheItemThere() {
         setHome()
 
-        drag(from = cellCenter(0, 0), to = cellCenter(2, 3))
+        drag(from = cellCenter(0, 0)) { cellCenter(2, 3) }
 
         assertEquals(listOf<Pair<HomeItem, DropAction>>(first to DropAction.MoveToPage(0, CellRect(2, 3))), drops)
     }
@@ -62,7 +62,7 @@ class HomeScreenDragTest {
     fun dropOnAnotherAppCreatesAFolder() {
         setHome()
 
-        drag(from = cellCenter(0, 0), to = cellCenter(1, 0))
+        drag(from = cellCenter(0, 0)) { cellCenter(1, 0) }
 
         assertEquals(listOf<Pair<HomeItem, DropAction>>(first to DropAction.CreateFolder(second.id)), drops)
     }
@@ -71,7 +71,7 @@ class HomeScreenDragTest {
     fun dropOnADockSlotMovesTheItemToTheDock() {
         setHome()
 
-        drag(from = cellCenter(0, 0), to = dockSlotCenter(2))
+        drag(from = cellCenter(0, 0)) { dockSlotCenter(2) }
 
         assertEquals(listOf<Pair<HomeItem, DropAction>>(first to DropAction.MoveToDock(2)), drops)
     }
@@ -108,14 +108,14 @@ class HomeScreenDragTest {
     fun restingAtTheRightEdgeOfTheLastPageOpensANewOne() {
         setHome()
         val from = cellCenter(0, 0)
-        val edge = Offset(rootWidth() - 4f, cellCenter(0, 2).y)
-        val target = cellCenter(2, 2)
+        val edgeY = cellCenter(0, 2).y
 
         composeRule.onRoot().performTouchInput { down(from) }
         composeRule.mainClock.advanceTimeBy(LONG_PRESS_WAIT_MS)
-        composeRule.onRoot().performTouchInput { moveTo(edge) }
+        composeRule.onRoot().performTouchInput { moveTo(Offset(rootWidth() - 4f, edgeY)) }
         // Dwell, flip, and let the flip animation finish; only one new page is ever offered.
         composeRule.mainClock.advanceTimeBy(EDGE_WAIT_MS)
+        val target = cellCenter(2, 2)
         composeRule.onRoot().performTouchInput {
             moveTo(target)
             up()
@@ -129,11 +129,9 @@ class HomeScreenDragTest {
     fun longPressThenMoveInTheDrawerDragsTheAppHome() {
         val entry = AppEntry("com.example/.Drawer", 0, "Drawer app", "com.example", false, false, true, 1)
         setHome { Box(Modifier.fillMaxSize().combinedClickable(onLongClick = { onAppLongPress(entry) }) {}) }
-        val target = cellCenter(3, 4)
         composeRule.onNodeWithTag(HomeTestTags.SEARCH_PILL).performClick()
-        val start = center(HomeTestTags.DRAWER)
 
-        drag(from = start) { target }
+        drag(from = center(HomeTestTags.DRAWER)) { cellCenter(3, 4) }
 
         composeRule.onNodeWithTag(HomeTestTags.DRAWER).assertDoesNotExist()
         val (item, action) = drops.single()
@@ -171,9 +169,10 @@ class HomeScreenDragTest {
         }
     }
 
-    private fun drag(from: Offset, to: Offset) = drag(from) { to }
-
-    /** Long press at [from], then move to [to] (read once the drag has started) in a few steps and release. */
+    /**
+     * Long press at [from], then move to [to] in a few steps and release. [to] is read once the drag
+     * has started, because the pages shrink while dragging.
+     */
     private fun drag(from: Offset, to: () -> Offset) {
         composeRule.onRoot().performTouchInput { down(from) }
         composeRule.mainClock.advanceTimeBy(LONG_PRESS_WAIT_MS)

@@ -3,6 +3,7 @@ package dev.foxlauncher.feature.home
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
@@ -40,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
@@ -58,6 +60,7 @@ import dev.foxlauncher.feature.home.drag.DragOverlay
 import dev.foxlauncher.feature.home.drag.DropAction
 import dev.foxlauncher.feature.home.drag.DropHighlight
 import dev.foxlauncher.feature.home.drag.HomeDragState
+import dev.foxlauncher.feature.home.drag.REMOVE_ZONE_HEIGHT
 import dev.foxlauncher.feature.home.drag.RemoveZone
 import dev.foxlauncher.feature.home.drag.homeDragLayer
 import dev.foxlauncher.feature.home.drag.newAppItem
@@ -82,6 +85,12 @@ private val DOCK_EXTRA_HEIGHT = 32.dp
 
 /** Horizontal padding around each page's grid and the dock. */
 private val GRID_PADDING = 8.dp
+
+/** Room kept between the Remove strip and the shrunk pages while dragging. */
+private val REMOVE_ZONE_GAP = 8.dp
+
+/** The pages never shrink below this while dragging, however short the screen. */
+private const val MIN_DRAG_GRID_SCALE = 0.7f
 
 /** A dragged item held this close to a side edge flips the page... */
 private val EDGE_FLIP_ZONE = 40.dp
@@ -139,6 +148,13 @@ fun HomeScreen(
         derivedStateOf { dragState.dragging?.let { dragged -> layout.pages.last().items.any { it.id != dragged.id } } == true }
     }
     val pagerState = rememberPagerState(pageCount = { layout.pages.size + if (hasExtraPage) 1 else 0 })
+    // While dragging, the pages shrink up from their bottom edge so no cell sits under the Remove
+    // strip (Launcher3's "spring-loaded" state). They stay small until the item has settled.
+    var pagerHeightPx by remember { mutableFloatStateOf(0f) }
+    val dragGridScale = with(LocalDensity.current) {
+        if (pagerHeightPx <= 0f) 1f else (1f - (REMOVE_ZONE_HEIGHT + REMOVE_ZONE_GAP).toPx() / pagerHeightPx).coerceAtLeast(MIN_DRAG_GRID_SCALE)
+    }
+    val gridScale = animateFloatAsState(if (dragState.dragging != null) dragGridScale else 1f, label = "gridScale")
     val itemContent: @Composable (HomeItem) -> Unit = { item ->
         HomeItemView(
             item = item,
@@ -249,6 +265,12 @@ fun HomeScreen(
                 key = { it },
                 modifier = Modifier
                     .weight(1f)
+                    .onSizeChanged { pagerHeightPx = it.height.toFloat() }
+                    .graphicsLayer {
+                        scaleX = gridScale.value
+                        scaleY = gridScale.value
+                        transformOrigin = TransformOrigin(0.5f, 1f)
+                    }
                     .testTag(HomeTestTags.PAGER),
             ) { page ->
                 DisposableEffect(page) { onDispose { dragState.unregisterPage(page) } }

@@ -30,14 +30,15 @@ class HomePageTest {
 
     @Test
     fun itemsArePlacedAtTheirCellWithTheirSpan() {
-        // 4×5 grid in a 400×500 dp box → 100 dp cells.
+        // 4×5 grid in a 320×400 dp box → 80 dp cells. Small enough for any phone: a box wider than
+        // the screen is squeezed, and every cell with it.
         val engine = GridLayoutEngine(GridSpec(cols = 4, rows = 5, dockSlots = 4))
         val items = listOf(
             HomeItem.App(1, HomePosition(HomeContainer.PAGE, 0, col = 2, row = 1), "a/.A", 0),
             HomeItem.NativeWidget(2, HomePosition(HomeContainer.PAGE, 0, col = 0, row = 3, spanX = 2, spanY = 2), "ram"),
         )
         composeRule.setContent {
-            Box(Modifier.size(400.dp, 500.dp)) {
+            Box(Modifier.size(320.dp, 400.dp)) {
                 HomePage(items, engine, Modifier.fillMaxSize()) { item ->
                     Box(Modifier.fillMaxSize().testTag("item-${item.id}"))
                 }
@@ -45,13 +46,13 @@ class HomePageTest {
         }
 
         composeRule.onNodeWithTag("item-1")
-            .assertLeftPositionInRootIsEqualTo(200.dp)
-            .assertTopPositionInRootIsEqualTo(100.dp)
-            .assertWidthIsEqualTo(100.dp)
+            .assertLeftPositionInRootIsEqualTo(160.dp)
+            .assertTopPositionInRootIsEqualTo(80.dp)
+            .assertWidthIsEqualTo(80.dp)
         composeRule.onNodeWithTag("item-2")
             .assertLeftPositionInRootIsEqualTo(0.dp)
-            .assertTopPositionInRootIsEqualTo(300.dp)
-            .assertWidthIsEqualTo(200.dp)
-            .assertHeightIsEqualTo(200.dp)
+            .assertTopPositionInRootIsEqualTo(240.dp)
+            .assertWidthIsEqualTo(160.dp)
+            .assertHeightIsEqualTo(160.dp)
     }
 }

@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -98,6 +99,10 @@ class HomeDragState internal constructor(
 
     /** True while the dragged item is a drawer app that is not on the home screen yet. */
     val isNewItem: Boolean get() = dragging?.id == NEW_ITEM_ID
+
+    /** The overlay's scale once it has settled: destination size over [itemSize] (pages shrink while dragging). */
+    var settleScale: Float by mutableFloatStateOf(1f)
+        private set
 
     /** Top-left of the overlay in drag-layer coordinates. */
     val overlayTopLeft: Offset get() = settle?.value ?: (pointer - grabOffset)
@@ -252,11 +257,14 @@ class HomeDragState internal constructor(
         val action = dropped?.action ?: DropAction.Cancel
         preview = null
         onDrop(item, action)
-        val destination = destinationOf(item, action, dropped?.target)
-        if (destination == null) {
+        val bounds = destinationBounds(item, action, dropped?.target)
+        if (bounds == null || itemSize.width <= 0f) {
             dragging = null
             return
         }
+        settleScale = bounds.width / itemSize.width
+        // Centred on the destination; the overlay scales around its centre.
+        val destination = bounds.center - Offset(itemSize.width / 2, itemSize.height / 2)
         val glide = Animatable(overlayTopLeft, Offset.VectorConverter)
         settle = glide
         scope.launch {
@@ -272,17 +280,15 @@ class HomeDragState internal constructor(
         }
     }
 
-    /** Overlay top-left that centres it on where the item ends up; null when nothing to glide to. */
-    private fun destinationOf(item: HomeItem, action: DropAction, target: DropTarget?): Offset? {
-        val bounds = when (action) {
+    /** Where the item ends up, in drag-layer coordinates; null when there is nothing to glide to. */
+    private fun destinationBounds(item: HomeItem, action: DropAction, target: DropTarget?): Rect? =
+        when (action) {
             is DropAction.MoveToPage -> cellBounds(action.page, action.cell)
             is DropAction.MoveToDock -> slotBounds(action.slot)
             is DropAction.CreateFolder, is DropAction.AddToFolder -> target?.let(::targetBounds)
             DropAction.Cancel -> sourceBounds(item)
             is DropAction.Remove -> null
-        } ?: return null
-        return bounds.center - Offset(itemSize.width / 2, itemSize.height / 2)
-    }
+        }
 
     private fun computePreview(): DropPreview? {
         val item = dragging ?: return null
@@ -359,7 +365,10 @@ class HomeDragState internal constructor(
         }
     }
 
-    /** [cell] of page [page] in drag-layer coordinates; null when that page is not composed. */
+    /**
+     * [cell] of page [page] in drag-layer coordinates; null when that page is not composed. Both
+     * corners are mapped, so a page scaled while dragging still gives its on-screen cell.
+     */
     private fun cellBounds(page: Int, cell: CellRect): Rect? {
         val layer = layer?.takeIf { it.isAttached } ?: return null
         val coordinates = pages[page]?.takeIf { it.isAttached } ?: return null
@@ -369,8 +378,10 @@ class HomeDragState internal constructor(
             coordinates.size.width.toFloat() / engine.spec.cols,
             coordinates.size.height.toFloat() / engine.spec.rows,
         )
-        val origin = layer.localPositionOf(coordinates, Offset.Zero)
-        return Rect(Offset(origin.x + px.left, origin.y + px.top), Size(px.width, px.height))
+        return Rect(
+            layer.localPositionOf(coordinates, Offset(px.left, px.top)),
+            layer.localPositionOf(coordinates, Offset(px.left + px.width, px.top + px.height)),
+        )
     }
 
     private fun slotBounds(slot: Int): Rect? {
