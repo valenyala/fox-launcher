@@ -4,6 +4,7 @@ import dev.foxlauncher.core.apps.AppRepository
 import dev.foxlauncher.core.common.ApplicationScope
 import dev.foxlauncher.core.common.DefaultDispatcher
 import dev.foxlauncher.core.common.FoxLog
+import dev.foxlauncher.core.data.db.FolderEntity
 import dev.foxlauncher.core.data.db.HomeDao
 import dev.foxlauncher.core.model.AppEntry
 import dev.foxlauncher.core.model.HomeContainer
@@ -58,6 +59,8 @@ class HomeRepository @Inject constructor(
         val rows = items.mapNotNull { (item, position) ->
             existing[item.id]?.copy(
                 container = position.container,
+                // Leaving a folder: the row must not still claim to be inside it.
+                folderId = existing[item.id]?.folderId?.takeIf { position.container == HomeContainer.FOLDER },
                 page = position.page,
                 col = position.col,
                 row = position.row,
@@ -74,12 +77,18 @@ class HomeRepository @Inject constructor(
 
     /**
      * Persists a drop that [DragResolver] decided. [item] is new (a drawer app) when its id is
-     * [NEW_ITEM_ID]. Afterwards pages left empty between others are closed up.
+     * [NEW_ITEM_ID]. Afterwards folders down to one item collapse, empty ones go, and pages left
+     * empty between others are closed up.
      */
     suspend fun applyDrop(item: HomeItem, action: DropAction) {
         if (action == DropAction.Cancel) return
         if (item.id == NEW_ITEM_ID) addDropped(item, action) else moveDropped(item, action)
+        closeFolders()
         closePageGaps()
+    }
+
+    suspend fun renameFolder(folderId: Long, title: String) {
+        dao.updateFolder(FolderEntity(id = folderId, title = title))
     }
 
     private suspend fun moveDropped(item: HomeItem, action: DropAction) {
@@ -94,6 +103,7 @@ class HomeRepository @Inject constructor(
             is DropAction.AddToFolder -> dao.addToFolder(action.folderItemId, item.id)
             is DropAction.Remove ->
                 if (item is HomeItem.Folder) dao.deleteFolderWithItems(item.id) else dao.deleteByIds(listOf(item.id))
+            is DropAction.MoveInFolder -> reorderInFolder(item.id, action.rank)
             DropAction.Cancel -> Unit
         }
     }
@@ -118,9 +128,22 @@ class HomeRepository @Inject constructor(
             is DropAction.MoveToDock -> dao.insert(row.copy(container = HomeContainer.DOCK, page = 0, col = action.slot, row = 0))
             is DropAction.CreateFolder -> dao.insertIntoNewFolder(row, action.targetId, title = "", createdAt = now)
             is DropAction.AddToFolder -> dao.insertIntoFolder(row, action.folderItemId)
-            // A new item has nothing to remove; the resolver never pairs the two.
-            is DropAction.Remove, DropAction.Cancel -> Unit
+            // A new item has nothing to remove and is never inside a folder; the resolver never pairs these.
+            is DropAction.Remove, is DropAction.MoveInFolder, DropAction.Cancel -> Unit
         }
+    }
+
+    private suspend fun reorderInFolder(itemId: Long, rank: Int) {
+        val folderId = dao.getById(itemId)?.folderId ?: return
+        // The same order the layout shows: by rank, oldest first on a tie.
+        val children = dao.getFolderChildren(folderId).sortedWith(compareBy({ it.col }, { it.id }))
+        val order = moveToRank(children.map { it.id }, itemId, rank)
+        dao.moveItems(children.mapNotNull { row -> order.indexOf(row.id).takeIf { it != row.col }?.let { row.copy(col = it) } })
+    }
+
+    private suspend fun closeFolders() {
+        val cleanup = folderCleanup(dao.getAll())
+        if (!cleanup.isEmpty) dao.applyFolderCleanup(cleanup.promoted, cleanup.deletedItemIds, cleanup.deletedFolderIds)
     }
 
     private suspend fun closePageGaps() {

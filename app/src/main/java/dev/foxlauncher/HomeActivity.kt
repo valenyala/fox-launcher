@@ -90,6 +90,7 @@ class HomeActivity : ComponentActivity() {
                                 viewModel.onItemClick(item, source?.sourceBounds, source?.options)
                             },
                             onDrop = viewModel::onDrop,
+                            onRenameFolder = viewModel::onRenameFolder,
                         ) { autoFocusSearch ->
                             DrawerScreen(
                                 viewModel = drawerViewModel,

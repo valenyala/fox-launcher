@@ -70,6 +70,17 @@ abstract class HomeDao {
     @Query("DELETE FROM folders WHERE id = :folderId")
     abstract suspend fun deleteFolder(folderId: Long)
 
+    @Query("DELETE FROM folders WHERE id IN (:folderIds)")
+    abstract suspend fun deleteFolders(folderIds: List<Long>)
+
+    /** Collapses and deletes folders in one go (see `folderCleanup`). */
+    @Transaction
+    open suspend fun applyFolderCleanup(promoted: List<HomeItemEntity>, deletedItemIds: List<Long>, deletedFolderIds: List<Long>) {
+        deleteByIds(deletedItemIds)
+        updateAll(promoted)
+        deleteFolders(deletedFolderIds)
+    }
+
     /**
      * Puts a new folder tile where [targetId] is and moves [targetId] then [draggedId] into it.
      * Returns the new folder's id, or null (and changes nothing) when either row is gone.

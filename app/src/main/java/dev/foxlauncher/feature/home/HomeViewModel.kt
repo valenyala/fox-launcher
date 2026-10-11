@@ -78,9 +78,13 @@ class HomeViewModel @Inject constructor(
             is HomeItem.App -> uiState.value.apps[item.appKey]?.let { appRepository.launch(it, sourceBounds, options) }
             is HomeItem.Shortcut ->
                 appRepository.startShortcut(item.packageName, item.shortcutId, item.userSerial, sourceBounds, options)
-            is HomeItem.Folder -> Unit // TODO(2.5): open the folder sheet.
+            is HomeItem.Folder -> Unit // HomeScreen opens its sheet.
             is HomeItem.AppWidget, is HomeItem.NativeWidget -> Unit
         }
+    }
+
+    fun onRenameFolder(folder: HomeItem.Folder, title: String) {
+        viewModelScope.launch { homeRepository.renameFolder(folder.folderId, title) }
     }
 
     /** A home drag ended; [action] is what `DragResolver` decided. */

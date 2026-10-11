@@ -30,6 +30,8 @@ sealed interface DropTarget {
     data class Cell(val page: Int, val cell: CellRect) : DropTarget
     data class DockSlot(val slot: Int) : DropTarget
     data object RemoveZone : DropTarget
+    /** Position [rank] in the open folder's grid (task 2.5). */
+    data class FolderRank(val rank: Int) : DropTarget
     data object Outside : DropTarget
 }
 
@@ -42,6 +44,8 @@ sealed interface DropAction {
     /** Add the dragged item to the folder whose tile is the home item [folderItemId] (not `HomeItem.Folder.folderId`). */
     data class AddToFolder(val folderItemId: Long) : DropAction
     data class Remove(val id: Long) : DropAction
+    /** Reorder the dragged item inside its open folder to position [rank]. */
+    data class MoveInFolder(val rank: Int) : DropAction
     /** Snap back (existing item) or discard (new item). */
     data object Cancel : DropAction
 }
@@ -61,6 +65,9 @@ class DragResolver(private val engine: GridLayoutEngine) {
     ): DropAction = when (target) {
         DropTarget.Outside -> DropAction.Cancel
         DropTarget.RemoveZone -> dragged.id?.let(DropAction::Remove) ?: DropAction.Cancel
+        // Only a folder's own items are dragged while it is open, and only apps and shortcuts live there.
+        is DropTarget.FolderRank ->
+            if (dragged.id != null && dragged.kind.canJoinFolder) DropAction.MoveInFolder(target.rank) else DropAction.Cancel
         is DropTarget.Cell -> onPage(dragged, target, pageItems.filter { it.id != dragged.id })
         is DropTarget.DockSlot -> onDock(dragged, target.slot, dockItems.filter { it.id != dragged.id })
     }

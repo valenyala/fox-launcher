@@ -1,10 +1,15 @@
 package dev.foxlauncher.feature.home
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,9 +32,11 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,6 +59,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.foxlauncher.R
 import dev.foxlauncher.core.model.AppEntry
@@ -86,6 +94,8 @@ private val DOCK_EXTRA_HEIGHT = 32.dp
 /** Horizontal padding around each page's grid and the dock. */
 private val GRID_PADDING = 8.dp
 
+private const val FOLDER_OPEN_SCALE = 0.9f
+
 /** Room kept between the Remove strip and the shrunk pages while dragging. */
 private val REMOVE_ZONE_GAP = 8.dp
 
@@ -98,12 +108,21 @@ private val EDGE_FLIP_ZONE = 40.dp
 /** ...after resting there this long, and again after each further wait. */
 private const val EDGE_FLIP_DWELL_MS = 400L
 
+/** A dragged item held off an open folder's card this long closes the folder (Launcher3 waits about as long). */
+private const val FOLDER_EXIT_DWELL_MS = 300L
+
+/** Height of a cell in an open folder, on top of the icon: room for the label. */
+private val FOLDER_CELL_EXTRA_HEIGHT = 36.dp
+
 object HomeTestTags {
     const val SEARCH_PILL = "home_search_pill"
     const val DRAWER = "home_drawer"
     const val PAGER = "home_pager"
     const val DOCK = "home_dock"
     const val REMOVE_ZONE = "home_remove_zone"
+    const val FOLDER_SHEET = "home_folder_sheet"
+    const val FOLDER_TITLE = "home_folder_title"
+    const val FOLDER_GRID = "home_folder_grid"
 }
 
 /** What the drawer slot can ask of the home screen. */
@@ -122,6 +141,7 @@ fun interface DrawerScope {
  * is in front, which closes the drawer. [drawer] receives whether the search field should focus.
  * Long-pressing an item drags it, and so does long-pressing then moving an app in the drawer
  * ([DrawerScope]); [onDrop] receives what the drop should do (task 2.4). Removing a folder asks first.
+ * Tapping a folder opens its [FolderSheet] (task 2.5); a changed title goes to [onRenameFolder].
  */
 @Composable
 fun HomeScreen(
@@ -131,6 +151,7 @@ fun HomeScreen(
     state: HomeUiState = HomeUiState(),
     onItemClick: (HomeItem, Rect?) -> Unit = { _, _ -> },
     onDrop: (HomeItem, DropAction) -> Unit = { _, _ -> },
+    onRenameFolder: (HomeItem.Folder, String) -> Unit = { _, _ -> },
     drawer: @Composable DrawerScope.(autoFocusSearch: Boolean) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -155,13 +176,21 @@ fun HomeScreen(
         if (pagerHeightPx <= 0f) 1f else (1f - (REMOVE_ZONE_HEIGHT + REMOVE_ZONE_GAP).toPx() / pagerHeightPx).coerceAtLeast(MIN_DRAG_GRID_SCALE)
     }
     val gridScale = animateFloatAsState(if (dragState.dragging != null) dragGridScale else 1f, label = "gridScale")
+    // The folder whose sheet is open, by its tile's id. It closes by itself if the folder goes away (collapsed, removed).
+    var openFolderId by rememberSaveable { mutableStateOf<Long?>(null) }
+    val openFolder = openFolderId?.let { id ->
+        (state.layout.pages.asSequence().flatMap { it.items } + state.layout.dock.items).firstOrNull { it.id == id } as? HomeItem.Folder
+    }
+    SideEffect { dragState.setOpenFolder(openFolder) }
     val itemContent: @Composable (HomeItem) -> Unit = { item ->
         HomeItemView(
             item = item,
             apps = state.apps,
             iconSize = iconSize,
             showLabel = state.showLabels,
-            onClick = onItemClick,
+            onClick = { clicked, bounds ->
+                if (clicked is HomeItem.Folder) openFolderId = clicked.id else onItemClick(clicked, bounds)
+            },
             // The overlay stands in for the dragged item until it has settled.
             modifier = Modifier.graphicsLayer { alpha = if (dragState.dragging?.id == item.id) 0f else 1f },
             onLongClick = dragState::start,
@@ -200,6 +229,7 @@ fun HomeScreen(
     LaunchedEffect(homeKeyPresses) {
         if (homeKeyPresses > 0) {
             dragState.cancel()
+            openFolderId = null
             settle(open = false)
             pagerState.animateScrollToPage(DEFAULT_PAGE)
         }
@@ -207,6 +237,14 @@ fun HomeScreen(
     WallpaperOffsetsEffect(pagerState)
     EdgeFlipEffect(dragState, pagerState)
     BackHandler(enabled = isOpen) { settle(open = false) }
+    BackHandler(enabled = openFolder != null) { openFolderId = null }
+    val outsideFolder by remember { derivedStateOf { dragState.isOutsideOpenFolder() } }
+    LaunchedEffect(outsideFolder) {
+        if (outsideFolder) {
+            delay(FOLDER_EXIT_DWELL_MS)
+            openFolderId = null
+        }
+    }
 
     Box(
         modifier = modifier
@@ -303,6 +341,26 @@ fun HomeScreen(
                 modifier = Modifier.padding(horizontal = 32.dp, vertical = 12.dp),
             )
         }
+        OpenFolder(
+            folder = openFolder,
+            dragState = dragState,
+            cellHeight = iconSize + FOLDER_CELL_EXTRA_HEIGHT,
+            onClose = { openFolderId = null },
+            onRename = onRenameFolder,
+        ) { item ->
+            HomeItemView(
+                item = item,
+                apps = state.apps,
+                iconSize = iconSize,
+                showLabel = true,
+                onClick = { clicked, bounds ->
+                    openFolderId = null
+                    onItemClick(clicked, bounds)
+                },
+                modifier = Modifier.graphicsLayer { alpha = if (dragState.dragging?.id == item.id) 0f else 1f },
+                onLongClick = dragState::start,
+            )
+        }
         RemoveZone(dragState, Modifier.testTag(HomeTestTags.REMOVE_ZONE))
         DragOverlay(dragState) { item ->
             HomeItemView(item, state.apps, iconSize, state.showLabels, onClick = null)
@@ -330,6 +388,40 @@ fun HomeScreen(
             },
             onDismiss = { folderToRemove = null },
         )
+    }
+}
+
+/**
+ * The [FolderSheet] of [folder], fading and scaling in and out. The last folder shown is kept for
+ * the exit animation; its title is committed once the sheet has gone.
+ */
+@Composable
+private fun OpenFolder(
+    folder: HomeItem.Folder?,
+    dragState: HomeDragState,
+    cellHeight: Dp,
+    onClose: () -> Unit,
+    onRename: (HomeItem.Folder, String) -> Unit,
+    itemContent: @Composable (HomeItem) -> Unit,
+) {
+    var shown by remember { mutableStateOf(folder) }
+    if (folder != null) shown = folder
+    AnimatedVisibility(
+        visible = folder != null,
+        enter = fadeIn() + scaleIn(initialScale = FOLDER_OPEN_SCALE),
+        exit = fadeOut() + scaleOut(targetScale = FOLDER_OPEN_SCALE),
+    ) {
+        val current = shown ?: return@AnimatedVisibility
+        key(current.id) {
+            FolderSheet(
+                folder = current,
+                dragState = dragState,
+                cellHeight = cellHeight,
+                onClose = onClose,
+                onTitleChange = { title -> if (title != current.title) onRename(current, title) },
+                itemContent = itemContent,
+            )
+        }
     }
 }
 

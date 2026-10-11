@@ -43,7 +43,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
   - [x] Apply `DropAction`s in `HomeRepository` (move, dock, create/add folder, remove) (not device-verified)
   - [x] Remove zone, drag from drawer, page creation / empty-page cleanup (user: drawer drag, Remove, new page, rotation OK)
   - [x] Device checklist (user, 2026-10-10: pick-up, page flips, free cell, folder from a top-row app, Remove, drawer drag, rotation)
-- [ ] 2.5 Folders
+- [ ] 2.5 Folders (code done, 37 instrumented tests pass on the phone; device checklist pending)
 - [ ] 2.6 Item popup: shortcuts, app info, remove, uninstall
 - [ ] 2.7 First-run default layout
 - [ ] 2.8 Missing / suspended app handling
@@ -128,6 +128,24 @@ Update this file at the end of every session. Keep it terse. Newest session note
   `-Pandroid.injected.androidTest.leaveApksInstalledAfterRun=true` on a personal phone, or the launcher is uninstalled.
 
 ## Session notes
+
+- 2026-10-10 — 2.5 Folders, **code done; device checklist pending.** Tapping a folder tile opens `FolderSheet`: a
+  dark-glass card (dark so the white wallpaper-style labels stay readable in any theme) over a 35 % scrim, inside the
+  home drag layer. The scrim and card swallow pointers so the home and the drawer swipe never react; tapping the scrim
+  closes. The title is a `BasicTextField`, committed via `onDispose` whatever closed the sheet, and only if changed
+  (`HomeRepository.renameFolder`). Grid columns follow Launcher3 (pure `folderColumns`: 2 up to 4 items, 3 up to 9,
+  then 4).
+  Drag inside: `DropTarget.FolderRank` → `DropAction.MoveInFolder` (resolver, +2 tests). While dragging, the other
+  items slide to where they will be (`moveToRank`, animated offsets), and `droppedAction` holds that order through the
+  settle. Drag out: with the finger off the card for 300 ms the folder closes, and `setOpenFolder` (called from a
+  `SideEffect`) re-resolves against the home grid. Edge flips are off while a folder is open.
+  After every drop the repository runs pure `folderCleanup` (empty folder → gone; one item left → it takes the tile's
+  place) through `applyFolderCleanup`, then closes page gaps. `move()` now clears `folderId` when an item leaves a
+  folder. The open folder is remembered by tile id, so it survives rotation and closes by itself if the folder
+  collapses; Back, Home and launching an item also close it.
+  Tests: `FolderRulesTest` (8), `HomeScreenFolderTest` (4: open/close, reorder, drag out onto a home cell, rename),
+  `HomeDaoFolderTest` +1 (collapse through Room). The full instrumented suite passed on the phone (36, then the DAO
+  class again with the new case).
 
 - 2026-10-10 — **2.4 done.** The user confirmed the spring-loaded shrink (the Remove strip stays clear of row 0) and a
   folder made by dropping onto a top-row app. That completes the device checklist.

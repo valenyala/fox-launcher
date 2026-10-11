@@ -3,6 +3,7 @@ package dev.foxlauncher.feature.home.drag
 import dev.foxlauncher.feature.home.drag.DropAction.AddToFolder
 import dev.foxlauncher.feature.home.drag.DropAction.Cancel
 import dev.foxlauncher.feature.home.drag.DropAction.CreateFolder
+import dev.foxlauncher.feature.home.drag.DropAction.MoveInFolder
 import dev.foxlauncher.feature.home.drag.DropAction.MoveToDock
 import dev.foxlauncher.feature.home.drag.DropAction.MoveToPage
 import dev.foxlauncher.feature.home.drag.DropAction.Remove
@@ -122,6 +123,17 @@ class DragResolverTest {
     @Test
     fun dockSlotOutOfRangeCancels() {
         assertEquals(Cancel, resolve(app, DropTarget.DockSlot(4)))
+    }
+
+    @Test
+    fun aFolderPositionReordersInsideTheFolder() {
+        assertEquals(MoveInFolder(2), resolve(app, DropTarget.FolderRank(2)))
+    }
+
+    @Test
+    fun aFolderPositionCancelsWhatCannotLiveInAFolder() {
+        assertEquals(Cancel, resolve(DraggedItem(3, DragKind.FOLDER), DropTarget.FolderRank(0)))
+        assertEquals(Cancel, resolve(newApp, DropTarget.FolderRank(0)))
     }
 
     private fun cell(col: Int, row: Int, page: Int = 0) = DropTarget.Cell(page, CellRect(col, row))

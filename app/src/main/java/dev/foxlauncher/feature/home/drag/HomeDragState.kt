@@ -30,6 +30,7 @@ import dev.foxlauncher.core.model.HomeContainer
 import dev.foxlauncher.core.model.HomeItem
 import dev.foxlauncher.core.model.HomeLayout
 import dev.foxlauncher.core.model.HomePosition
+import dev.foxlauncher.feature.home.folderColumns
 import dev.foxlauncher.feature.home.grid.CellRect
 import dev.foxlauncher.feature.home.grid.GridLayoutEngine
 import kotlinx.coroutines.CoroutineScope
@@ -81,6 +82,10 @@ class HomeDragState internal constructor(
     var preview: DropPreview? by mutableStateOf(null)
         private set
 
+    /** The action of the last release, kept while the overlay settles (an open folder keeps its new order). */
+    var droppedAction: DropAction? by mutableStateOf(null)
+        private set
+
     /** The finger in drag-layer coordinates; only updated while dragging. */
     var pointer: Offset by mutableStateOf(Offset.Zero)
         private set
@@ -112,6 +117,11 @@ class HomeDragState internal constructor(
     private val pages = HashMap<Int, LayoutCoordinates>()
     private var removeZone: LayoutCoordinates? = null
 
+    /** The open folder (task 2.5), its card and its item grid; see [setOpenFolder]. */
+    private var openFolder: HomeItem.Folder? = null
+    private var folderCard: LayoutCoordinates? = null
+    private var folderGrid: LayoutCoordinates? = null
+
     /** The finger currently down when no drag runs, so a long press knows where it is. */
     private var pressed: PointerId? = null
     private var pressedAt = Offset.Zero
@@ -138,6 +148,32 @@ class HomeDragState internal constructor(
 
     fun registerRemoveZone(coordinates: LayoutCoordinates) {
         removeZone = coordinates
+    }
+
+    fun registerFolderCard(coordinates: LayoutCoordinates) {
+        folderCard = coordinates
+    }
+
+    fun registerFolderGrid(coordinates: LayoutCoordinates) {
+        folderGrid = coordinates
+    }
+
+    /**
+     * The folder whose sheet is showing, or null. Set after each composition; a change re-resolves
+     * the target, because the sheet closing under a still finger reveals the home grid.
+     */
+    fun setOpenFolder(folder: HomeItem.Folder?) {
+        if (folder == openFolder) return
+        openFolder = folder
+        refresh()
+    }
+
+    /** True while a drag's finger is off the open folder's card: held there, the folder closes. */
+    fun isOutsideOpenFolder(): Boolean {
+        if (dragging == null || isSettling) return false
+        val layer = layer?.takeIf { it.isAttached } ?: return false
+        val card = openCard() ?: return false
+        return !layer.localBoundingBoxOf(card).contains(pointer)
     }
 
     /**
@@ -179,6 +215,7 @@ class HomeDragState internal constructor(
         armed = null
         dragging = null
         preview = null
+        droppedAction = null
         settle = null
     }
 
@@ -192,7 +229,7 @@ class HomeDragState internal constructor(
      * dock, else 0.
      */
     fun edgeDirection(edgePx: Float): Int {
-        if (dragging == null || isSettling) return 0
+        if (dragging == null || isSettling || openCard() != null) return 0
         val layer = layer?.takeIf { it.isAttached } ?: return 0
         val dockTop = dockBounds(layer)?.top ?: Float.POSITIVE_INFINITY
         val finger = pointer
@@ -211,6 +248,7 @@ class HomeDragState internal constructor(
             is DropAction.MoveToPage -> cellBounds(action.page, action.cell)
             is DropAction.MoveToDock -> slotBounds(action.slot)
             is DropAction.CreateFolder, is DropAction.AddToFolder -> targetBounds(preview.target)
+            is DropAction.MoveInFolder -> folderCellBounds(action.rank)
             is DropAction.Remove, DropAction.Cancel -> null
         }
     }
@@ -256,10 +294,12 @@ class HomeDragState internal constructor(
         val dropped = computePreview()
         val action = dropped?.action ?: DropAction.Cancel
         preview = null
+        droppedAction = action
         onDrop(item, action)
         val bounds = destinationBounds(item, action, dropped?.target)
         if (bounds == null || itemSize.width <= 0f) {
             dragging = null
+            droppedAction = null
             return
         }
         settleScale = bounds.width / itemSize.width
@@ -275,6 +315,7 @@ class HomeDragState internal constructor(
                 if (settle === glide) {
                     settle = null
                     dragging = null
+                    droppedAction = null
                 }
             }
         }
@@ -286,6 +327,7 @@ class HomeDragState internal constructor(
             is DropAction.MoveToPage -> cellBounds(action.page, action.cell)
             is DropAction.MoveToDock -> slotBounds(action.slot)
             is DropAction.CreateFolder, is DropAction.AddToFolder -> target?.let(::targetBounds)
+            is DropAction.MoveInFolder -> folderCellBounds(action.rank)
             DropAction.Cancel -> sourceBounds(item)
             is DropAction.Remove -> null
         }
@@ -317,6 +359,11 @@ class HomeDragState internal constructor(
             if (layer.localBoundingBoxOf(zone).contains(pointer)) return DropTarget.RemoveZone
         }
         val center = overlayTopLeft + Offset(itemSize.width / 2, itemSize.height / 2)
+        // An open folder covers the home: its grid, or nothing until the finger has left long enough to close it.
+        openCard()?.let { card ->
+            if (!layer.localBoundingBoxOf(card).contains(pointer)) return DropTarget.Outside
+            return folderRankAt(layer, center) ?: DropTarget.Outside
+        }
 
         dockBounds(layer)?.let { bounds ->
             if (center.y >= bounds.top) {
@@ -352,6 +399,7 @@ class HomeDragState internal constructor(
     private fun targetBounds(target: DropTarget): Rect? = when (target) {
         is DropTarget.Cell -> cellBounds(target.page, CellRect(target.cell.col, target.cell.row))
         is DropTarget.DockSlot -> slotBounds(target.slot)
+        is DropTarget.FolderRank -> folderCellBounds(target.rank)
         DropTarget.RemoveZone, DropTarget.Outside -> null
     }
 
@@ -361,7 +409,8 @@ class HomeDragState internal constructor(
         return when (p.container) {
             HomeContainer.PAGE -> cellBounds(p.page, CellRect(p.col, p.row, p.spanX, p.spanY))
             HomeContainer.DOCK -> slotBounds(p.col)
-            HomeContainer.FOLDER -> null
+            // Back to its place in the open folder, if that is where it came from.
+            HomeContainer.FOLDER -> openFolder?.items?.indexOfFirst { it.id == item.id }?.takeIf { it >= 0 }?.let(::folderCellBounds)
         }
     }
 
@@ -390,6 +439,41 @@ class HomeDragState internal constructor(
         val slotW = bounds.width / engine().spec.dockSlots
         return Rect(Offset(bounds.left + slot * slotW, bounds.top), Size(slotW, bounds.height))
     }
+
+    private fun openCard(): LayoutCoordinates? =
+        folderCard?.takeIf { openFolder != null && it.isAttached }
+
+    /** The open folder's grid shape: its coordinates, columns, rows and item count. */
+    private fun folderShape(): FolderShape? {
+        val grid = folderGrid?.takeIf { it.isAttached && openCard() != null } ?: return null
+        val count = openFolder?.items?.size?.takeIf { it > 0 } ?: return null
+        val cols = folderColumns(count)
+        return FolderShape(grid, cols, (count + cols - 1) / cols, count)
+    }
+
+    private fun folderRankAt(layer: LayoutCoordinates, point: Offset): DropTarget.FolderRank? {
+        val shape = folderShape() ?: return null
+        val local = shape.grid.localPositionOf(layer, point)
+        val col = (local.x / (shape.grid.size.width.toFloat() / shape.cols)).toInt().coerceIn(0, shape.cols - 1)
+        val row = (local.y / (shape.grid.size.height.toFloat() / shape.rows)).toInt().coerceIn(0, shape.rows - 1)
+        return DropTarget.FolderRank((row * shape.cols + col).coerceAtMost(shape.count - 1))
+    }
+
+    /** Cell [rank] of the open folder's grid, in drag-layer coordinates. */
+    private fun folderCellBounds(rank: Int): Rect? {
+        val layer = layer?.takeIf { it.isAttached } ?: return null
+        val shape = folderShape() ?: return null
+        val w = shape.grid.size.width.toFloat() / shape.cols
+        val h = shape.grid.size.height.toFloat() / shape.rows
+        val left = rank % shape.cols * w
+        val top = rank / shape.cols * h
+        return Rect(
+            layer.localPositionOf(shape.grid, Offset(left, top)),
+            layer.localPositionOf(shape.grid, Offset(left + w, top + h)),
+        )
+    }
+
+    private class FolderShape(val grid: LayoutCoordinates, val cols: Int, val rows: Int, val count: Int)
 
     /** One home cell, measured from any composed page. */
     private fun homeCellSize(): Size? {

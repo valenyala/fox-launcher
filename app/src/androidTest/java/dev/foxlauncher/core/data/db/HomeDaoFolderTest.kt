@@ -4,6 +4,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.foxlauncher.core.model.HomeContainer
+import dev.foxlauncher.feature.home.folderCleanup
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -108,6 +109,22 @@ class HomeDaoFolderTest {
         assertEquals(false, dao.insertIntoFolder(app(HomeContainer.PAGE, 0, 0, 0), folderItemId = 999))
 
         assertTrue(dao.getAll().isEmpty())
+    }
+
+    @Test
+    fun aFolderDownToOneItemCollapsesIntoItsPlace() = runBlocking {
+        val a = dao.insert(app(HomeContainer.PAGE, page = 0, col = 0, row = 0))
+        val b = dao.insert(app(HomeContainer.PAGE, page = 0, col = 1, row = 0))
+        val folderId = assertNotNull(dao.createFolder(a, b, title = "", createdAt = 0))
+        val tile = dao.getAll().single { it.type == HomeItemType.FOLDER }
+        dao.deleteByIds(listOf(b))
+
+        val cleanup = folderCleanup(dao.getAll())
+        dao.applyFolderCleanup(cleanup.promoted, cleanup.deletedItemIds, cleanup.deletedFolderIds)
+
+        val last = dao.getAll().single()
+        assertEquals(listOf<Any?>(a, HomeContainer.PAGE, tile.page, tile.col, tile.row, null), last.run { listOf(id, container, page, col, row, this.folderId) })
+        assertTrue(dao.getFolderChildren(folderId).isEmpty())
     }
 
     private fun app(container: HomeContainer, page: Int, col: Int, row: Int) = HomeItemEntity(
