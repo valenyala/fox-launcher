@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 2 — Home grid (phases 0 and 1 code complete; both device checklists still owed)
-**Next task:** 2.4 Drag & drop
+**Next task:** 2.5 Folders
 
 ## Environment facts (verified 2026-09-17)
 
@@ -37,12 +37,12 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] 2.1 Room schema + repository
 - [x] 2.2 GridLayoutEngine
 - [x] 2.3 Page + dock rendering, wallpaper offsets (device-verified 2026-10-10)
-- [ ] 2.4 Drag & drop
+- [x] 2.4 Drag & drop (device checklist passed 2026-10-10, POCO F3)
   - [x] `DragResolver` + tests (pure drop rules)
   - [x] `HomeDragState`, long-press pick-up, `DragOverlay`, target highlight, edge page-flip (user: works, flips smoothly)
   - [x] Apply `DropAction`s in `HomeRepository` (move, dock, create/add folder, remove) (not device-verified)
   - [x] Remove zone, drag from drawer, page creation / empty-page cleanup (user: drawer drag, Remove, new page, rotation OK)
-  - [ ] Device checklist: all confirmed except "drop on app makes folder" (never explicitly tried; row 0 was broken, see 2026-10-10 notes)
+  - [x] Device checklist (user, 2026-10-10: pick-up, page flips, free cell, folder from a top-row app, Remove, drawer drag, rotation)
 - [ ] 2.5 Folders
 - [ ] 2.6 Item popup: shortcuts, app info, remove, uninstall
 - [ ] 2.7 First-run default layout
@@ -128,6 +128,9 @@ Update this file at the end of every session. Keep it terse. Newest session note
   `-Pandroid.injected.androidTest.leaveApksInstalledAfterRun=true` on a personal phone, or the launcher is uninstalled.
 
 ## Session notes
+
+- 2026-10-10 — **2.4 done.** The user confirmed the spring-loaded shrink (the Remove strip stays clear of row 0) and a
+  folder made by dropping onto a top-row app. That completes the device checklist.
 
 - 2026-10-10 — **First instrumented run** (POCO F3): 32 tests. On the first pass 3 failed:
   - `HomePageTest` assumed a screen at least 400 dp wide; this phone is 392.7 dp, so the box was squeezed. Now 320×400 dp,
