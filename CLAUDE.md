@@ -55,6 +55,11 @@ adb shell settings put secure enabled_accessibility_services dev.foxlauncher/dev
 adb shell settings put secure accessibility_enabled 1                          # enable our service for gesture system actions
 adb shell appops set dev.foxlauncher GET_USAGE_STATS allow                     # usage-stats special permission
 adb logcat -s FoxLauncher:V AndroidRuntime:E
+
+# performance (release-like build; results in build/perf)
+./gradlew :app:assembleProfiling && adb install -r app/build/outputs/apk/profiling/app-profiling.apk
+./scripts/perf/measure.sh <label>                          # cold start, page swipes, drawer, memory
+./scripts/perf/drawer-open-ab.sh A.apk B.apk               # A/B per-frame work of opening the drawer
 ```
 
 **Pre-commit gate** (must be green before every commit):

@@ -92,7 +92,8 @@ object DrawerTestTags {
 
 /**
  * The drawer wired to its ViewModel. [autoFocusSearch] is true only when opened by a search action.
- * [onAppLongPress] hears every long press, alongside the popup it opens.
+ * [onAppLongPress] hears every long press, alongside the popup it opens. [isShown] is false while
+ * the drawer is closed but kept composed.
  */
 @Composable
 fun DrawerScreen(
@@ -102,6 +103,7 @@ fun DrawerScreen(
     modifier: Modifier = Modifier,
     onAddTestItems: (() -> Unit)? = null,
     onAppLongPress: (AppEntry) -> Unit = {},
+    isShown: Boolean = true,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val view = LocalView.current
@@ -127,6 +129,7 @@ fun DrawerScreen(
         onTabSelected = viewModel::onTabSelected,
         onWorkPausedChange = viewModel::onWorkPausedChange,
         modifier = modifier,
+        isShown = isShown,
     )
 }
 
@@ -151,6 +154,7 @@ fun DrawerContent(
     onTabSelected: (DrawerTab) -> Unit = {},
     onWorkPausedChange: (Boolean) -> Unit = {},
     iconContent: @Composable (AppEntry) -> Unit = { AppIcon(it, state.iconSizeDp.dp) },
+    isShown: Boolean = true,
 ) {
     val gridState = rememberLazyGridState()
     val focusRequester = remember { FocusRequester() }
@@ -168,6 +172,8 @@ fun DrawerContent(
     }
     // A new query should show its best match, not wherever the list was scrolled to.
     LaunchedEffect(state.query, state.tab) { gridState.scrollToItem(0) }
+    // The drawer stays composed while closed: each opening starts at the top again.
+    LaunchedEffect(isShown) { if (!isShown) gridState.scrollToItem(0) }
 
     Surface(
         color = MaterialTheme.colorScheme.surface.copy(alpha = SCRIM_ALPHA),

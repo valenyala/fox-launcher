@@ -178,6 +178,17 @@ here contradicts what you remember, trust this file unless a device proves other
 - App-open animation: `ActivityOptions.makeClipRevealAnimation(view, x, y, w, h)` or `makeScaleUpAnimation`; pass the
   icon's screen bounds as `sourceBounds` too.
 
+## P. Performance facts (measured)
+
+- Measure release-like builds only (`profiling` build type); debug Compose is several times slower.
+- MIUI (POCO F3, MIUI 14) runs third-party apps at 60 Hz even with the panel set to 120 Hz. An app can ask with
+  `WindowManager.LayoutParams.preferredDisplayModeId` (a same-resolution mode). The system's
+  `PRIORITY_USER_SETTING_PEAK_REFRESH_RATE` vote still wins: MIUI lowers it on its own (heat, its "smart" policy).
+  Check with `adb shell dumpsys display | grep PEAK_REFRESH` and the `FrameInterval` column of `gfxinfo framestats`.
+- `dumpsys gfxinfo <pkg> framestats` keeps only the last 120 frames: one second at 120 Hz.
+- A full-screen `graphicsLayer { alpha = … }` copies the layer off screen every frame by default;
+  `CompositingStrategy.ModulateAlpha` avoids it when the content barely overlaps.
+
 ## C. Compose specifics that bite launchers
 
 - Do not put the grid in `LazyVerticalGrid`; items have absolute cells and spans. Use a custom `Layout` per page with

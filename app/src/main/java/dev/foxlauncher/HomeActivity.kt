@@ -2,6 +2,7 @@ package dev.foxlauncher
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.MotionEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -21,6 +22,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
 import dev.foxlauncher.core.apps.IconCache
 import dev.foxlauncher.core.common.FoxLog
+import dev.foxlauncher.core.ui.HighRefreshRate
 import dev.foxlauncher.core.ui.LocalIconCache
 import dev.foxlauncher.core.ui.launchSource
 import dev.foxlauncher.core.ui.theme.FoxTheme
@@ -43,6 +45,9 @@ import javax.inject.Inject
 class HomeActivity : ComponentActivity() {
 
     @Inject lateinit var iconCache: IconCache
+
+    /** 120 Hz while touched; MIUI would otherwise hold Fox at 60 Hz (see [HighRefreshRate]). */
+    private val refreshRate = HighRefreshRate(this)
 
     /** Bumped by every Home key press that reaches us while in front; the home screen reacts to it. */
     private var homeKeyPresses by mutableIntStateOf(0)
@@ -103,6 +108,7 @@ class HomeActivity : ComponentActivity() {
                                 // TODO(2.7): remove with the first-run layout.
                                 onAddTestItems = viewModel::addTestItems.takeIf { BuildConfig.DEBUG },
                                 onAppLongPress = ::onAppLongPress,
+                                isShown = isShown,
                             )
                         }
                         if (showHiddenApps) {
@@ -122,6 +128,24 @@ class HomeActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         FoxLog.d("onNewIntent: ${intent.action}")
-        if (intent.action == Intent.ACTION_MAIN) homeKeyPresses++
+        if (intent.action == Intent.ACTION_MAIN) {
+            // Closing the drawer and scrolling home animate: run them at full rate too.
+            refreshRate.onInteractionStart()
+            refreshRate.onInteractionEnd()
+            homeKeyPresses++
+        }
+    }
+
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> refreshRate.onInteractionStart()
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> refreshRate.onInteractionEnd()
+        }
+        return super.dispatchTouchEvent(event)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        refreshRate.releaseNow()
     }
 }

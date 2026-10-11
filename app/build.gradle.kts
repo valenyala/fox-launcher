@@ -32,6 +32,13 @@ android {
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
+        // Performance measurement on a device: release code (R8) signed with the debug key, so it installs
+        // over a debug build and keeps the layout. Real release signing is task 8.3.
+        create("profiling") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += "release"
+        }
     }
 
     buildFeatures {

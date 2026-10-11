@@ -131,7 +131,40 @@ Update this file at the end of every session. Keep it terse. Newest session note
   `adb shell am instrument -w -r dev.foxlauncher.test/androidx.test.runner.AndroidJUnitRunner`. Always pass
   `-Pandroid.injected.androidTest.leaveApksInstalledAfterRun=true` on a personal phone, or the launcher is uninstalled.
 
+## Performance (POCO F3, measured with scripts/perf)
+
+Always measure the `profiling` build type (release + R8, debug-signed, installs over debug); debug builds run
+Compose 2–4× slower and mislead. Janky % depends on the refresh rate MIUI picks (see PLATFORM-NOTES P), so compare
+per-frame work (`frame-work.awk`) across runs, and A/B with `drawer-open-ab.sh` (alternating installs) because
+thermal state drifts.
+
+| 2026-10-11 | debug | profiling, before | profiling, after |
+|---|---|---|---|
+| Cold start TotalTime (median of 5) | 770 ms | 323 ms | 265 ms |
+| Page swipes: janky / p99 | 2.4 % / 21 ms | 0.15 % / 11 ms | 0.29 % / 12 ms |
+| Drawer open + scroll: p90 / p95 / p99 | 48 / 81 / 150 ms | 16 / 20 / 34 ms | 11 / 14 / 25 ms |
+| Total PSS | 175 MB | 119 MB | 141 MB (drawer kept composed) |
+
 ## Session notes
+
+- 2026-10-11 — **Performance pass** (user request, before 2.7; pulls parts of Phase 8 forward). Found by measuring,
+  in order of effect: (1) debug vs release, which is why the new `profiling` build type exists (R8 cuts the APK from
+  37.6 to 3.1 MB). (2) **MIUI held Fox at 60 Hz** on a 120 Hz panel set to 120 Hz. `HighRefreshRate` sets
+  `preferredDisplayModeId` to the fastest mode at the current size from finger down until 3 s after the last finger
+  up (and on Home), then gives the choice back, so an idle home does not hold 120 Hz. Verified by log: the display
+  lists 60/120/90 Hz modes (ids 1/2/3) and Fox requests id 2; one run had every frame at 8.3 ms. MIUI's own
+  `PRIORITY_USER_SETTING_PEAK_REFRESH_RATE` vote can still cap at 60 (it did later in the session, likely thermal) and
+  outranks app requests. Pure `fastestModeAtSameSize` (+3 tests). (3) **Opening the drawer built it** (about 60 ms
+  frames): it is now composed after the home's first frame and kept, one screen below and alpha 0, with no semantics
+  (so tests and TalkBack see it as absent), and its container (`DrawerLayer`) is its own recomposition scope. Because
+  it stays composed, closing clears focus (the keyboard drops), re-arms search auto-focus, and the grid scrolls to the
+  top (`DrawerScope.isShown`, now an interface; `DrawerContent(isShown)`). (4) Both full-screen fades use
+  `CompositingStrategy.ModulateAlpha`. A/B over 6 opens each: GPU p90 7.5 → 6.5 ms, max 59 → 41 ms; UI p90 5.0 → 4.3 ms.
+  A single earlier run said the opposite: thermal noise. Cost: about +20 MB PSS for the kept drawer.
+  Not done yet: baseline profiles (8.1; the first launches after an install measured 1.1–1.3 s before ART compiled
+  the app), Compose compiler stability reports (8.2), and per-item drawer costs (`AppIcon` collects `generation` per
+  icon; items track `onGloballyPositioned` every scroll frame). +3 instrumented tests (drawer built before first open,
+  pill re-focuses search, closing scrolls to top); 50/50 pass.
 
 - 2026-10-11 — 2.6 checkpoint 3 of 3, **code done; device checklist pending.** Long-pressing a shortcut row arms a
   drag of `newShortcutItem(shortcut)` (id `NEW_ITEM_ID`, title = short label); moving on closes the popup. A drop

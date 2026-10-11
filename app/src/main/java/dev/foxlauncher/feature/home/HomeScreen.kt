@@ -43,6 +43,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -50,6 +51,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -63,8 +65,10 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.Velocity
@@ -139,9 +143,15 @@ object HomeTestTags {
 /** An item's open popup: the item, its bounds in the drag layer (the anchor) and in the window. */
 private data class OpenPopup(val item: HomeItem, val anchor: Rect, val windowBounds: Rect)
 
-/** What the drawer slot can ask of the home screen. */
+/** What the drawer slot knows of, and can ask of, the home screen. */
 @Stable
-fun interface DrawerScope {
+interface DrawerScope {
+    /**
+     * True while the drawer is on screen. It stays composed while closed, so it opens without
+     * building anything; closing is the moment to reset it (scroll position).
+     */
+    val isShown: Boolean
+
     /**
      * A long press on [entry] in the drawer. If the finger then moves, the drawer gets out of the
      * way and the app is dragged onto the home screen (task 2.4).
@@ -234,18 +244,36 @@ fun HomeScreen(
     val isDrawerShown by remember { derivedStateOf { progress.value > 0f } }
 
     val currentOnDrawerClosed by rememberUpdatedState(onDrawerClosed)
+    val focusManager = LocalFocusManager.current
 
     /** A drag leaving the drawer: drop it at once so the home screen is the drop surface. */
     fun closeDrawerNow() {
         if (isOpen) currentOnDrawerClosed()
+        // The drawer stays composed: drop its search focus (and the keyboard) and re-arm auto focus.
+        focusManager.clearFocus()
+        openedBySearch = false
         isOpen = false
         scope.launch { progress.snapTo(0f) }
     }
 
-    val drawerScope = DrawerScope { entry -> dragState.arm(newAppItem(entry), onDragStart = ::closeDrawerNow) }
+    val drawerScope = object : DrawerScope {
+        override val isShown: Boolean get() = isDrawerShown
+        override fun onAppLongPress(entry: AppEntry) = dragState.arm(newAppItem(entry), onDragStart = ::closeDrawerNow)
+    }
+    // Building the drawer is the costliest frame in the app (about 60 ms on the POCO F3), so it is
+    // built once, right after the home's first frame, and kept: opening only moves a layer.
+    var drawerBuilt by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        withFrameNanos { }
+        drawerBuilt = true
+    }
 
     fun settle(open: Boolean, velocity: Float = 0f) {
         if (isOpen && !open) currentOnDrawerClosed()
+        if (!open) {
+            focusManager.clearFocus()
+            openedBySearch = false
+        }
         isOpen = open
         scope.launch {
             progress.animateTo(
@@ -341,7 +369,11 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.safeDrawing)
-                .graphicsLayer { alpha = 1f - progress.value },
+                .graphicsLayer {
+                    alpha = 1f - progress.value
+                    // Alpha per draw call instead of an off-screen copy of the whole home every frame (see DrawerLayer).
+                    compositingStrategy = CompositingStrategy.ModulateAlpha
+                },
         ) {
             HorizontalPager(
                 state = pagerState,
@@ -433,19 +465,13 @@ fun HomeScreen(
         DragOverlay(dragState) { item ->
             HomeItemView(item, state.apps, iconSize, state.showLabels, onClick = null, shortcutIcons = state.shortcutIcons)
         }
-        if (isDrawerShown) {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .nestedScroll(drawerPull)
-                    .graphicsLayer {
-                        translationY = (1f - progress.value) * size.height
-                        alpha = progress.value
-                    }
-                    .testTag(HomeTestTags.DRAWER),
-            ) {
-                drawerScope.drawer(openedBySearch)
-            }
+        DrawerLayer(
+            built = drawerBuilt,
+            isShown = { isDrawerShown },
+            progress = { progress.value },
+            pull = drawerPull,
+        ) {
+            drawerScope.drawer(openedBySearch)
         }
     }
     folderToRemove?.let { folder ->
@@ -508,6 +534,40 @@ private fun RemoveFolderDialog(folder: HomeItem.Folder, onConfirm: () -> Unit, o
 }
 
 /**
+ * The drawer's container: one screen below while closed (off screen, so it takes no touches) and
+ * hidden from accessibility services and tests, sliding and fading in with [progress]. Its own
+ * composable, so the drawer opening or closing recomposes this and not the whole home screen.
+ * Both this fade and the home grid's use [CompositingStrategy.ModulateAlpha]: the default copies
+ * the whole full-screen layer off screen every frame of the animation, which made opening the
+ * drawer GPU-bound (up to 20 ms a frame on the POCO F3).
+ */
+@Composable
+private fun DrawerLayer(
+    built: Boolean,
+    isShown: () -> Boolean,
+    progress: () -> Float,
+    pull: NestedScrollConnection,
+    content: @Composable () -> Unit,
+) {
+    val shown = isShown()
+    if (!built && !shown) return
+    Box(
+        Modifier
+            .fillMaxSize()
+            .nestedScroll(pull)
+            .graphicsLayer {
+                val p = progress()
+                translationY = (1f - p) * size.height
+                alpha = p
+                compositingStrategy = CompositingStrategy.ModulateAlpha
+            }
+            .then(if (shown) Modifier.testTag(HomeTestTags.DRAWER) else Modifier.clearAndSetSemantics { }),
+    ) {
+        content()
+    }
+}
+
+/**
  * Pull-down-to-close for the drawer's lists. A list takes every vertical drag, so the home swipe
  * never sees one that starts on it; this takes what the list leaves over once it is at its top
  * and pulls the drawer down with the finger. Release rules match the home swipe: a fling either
@@ -540,7 +600,7 @@ private class DrawerPullConnection(
         if (target > 0f) {
             pulled = target
         } else {
-            // Fully pulled away: the drawer leaves composition, and its list may never report the release.
+            // Fully pulled away: settle now; the list may never report the release once the drawer is closed.
             pulled = null
             settle(false, 0f)
         }

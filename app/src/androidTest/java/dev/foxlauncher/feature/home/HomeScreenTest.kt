@@ -85,6 +85,46 @@ class HomeScreenTest {
     }
 
     @Test
+    fun theDrawerIsBuiltBeforeItsFirstOpening() {
+        var built = false
+        composeRule.setContent {
+            FoxTheme {
+                HomeScreen(homeKeyPresses = 0, onDrawerClosed = {}) {
+                    built = true
+                    Text("drawer")
+                }
+            }
+        }
+        composeRule.waitForIdle()
+
+        assertTrue(built)
+        composeRule.onNodeWithTag(HomeTestTags.DRAWER).assertDoesNotExist()
+        composeRule.onNodeWithText("drawer").assertDoesNotExist()
+    }
+
+    @Test
+    fun reopeningWithThePillFocusesSearchAgain() {
+        var presses by mutableIntStateOf(0)
+        composeRule.setContent {
+            FoxTheme {
+                HomeScreen(homeKeyPresses = presses, onDrawerClosed = {}) { focus -> Text("drawer focus=$focus") }
+            }
+        }
+        composeRule.onNodeWithTag(HomeTestTags.SEARCH_PILL).performClick()
+        composeRule.onNodeWithText("drawer focus=true").assertIsDisplayed()
+        presses++
+        composeRule.waitForIdle()
+        composeRule.onRoot().performTouchInput { swipeUp() }
+        composeRule.onNodeWithText("drawer focus=false").assertIsDisplayed()
+        presses++
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag(HomeTestTags.SEARCH_PILL).performClick()
+
+        composeRule.onNodeWithText("drawer focus=true").assertIsDisplayed()
+    }
+
+    @Test
     fun homeKeyClosesTheDrawer() {
         var presses by mutableIntStateOf(0)
         var closed = 0

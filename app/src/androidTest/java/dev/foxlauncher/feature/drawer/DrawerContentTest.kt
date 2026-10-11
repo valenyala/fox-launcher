@@ -6,13 +6,18 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -103,6 +108,35 @@ class DrawerContentTest {
         composeRule.waitForIdle()
 
         assertEquals(onSurface, contentColor)
+    }
+
+    @Test
+    fun closingTheDrawerScrollsItBackToTheTop() {
+        val many = (1..80).map { app("App %02d".format(it)) }
+        var shown by mutableStateOf(true)
+        composeRule.setContent {
+            FoxTheme {
+                DrawerContent(
+                    state = DrawerUiState(sections = buildSections(many, ""), isLoading = false),
+                    searchState = TextFieldState(),
+                    autoFocusSearch = false,
+                    onAppClick = { _, _ -> },
+                    onAppLongClick = {},
+                    onDismissPopup = {},
+                    onAppInfo = { _, _ -> },
+                    onUninstall = {},
+                    iconContent = { Box(Modifier.size(48.dp)) },
+                    isShown = shown,
+                )
+            }
+        }
+        composeRule.onNodeWithTag(DrawerTestTags.GRID).performScrollToNode(hasText("App 80"))
+        composeRule.onNodeWithText("App 01").assertDoesNotExist()
+
+        shown = false
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithText("App 01").assertIsDisplayed()
     }
 
     private fun setDrawer(query: String, onAppClick: (AppEntry) -> Unit = {}) {
