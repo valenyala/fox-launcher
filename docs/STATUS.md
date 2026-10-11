@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 2 — Home grid (phases 0 and 1 code complete; both device checklists still owed)
-**Next task:** 2.5 Folders
+**Next task:** 2.6 Item popup: shortcuts, app info, remove, uninstall
 
 ## Environment facts (verified 2026-09-17)
 
@@ -43,7 +43,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
   - [x] Apply `DropAction`s in `HomeRepository` (move, dock, create/add folder, remove) (not device-verified)
   - [x] Remove zone, drag from drawer, page creation / empty-page cleanup (user: drawer drag, Remove, new page, rotation OK)
   - [x] Device checklist (user, 2026-10-10: pick-up, page flips, free cell, folder from a top-row app, Remove, drawer drag, rotation)
-- [ ] 2.5 Folders (code done, 37 instrumented tests pass on the phone; device checklist pending)
+- [x] 2.5 Folders (device checklist passed 2026-10-11, POCO F3)
 - [ ] 2.6 Item popup: shortcuts, app info, remove, uninstall
 - [ ] 2.7 First-run default layout
 - [ ] 2.8 Missing / suspended app handling
@@ -128,6 +128,9 @@ Update this file at the end of every session. Keep it terse. Newest session note
   `-Pandroid.injected.androidTest.leaveApksInstalledAfterRun=true` on a personal phone, or the launcher is uninstalled.
 
 ## Session notes
+
+- 2026-10-11 — **2.5 done.** User confirmed on the phone: create, rename, reorder inside, add a third app, drag out
+  down to one item (collapses). Rotation with a folder open is retired by ADR-14.
 
 - 2026-10-11 — **Portrait only (ADR-14)**, at the user's request: `screenOrientation="portrait"` (+ a
   `LockedOrientationActivity` lint ignore, mirrored in PLATFORM-NOTES H). Checked on the phone: `dumpsys activity`
