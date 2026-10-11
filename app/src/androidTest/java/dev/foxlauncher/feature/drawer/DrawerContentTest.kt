@@ -3,7 +3,11 @@ package dev.foxlauncher.feature.drawer
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -85,6 +89,22 @@ class DrawerContentTest {
         assertEquals(listOf(true), pauses)
     }
 
+    @Test
+    fun appNamesUseTheThemesOnSurfaceColour() {
+        // A see-through surface matches no theme colour, so Surface cannot pick its content colour
+        // itself: unset, names were black, invisible on the dark drawer.
+        var contentColor = Color.Unspecified
+        var onSurface = Color.Unspecified
+        setDrawer(
+            DrawerUiState(sections = buildSections(apps, ""), isLoading = false),
+            onSurface = { onSurface = it },
+            iconContent = { contentColor = LocalContentColor.current },
+        )
+        composeRule.waitForIdle()
+
+        assertEquals(onSurface, contentColor)
+    }
+
     private fun setDrawer(query: String, onAppClick: (AppEntry) -> Unit = {}) {
         setDrawer(
             DrawerUiState(query = query, sections = buildSections(apps, query), isLoading = false),
@@ -96,9 +116,12 @@ class DrawerContentTest {
         state: DrawerUiState,
         onAppClick: (AppEntry) -> Unit = {},
         onWorkPausedChange: (Boolean) -> Unit = {},
+        onSurface: (Color) -> Unit = {},
+        iconContent: @Composable () -> Unit = {},
     ) {
         composeRule.setContent {
             FoxTheme {
+                onSurface(MaterialTheme.colorScheme.onSurface)
                 DrawerContent(
                     state = state,
                     searchState = TextFieldState(state.query),
@@ -109,7 +132,10 @@ class DrawerContentTest {
                     onAppInfo = { _, _ -> },
                     onUninstall = {},
                     onWorkPausedChange = onWorkPausedChange,
-                    iconContent = { Box(Modifier.size(48.dp)) },
+                    iconContent = {
+                        iconContent()
+                        Box(Modifier.size(48.dp))
+                    },
                 )
             }
         }

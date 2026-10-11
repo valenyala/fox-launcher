@@ -171,6 +171,8 @@ fun DrawerContent(
 
     Surface(
         color = MaterialTheme.colorScheme.surface.copy(alpha = SCRIM_ALPHA),
+        // Explicit: a see-through surface matches no theme colour, so Surface would fall back to black.
+        contentColor = MaterialTheme.colorScheme.onSurface,
         modifier = modifier.fillMaxSize(),
     ) {
         Column(Modifier.windowInsetsPadding(WindowInsets.statusBars)) {
