@@ -1,5 +1,6 @@
 package dev.foxlauncher.feature.home
 
+import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
@@ -9,9 +10,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -20,6 +23,7 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.foxlauncher.core.ui.theme.FoxTheme
 import kotlin.test.assertEquals
@@ -32,7 +36,7 @@ import org.junit.runner.RunWith
 class HomeScreenTest {
 
     @get:Rule
-    val composeRule = createComposeRule()
+    val composeRule = createAndroidComposeRule<ComponentActivity>()
 
     @Test
     fun drawerIsClosedInitially() {
@@ -100,6 +104,31 @@ class HomeScreenTest {
         assertTrue(built)
         composeRule.onNodeWithTag(HomeTestTags.DRAWER).assertDoesNotExist()
         composeRule.onNodeWithText("drawer").assertDoesNotExist()
+    }
+
+    @Test
+    fun comingBackHomeDoesNotRedrawTheClosedDrawer() {
+        var draws = 0
+        composeRule.setContent {
+            FoxTheme {
+                HomeScreen(homeKeyPresses = 0, onDrawerClosed = {}) {
+                    Text("drawer", Modifier.drawBehind { draws++ })
+                }
+            }
+        }
+        composeRule.waitForIdle()
+        composeRule.onRoot().captureToImage()
+        val drawsBefore = draws
+
+        // Another activity covers the home, then goes: the hidden window lost its display lists.
+        composeRule.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
+        composeRule.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
+        composeRule.waitForIdle()
+        composeRule.onRoot().captureToImage()
+
+        assertEquals(drawsBefore, draws)
+        composeRule.onNodeWithTag(HomeTestTags.SEARCH_PILL).performClick()
+        composeRule.onNodeWithText("drawer").assertIsDisplayed()
     }
 
     @Test

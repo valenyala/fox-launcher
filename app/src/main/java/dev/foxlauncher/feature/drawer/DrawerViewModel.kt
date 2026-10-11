@@ -84,6 +84,10 @@ class DrawerViewModel @Inject constructor(
 
     private val content = combine(sections, query, appRepository.isLoaded, ::Triple)
 
+    /**
+     * Kept running while Fox is in the background, like the home's: the drawer stays composed, and
+     * stopping it (`WhileSubscribed`) re-sorted every app on each return to the home screen.
+     */
     val uiState: StateFlow<DrawerUiState> = combine(
         content,
         layout,
@@ -100,7 +104,7 @@ class DrawerViewModel @Inject constructor(
             work = work,
             tab = tab,
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), DrawerUiState())
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, DrawerUiState())
 
     fun onQueryChange(query: String) {
         searchState.edit { replace(0, length, query) }
@@ -155,9 +159,5 @@ class DrawerViewModel @Inject constructor(
     fun onUninstall(entry: AppEntry) {
         popup.value = null
         appRepository.uninstall(entry)
-    }
-
-    private companion object {
-        const val STOP_TIMEOUT_MS = 5_000L
     }
 }

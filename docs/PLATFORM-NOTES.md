@@ -188,6 +188,13 @@ here contradicts what you remember, trust this file unless a device proves other
 - `dumpsys gfxinfo <pkg> framestats` keeps only the last 120 frames: one second at 120 Hz.
 - A full-screen `graphicsLayer { alpha = … }` copies the layer off screen every frame by default;
   `CompositingStrategy.ModulateAlpha` avoids it when the content barely overlaps.
+- When the window turns invisible (any app in front), HWUI drops the display lists of everything in its render tree,
+  and Compose re-records each one before the first frame back. Anything kept composed but hidden (the drawer) must
+  be out of that tree: give it its own layer and do not draw that layer while hidden. Compose still records a changed
+  layer that nothing draws, so showing it again is cheap.
+- MIUI swaps most of a backgrounded launcher out (after a few minutes in Settings: 28 MB PSS plus 21 MB in swap, against
+  about 141 MB in front) and evicts its code pages. The first frame after a long absence pays page faults
+  (`filemap_fault` in a trace) that no app-side change avoids.
 
 ## C. Compose specifics that bite launchers
 

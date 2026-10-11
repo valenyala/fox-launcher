@@ -145,7 +145,27 @@ thermal state drifts.
 | Drawer open + scroll: p90 / p95 / p99 | 48 / 81 / 150 ms | 16 / 20 / 34 ms | 11 / 14 / 25 ms |
 | Total PSS | 175 MB | 119 MB | 141 MB (drawer kept composed) |
 
+Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 returns): TotalTime median 89 → 78 ms,
+Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
+
 ## Session notes
+
+- 2026-10-11 — Perf: **icons appeared late when returning home** (user report). Until Fox's first frame after a
+  return, the system shows the bare wallpaper. Traced on the POCO F3: Home press to that frame took about 50 ms after
+  3 s away, 63 ms after 12 s and 178 ms after 150 s. Two causes were Fox's own. (1) **The hidden drawer was redrawn**:
+  a window that turns invisible drops the display lists of its whole render tree, and the closed drawer (alpha 0, one
+  screen down) was in it, so every return re-recorded the drawer before the home's first frame. `DrawerLayer` now puts
+  the content in its own layer and draws nothing while closed (Compose still records a changed layer that nothing
+  draws, so opening costs no more: two `open` A/Bs showed no consistent difference). (2) **`WhileSubscribed(5 s)`**
+  on the home and drawer state re-ran the Room query, settings reads, drawer sort and shortcut icons on every return
+  after 5 s away, on worker threads alongside the first frame. Shortcut items also showed their app's icon until
+  theirs reloaded, because `shortcutIcons` starts empty. Both are now `SharingStarted.Eagerly`; on its own this
+  showed no timing gain in the 12 s A/B (95 vs 89 ms, within noise). The rest of the delay is outside Fox: the
+  system's launch work (about 60 ms of the 150 s case) and page faults re-reading Fox's evicted code (the main
+  thread waits on `filemap_fault`, up to 19 ms at a time); MIUI also swaps most of Fox out while it is backgrounded.
+  A/B: see the Performance section. New `ab.sh return` and `first-frame.awk`. New instrumented test
+  `comingBackHomeDoesNotRedrawTheClosedDrawer` (moves the activity to CREATED and back); it fails on the old code
+  (3 drawer draws, expected 1). `HomeScreenTest` now uses `createAndroidComposeRule<ComponentActivity>()`. 51/51 pass.
 
 - 2026-10-11 — Perf: per-item drawer and home costs. `AppIcon` read the icon generation with a lifecycle-aware
   collector per icon; `HomeActivity` now collects it once and provides `LocalIconGeneration`. Drawer and home icons

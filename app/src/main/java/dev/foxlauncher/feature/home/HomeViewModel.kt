@@ -77,6 +77,12 @@ class HomeViewModel @Inject constructor(
         }
         .onStart { emit(persistentMapOf()) }
 
+    /**
+     * Kept running while Fox is in the background: the home is what every return shows. Stopping
+     * it (`WhileSubscribed`) re-ran the Room query, the settings reads and the shortcut icons on
+     * every return after 5 s away, alongside the home's first frame, and shortcut items showed
+     * their app's icon until theirs had loaded again.
+     */
     val uiState: StateFlow<HomeUiState> = combine(
         settings.isFirstRun,
         homeRepository.layout,
@@ -87,7 +93,7 @@ class HomeViewModel @Inject constructor(
         HomeUiState(isFirstRun, layout, apps, spec, iconSizeDp, showLabels, icons)
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
+        started = SharingStarted.Eagerly,
         initialValue = HomeUiState(),
     )
 
@@ -185,8 +191,4 @@ class HomeViewModel @Inject constructor(
             .filterIsInstance<HomeItem.Shortcut>()
             .map { AppShortcut(it.packageName, it.shortcutId, it.userSerial, it.title, longLabel = null) }
             .toSet()
-
-    private companion object {
-        const val STOP_TIMEOUT_MS = 5_000L
-    }
 }

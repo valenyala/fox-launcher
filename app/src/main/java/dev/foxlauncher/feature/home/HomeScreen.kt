@@ -48,6 +48,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
@@ -540,6 +541,10 @@ private fun RemoveFolderDialog(folder: HomeItem.Folder, onConfirm: () -> Unit, o
  * Both this fade and the home grid's use [CompositingStrategy.ModulateAlpha]: the default copies
  * the whole full-screen layer off screen every frame of the animation, which made opening the
  * drawer GPU-bound (up to 20 ms a frame on the POCO F3).
+ *
+ * While closed, the content's own layer is not drawn at all. Its display list survives, but it is
+ * out of the window's render tree. A hidden window loses the display lists of that tree, and
+ * every return to the home screen re-recorded the hidden drawer before the home's first frame.
  */
 @Composable
 private fun DrawerLayer(
@@ -561,9 +566,17 @@ private fun DrawerLayer(
                 alpha = p
                 compositingStrategy = CompositingStrategy.ModulateAlpha
             }
-            .then(if (shown) Modifier.testTag(HomeTestTags.DRAWER) else Modifier.clearAndSetSemantics { }),
+            .then(
+                if (shown) {
+                    Modifier.testTag(HomeTestTags.DRAWER)
+                } else {
+                    Modifier.clearAndSetSemantics { }.drawWithContent { }
+                },
+            ),
     ) {
-        content()
+        Box(Modifier.fillMaxSize().graphicsLayer()) {
+            content()
+        }
     }
 }
 
