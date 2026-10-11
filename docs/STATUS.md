@@ -8,7 +8,9 @@ Update this file at the end of every session. Keep it terse. Newest session note
 ## Environment facts (verified 2026-09-17)
 
 - Host: NixOS x86_64, 12 cores, 31 GB RAM, git 2.54. No JDK, Gradle, adb or Android SDK on PATH → Phase 0.1 must create the flake.
-- Devices: none attached as of 2026-09-17 (`adb devices` empty). Record model + Android version here once one is used. Every device checklist in Phase 0 is still unrun.
+- Devices: POCO F3 (M2012K11AG, `alioth`), MIUI 14 V816.0.5.0.TKHMIXM, Android 13 (API 33), 1080×2400 @ 440 dpi,
+  wireless adb. First used 2026-10-10. 120 Hz display with a faster touch-sampling rate, so one MotionEvent can carry
+  several batched samples (see the 2026-10-10 note). Three-button navigation (`force_fsg_nav_bar` = 0).
 - Dev shell (0.1): nixpkgs pinned to b1b8759 (nixos-unstable, 2026-09-16); JDK 17.0.20.1, Android platform 37, build-tools 37.0.0 (bumped from 36 in 0.2, see ADR-12), platform-tools/adb 37.0.1, Gradle 8.14.4 from the shell. The build itself uses the wrapper, Gradle 9.7.1.
 - Toolchain (0.2): AGP 9.4.0, Kotlin 2.3.21, KSP 2.3.12, compose-bom 2026.09.00, compileSdk/targetSdk 37, minSdk 29. AGP 9 rejects the `kotlin.android` plugin (ADR-11).
 
@@ -33,7 +35,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 ## Phase 2 — Home grid
 - [x] 2.1 Room schema + repository
 - [x] 2.2 GridLayoutEngine
-- [x] 2.3 Page + dock rendering, wallpaper offsets (desk only)
+- [x] 2.3 Page + dock rendering, wallpaper offsets (device-verified 2026-10-10)
 - [ ] 2.4 Drag & drop
   - [x] `DragResolver` + tests (pure drop rules)
   - [ ] `HomeDragState`, long-press pick-up, `DragOverlay`, target highlight, edge page-flip
@@ -115,6 +117,21 @@ Update this file at the end of every session. Keep it terse. Newest session note
 (none)
 
 ## Session notes
+
+- 2026-10-10 — **First device session** (POCO F3, Android 13). The app runs; no crash at start, so the 0.4 runtime
+  Hilt/WorkManager check passes. The user confirmed: home shows the pill, the drawer opens by swipe, uninstalling an app
+  removes it from the drawer, and **2.3 "Done when" is now met** (debug test items land in the right cells with labels,
+  paging and page dots work, wallpaper offsets move, Home on page 1 animates to page 0, tapping opens with the reveal).
+  Not yet checked: rotation (0.3, phase 1 item 4), Home from another app, install-from-Play, search, the drawer popup.
+  No instrumented test has run yet.
+  **1.4 swipe fix:** a full-length swipe was needed to open the drawer. Measured with `input swipe` + a temporary log:
+  fast swipes gave velocity 0 (the tracker took only `change.position` per event and dropped the batched historical
+  samples) and the release read `progress.value` before the queued `snapTo` calls had run (a 500 px swipe counted as
+  58 px). Now `addPointerInputChange` and a synchronous `dragProgress`; thresholds 20 % (was 30 %) and 300 dp/s (was
+  1200 px/s). User confirmed it feels right. +2 `HomeScreenTest` cases (short fast flick opens, short slow drag does
+  not). Lesson for 3.2/3.3: the classifier must take historical samples, or it will miss flicks on this phone.
+  Quirk: with synthetic `input swipe` under ~400 ms, the movement in the up event is lost (`detectVerticalDragGestures`
+  ignores it), so the distance is undercounted; real finger swipes are not affected.
 
 - 2026-09-22 — 2.4 checkpoint 1 of 5: `feature/home/drag/DragResolver.kt` (pure) + 18 tests. Types: `DragKind`
   (APP/SHORTCUT/FOLDER/WIDGET), `DraggedItem(id?, kind, span)` (id null = new from the drawer), `PlacedItem`,

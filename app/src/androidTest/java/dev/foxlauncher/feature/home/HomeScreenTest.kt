@@ -52,6 +52,30 @@ class HomeScreenTest {
     }
 
     @Test
+    fun shortFastFlickOpensTheDrawer() {
+        setHome()
+
+        // 10 % of the height, well under the open threshold: only the fling speed can open it.
+        composeRule.onRoot().performTouchInput {
+            swipeUp(startY = height * 0.75f, endY = height * 0.65f, durationMillis = 60)
+        }
+
+        composeRule.onNodeWithText("drawer focus=false").assertIsDisplayed()
+    }
+
+    @Test
+    fun shortSlowDragLeavesTheDrawerClosed() {
+        setHome()
+
+        composeRule.onRoot().performTouchInput {
+            swipeUp(startY = height * 0.75f, endY = height * 0.65f, durationMillis = 1_500)
+        }
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag(HomeTestTags.DRAWER).assertDoesNotExist()
+    }
+
+    @Test
     fun homeKeyClosesTheDrawer() {
         var presses by mutableIntStateOf(0)
         var closed = 0

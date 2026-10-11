@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.input.pointer.util.addPointerInputChange
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -47,10 +48,10 @@ import dev.foxlauncher.feature.home.grid.GridLayoutEngine
 import kotlinx.coroutines.launch
 
 /** Drag progress past which a released drawer snaps open instead of closed. */
-private const val OPEN_THRESHOLD = 0.3f
+private const val OPEN_THRESHOLD = 0.2f
 
-/** Vertical fling speed (px/s) that opens or closes the drawer regardless of progress. */
-private const val FLING_VELOCITY = 1_200f
+/** Vertical fling speed (per second) that opens or closes the drawer regardless of progress. */
+private val FLING_VELOCITY = 300.dp
 
 private const val PILL_ALPHA = 0.35f
 
@@ -123,26 +124,34 @@ fun HomeScreen(
             // TODO(phase3): temporary. GestureArena replaces this detector in task 3.3.
             .pointerInput(Unit) {
                 val tracker = VelocityTracker()
+                // Kept in step with each drag event. progress.value lags behind while snapTo calls are
+                // still queued, and the last move and the up often arrive in the same frame.
+                var dragProgress = 0f
                 detectVerticalDragGestures(
                     onDragStart = {
                         tracker.resetTracking()
+                        dragProgress = progress.value
                         openedBySearch = false
                     },
                     onVerticalDrag = { change, dragAmount ->
-                        tracker.addPosition(change.uptimeMillis, change.position)
+                        // Takes the batched historical samples too: a fast flick can be one or two events.
+                        tracker.addPointerInputChange(change)
                         change.consume()
-                        scope.launch { progress.snapTo((progress.value - dragAmount / heightPx).coerceIn(0f, 1f)) }
+                        dragProgress = (dragProgress - dragAmount / heightPx).coerceIn(0f, 1f)
+                        val target = dragProgress
+                        scope.launch { progress.snapTo(target) }
                     },
                     onDragEnd = {
                         val velocityY = tracker.calculateVelocity().y
+                        val fling = FLING_VELOCITY.toPx()
                         val open = when {
-                            velocityY < -FLING_VELOCITY -> true
-                            velocityY > FLING_VELOCITY -> false
-                            else -> progress.value > OPEN_THRESHOLD
+                            velocityY < -fling -> true
+                            velocityY > fling -> false
+                            else -> dragProgress > OPEN_THRESHOLD
                         }
                         settle(open, velocity = -velocityY / heightPx)
                     },
-                    onDragCancel = { settle(progress.value > OPEN_THRESHOLD) },
+                    onDragCancel = { settle(dragProgress > OPEN_THRESHOLD) },
                 )
             },
     ) {
