@@ -57,7 +57,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInWindow
-import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -366,9 +367,14 @@ private fun AppGrid(
     }
 }
 
-/** Where an item's icon last was, without making every layout pass a recomposition. */
-private class BoundsHolder {
-    var bounds: Rect? = null
+/**
+ * The icon's layout node, kept so its window bounds (for the launch animation) are worked out only
+ * when it is tapped. Tracking them with onGloballyPositioned recomputed every visible icon's bounds
+ * on every scroll frame.
+ */
+private class IconNode {
+    var coordinates: LayoutCoordinates? = null
+    val bounds: Rect? get() = coordinates?.takeIf { it.isAttached }?.boundsInWindow()
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -384,7 +390,7 @@ private fun DrawerItem(
     onHide: (AppEntry) -> Unit,
     iconContent: @Composable (AppEntry) -> Unit,
 ) {
-    val holder = remember { BoundsHolder() }
+    val holder = remember { IconNode() }
     val haptics = LocalHapticFeedback.current
     Box {
         Column(
@@ -400,7 +406,7 @@ private fun DrawerItem(
                 )
                 .padding(vertical = 8.dp),
         ) {
-            Box(Modifier.onGloballyPositioned { holder.bounds = it.boundsInWindow() }) {
+            Box(Modifier.onPlaced { holder.coordinates = it }) {
                 iconContent(entry)
             }
             Spacer(Modifier.height(4.dp))

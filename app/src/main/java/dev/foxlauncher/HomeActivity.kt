@@ -24,6 +24,7 @@ import dev.foxlauncher.core.apps.IconCache
 import dev.foxlauncher.core.common.FoxLog
 import dev.foxlauncher.core.ui.HighRefreshRate
 import dev.foxlauncher.core.ui.LocalIconCache
+import dev.foxlauncher.core.ui.LocalIconGeneration
 import dev.foxlauncher.core.ui.launchSource
 import dev.foxlauncher.core.ui.theme.FoxTheme
 import dev.foxlauncher.feature.drawer.DrawerScreen
@@ -81,7 +82,8 @@ class HomeActivity : ComponentActivity() {
                     onPauseOrDispose {}
                 }
 
-                CompositionLocalProvider(LocalIconCache provides iconCache) {
+                val iconGeneration by iconCache.generation.collectAsStateWithLifecycle()
+                CompositionLocalProvider(LocalIconCache provides iconCache, LocalIconGeneration provides iconGeneration) {
                     HomeRoot(
                         isDefaultLauncher = isDefault,
                         onRequestDefaultLauncher = { requestDefaultLauncherRole(roleRequest) },

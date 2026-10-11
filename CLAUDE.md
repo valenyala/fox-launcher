@@ -59,7 +59,7 @@ adb logcat -s FoxLauncher:V AndroidRuntime:E
 # performance (release-like build; results in build/perf)
 ./gradlew :app:assembleProfiling && adb install -r app/build/outputs/apk/profiling/app-profiling.apk
 ./scripts/perf/measure.sh <label>                          # cold start, page swipes, drawer, memory
-./scripts/perf/drawer-open-ab.sh A.apk B.apk               # A/B per-frame work of opening the drawer
+./scripts/perf/ab.sh <open|scroll|pages> A.apk B.apk     # A/B per-frame work of one scenario
 ```
 
 **Pre-commit gate** (must be green before every commit):

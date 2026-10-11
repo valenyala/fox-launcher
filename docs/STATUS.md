@@ -135,7 +135,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 
 Always measure the `profiling` build type (release + R8, debug-signed, installs over debug); debug builds run
 Compose 2–4× slower and mislead. Janky % depends on the refresh rate MIUI picks (see PLATFORM-NOTES P), so compare
-per-frame work (`frame-work.awk`) across runs, and A/B with `drawer-open-ab.sh` (alternating installs) because
+per-frame work (`frame-work.awk`) across runs, and A/B with `ab.sh` (alternating installs) because
 thermal state drifts.
 
 | 2026-10-11 | debug | profiling, before | profiling, after |
@@ -146,6 +146,14 @@ thermal state drifts.
 | Total PSS | 175 MB | 119 MB | 141 MB (drawer kept composed) |
 
 ## Session notes
+
+- 2026-10-11 — Perf: per-item drawer and home costs. `AppIcon` read the icon generation with a lifecycle-aware
+  collector per icon; `HomeActivity` now collects it once and provides `LocalIconGeneration`. Drawer and home icons
+  tracked their window bounds with `onGloballyPositioned` (recomputed on every scroll or swipe frame); they keep the
+  node from `onPlaced` and compute bounds only when tapped. A/B (`ab.sh`, 2 rounds × 3): UI thread p90, drawer scroll
+  7.1 → 6.6 ms, page swipes 4.1 → 3.6 ms; medians slightly down; maxima within noise. Scroll GPU p90 also fell
+  (18.1 → 5.6 ms), which this change cannot cause: likely the shader cache, which a reinstall clears, so GPU numbers
+  right after an install are noisy. `drawer-open-ab.sh` became `ab.sh <open|scroll|pages>`. 50/50 instrumented pass.
 
 - 2026-10-11 — **Performance pass** (user request, before 2.7; pulls parts of Phase 8 forward). Found by measuring,
   in order of effect: (1) debug vs release, which is why the new `profiling` build type exists (R8 cuts the APK from

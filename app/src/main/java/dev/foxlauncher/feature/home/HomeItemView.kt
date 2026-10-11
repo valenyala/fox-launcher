@@ -27,7 +27,6 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -55,9 +54,13 @@ private fun wallpaperLabelStyle() = MaterialTheme.typography.labelMedium.copy(
     shadow = Shadow(color = Color.Black.copy(alpha = 0.6f), blurRadius = 6f),
 )
 
-/** Where an item's icon last was, without making every layout pass a recomposition. */
+/**
+ * The icon's layout node, kept so its window bounds (for the launch animation) are worked out only
+ * when it is tapped, not on every frame of a page swipe.
+ */
 private class IconBounds {
-    var value: Rect? = null
+    var coordinates: LayoutCoordinates? = null
+    val value: Rect? get() = coordinates?.takeIf { it.isAttached }?.boundsInWindow()
 }
 
 /** The item's own layout node, read when a long press starts a drag. */
@@ -99,7 +102,7 @@ fun HomeItemView(
             .then(interaction)
             .padding(4.dp),
     ) {
-        Box(Modifier.onGloballyPositioned { bounds.value = it.boundsInWindow() }) {
+        Box(Modifier.onPlaced { bounds.coordinates = it }) {
             ItemIcon(item, apps, shortcutIcons, iconSize)
         }
         if (showLabel) {
