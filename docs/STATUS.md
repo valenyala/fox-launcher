@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 3 — Gesture engine (user, 2026-10-12: Phase 3 now, 2.8 later; Phase 2 still owes 2.8 and its device checklist; phases 0 and 1 owe their device checklists)
-**Next task:** 3.6 System gesture coexistence, predictive back, home intent (2.8 deferred by the user)
+**Next task:** 3.7 Drag-follow drawer opening (2.8 deferred by the user)
 
 ## Environment facts (verified 2026-09-17)
 
@@ -65,7 +65,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] 3.3 GestureArena composable (device checklist passed 2026-10-12, POCO F3; emulators API 33/37)
 - [x] 3.4 FoxAccessibilityService + ActionExecutor (POCO F3 2026-10-12: all six system actions, disclosure, stopped state, automatic restart)
 - [x] 3.5 Gesture settings UI (POCO F3 2026-10-12: remapping to recents, an app, notifications; reset; Home closes settings)
-- [ ] 3.6 System gesture coexistence, predictive back, home intent — emulators (gesture navigation) pass; POCO (three-button) pending
+- [x] 3.6 System gesture coexistence, predictive back, home intent (gesture navigation: fox-api33/37; three-button: POCO F3, 2026-10-12)
 - [ ] 3.7 Drag-follow drawer opening
 - [ ] Device checklist passed on: —
 
@@ -160,6 +160,11 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-12 — **3.6 done.** On the POCO (three-button): Home while home → `HOME_KEY` → first page; Home from an app →
+  no gesture, page kept; Home with settings open only closed them; Home remapped to Open drawer opened it, and the next
+  Home only closed it; Back with nothing open stayed home. After the install the service came back by itself (the
+  package update rebinds it; no repair needed).
 
 - 2026-10-12 — 3.6 checkpoint. **Home key:** `onNewIntent` tells "while home" (window focus and no
   `FLAG_ACTIVITY_BROUGHT_TO_FRONT`, Launcher3's test) from "back from an app". Every press closes what is open
