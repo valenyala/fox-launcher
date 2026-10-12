@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 2 — Home grid (phases 0 and 1 code complete; both device checklists still owed)
-**Next task:** 2.7 First-run default layout (the performance pass is done; baseline profiles and stability reports stay in 8.1/8.2)
+**Next task:** user checks 2.7 on the POCO F3, then 2.8 Missing / suspended app handling
 
 ## Environment facts (verified 2026-09-17)
 
@@ -18,6 +18,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
   (1080×2400 @ 420 dpi), 4 GB RAM, `adb root` works. Cold boot about 30 s. API 29 has three-button navigation,
   33 and 37 gesture navigation. Rendering is software (the emulator rejects the host GPU driver and falls back to
   swangle/lavapipe), so no performance numbers from emulators. `--window` opens through XWayland.
+  **Test on API 33 (the phone's level) and above only** (user, 2026-10-12): fox-api33 and fox-api37; fox-api29 is not used.
 - Toolchain (0.2): AGP 9.4.0, Kotlin 2.3.21, KSP 2.3.12, compose-bom 2026.09.00, compileSdk/targetSdk 37, minSdk 29. AGP 9 rejects the `kotlin.android` plugin (ADR-11).
 
 ## Phase 0 — Toolchain & scaffold
@@ -54,7 +55,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
   - [x] App shortcuts in the popup (UI tested; the LauncherApps query not yet seen on the phone)
   - [x] Drag a shortcut out → pinned `Shortcut` item, pin sync, shortcut icons (not device-verified)
   - [x] Device checklist (user: shortcuts for Messages/Chrome, open, pin by drag, survives reboot, remove)
-- [ ] 2.7 First-run default layout
+- [ ] 2.7 First-run default layout — code done, emulators API 33/37 pass; POCO F3 check pending
 - [ ] 2.8 Missing / suspended app handling
 - [ ] Device checklist passed on: —
 
@@ -128,6 +129,11 @@ Update this file at the end of every session. Keep it terse. Newest session note
 
 ## Known issues
 
+- **Compose UI tests cannot run on API 37** (fox-api37): Espresso 3.5.0, pulled in by `ui-test-junit4`, reflects on
+  `InputManager.getInstance`, which Android 17 removed (`NoSuchMethodException`); 43 of 54 tests fail that way, the Room
+  tests pass. Run the instrumented suite on fox-api33. Possible fix to try: pin
+  `androidx.test.espresso:espresso-core` 3.7.0 (newest on Google Maven, 2026-10-12); untested, needs a dependency-log line.
+- The BUILD FAILED-with-every-test-passing issue below does not happen on the emulators: fox-api33 ends BUILD SUCCESSFUL.
 - `connectedDebugAndroidTest` (AGP 9.4, android-test-engine 1.0.1) ends in BUILD FAILED / "There were failing tests" on
   the POCO F3 even when every test passes: the JUnit XML and HTML report show 32/32 passing, and `am instrument` prints
   `OK (32 tests)`, `INSTRUMENTATION_CODE: -1`. `test-result-exit-code.txt` is 1 and `--info` shows no cause. The
@@ -154,6 +160,24 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-12 — 2.7 First-run default layout, **code done; POCO F3 check pending.** Pure `DefaultLayoutBuilder`
+  (`DefaultLayout.kt`, 11 tests) takes a `DefaultAppResolver` (role → launcher component), the catalog and the dock
+  width: dialer, SMS, browser, camera in that order, personal profile only, deduplicated, no gaps for roles that
+  resolve to nothing; an odd dock wider than 4 keeps its middle slot free (5 slots: 0, 1, 3, 4), which is this
+  session's reading of "drawer pill in the middle dock slot": the drawer pill already exists as "Search apps" under
+  the dock. `DeviceDefaultApps` resolves DIAL, a BROWSABLE http link and STILL_IMAGE_CAMERA (chooser → the single
+  system handler, as Launcher3) plus `Telephony.Sms.getDefaultSmsPackage`, then maps each package through
+  `getLaunchIntentForPackage` (PLATFORM-NOTES A). `HomeRepository.placeDefaultLayout` waits for the catalog and inserts
+  through `HomeDao.insertIntoEmptyHome` (one transaction, only into an empty home; +3 instrumented tests).
+  `HomeViewModel.onLauncherReady` reads `isFirstRun` from the store (the UI state's initial value says true), guards
+  against overlapping resumes, places the layout, then clears the flag; a crash in between re-runs harmlessly. The
+  "Add test items (debug)" action and `HomeRepository.addApp` are gone. Emulators: after `pm clear`, API 29/33/37 all
+  showed Phone, Messages, (free), Chrome, Camera; a relaunch did not double it; emptying the dock and restarting kept
+  it empty; Phone opens the dialer; the drawer menu has only Hidden apps. Instrumented: fox-api33 54/54, BUILD
+  SUCCESSFUL. fox-api37: Compose tests blocked by Espresso (known issues). fox-api29 showed 19/54 teardown timeouts
+  (`Activity never becomes requested state DESTROYED`) only while Fox is home (7/7 with the stock launcher); left
+  there, because the user scoped testing to API 33+.
 
 - 2026-10-12 — **Emulators** (user request, before 2.7). `flake.nix` composes the SDK through `composeSdk`; the
   default shell derivation is unchanged (checked: same `.drv`), and `devShells.emulator` adds the emulator, platforms

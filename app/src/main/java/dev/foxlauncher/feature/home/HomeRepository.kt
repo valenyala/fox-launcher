@@ -4,9 +4,9 @@ import dev.foxlauncher.core.apps.AppRepository
 import dev.foxlauncher.core.common.ApplicationScope
 import dev.foxlauncher.core.common.DefaultDispatcher
 import dev.foxlauncher.core.common.FoxLog
+import dev.foxlauncher.core.common.IoDispatcher
 import dev.foxlauncher.core.data.db.FolderEntity
 import dev.foxlauncher.core.data.db.HomeDao
-import dev.foxlauncher.core.model.AppEntry
 import dev.foxlauncher.core.model.HomeContainer
 import dev.foxlauncher.core.model.HomeItem
 import dev.foxlauncher.core.model.HomeLayout
@@ -21,8 +21,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * The home layout: Room rows in, [HomeLayout] out. Room runs its own queries off the main thread;
@@ -32,8 +34,10 @@ import kotlinx.coroutines.launch
 class HomeRepository @Inject constructor(
     private val dao: HomeDao,
     private val appRepository: AppRepository,
+    private val defaultApps: DeviceDefaultApps,
     @param:ApplicationScope scope: CoroutineScope,
     @param:DefaultDispatcher default: CoroutineDispatcher,
+    @param:IoDispatcher private val io: CoroutineDispatcher,
 ) {
     val layout: Flow<HomeLayout> =
         combine(dao.observeAll(), dao.observeFolders(), HomeLayoutMapper::toLayout).flowOn(default)
@@ -48,9 +52,21 @@ class HomeRepository @Inject constructor(
         }
     }
 
-    suspend fun addApp(entry: AppEntry, position: HomePosition): Long {
-        val item = HomeItem.App(id = 0, position = position, component = entry.component, userSerial = entry.userSerial)
-        return dao.insert(HomeLayoutMapper.toEntity(item, createdAt = System.currentTimeMillis()))
+    /**
+     * Fills the dock of an empty home with the device's default apps (task 2.7) once the catalog has
+     * loaded. A home with anything on it is left alone. Returns how many apps it placed.
+     */
+    suspend fun placeDefaultLayout(dockSlots: Int): Int {
+        appRepository.isLoaded.first { it }
+        val placements = withContext(io) { DefaultLayoutBuilder.build(defaultApps, appRepository.apps.value, dockSlots) }
+        val now = System.currentTimeMillis()
+        val rows = placements.map { (entry, position) ->
+            val item = HomeItem.App(id = 0, position = position, component = entry.component, userSerial = entry.userSerial)
+            HomeLayoutMapper.toEntity(item, createdAt = now)
+        }
+        if (!dao.insertIntoEmptyHome(rows)) return 0
+        FoxLog.i("First run: placed ${rows.size} default apps in the dock")
+        return rows.size
     }
 
     /** Persists new positions for [items] in one transaction. */

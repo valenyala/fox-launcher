@@ -59,6 +59,11 @@ here contradicts what you remember, trust this file unless a device proves other
   Quiet mode: `UserManager.requestQuietModeEnabled(enabled, user)` — allowed for the default launcher.
 - Suspended/unavailable apps: show dimmed, tapping a suspended app should call `launcherApps.startMainActivity` anyway;
   the system shows the suspension dialog.
+- Default apps (first-run dock, 2.7): the activity that resolves an intent is usually not the app's launcher activity
+  (POCO F3: DIAL → `com.google.android.dialer/…main.impl.MainActivity`, launcher icon `.extensions.GoogleDialtactsActivity`;
+  STILL_IMAGE_CAMERA → `com.android.camera/.AssistantCamera`, icon `.Camera`). Keep only the package and map it through
+  `getLaunchIntentForPackage`. With several handlers and no default, `resolveActivity` returns the system chooser, which is
+  not among `queryIntentActivities`; Launcher3 then takes the single system handler. SMS: `Telephony.Sms.getDefaultSmsPackage`.
 
 ## G. Gestures and system navigation
 

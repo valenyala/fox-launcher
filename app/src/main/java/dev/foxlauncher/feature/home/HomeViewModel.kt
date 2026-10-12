@@ -12,13 +12,9 @@ import dev.foxlauncher.core.apps.IconCache
 import dev.foxlauncher.core.data.settings.FoxSettings
 import dev.foxlauncher.core.model.AppEntry
 import dev.foxlauncher.core.model.AppShortcut
-import dev.foxlauncher.core.model.HomeContainer
 import dev.foxlauncher.core.model.HomeItem
 import dev.foxlauncher.core.model.HomeLayout
-import dev.foxlauncher.core.model.HomePosition
 import dev.foxlauncher.feature.home.drag.DropAction
-import dev.foxlauncher.feature.home.grid.CellRect
-import dev.foxlauncher.feature.home.grid.GridLayoutEngine
 import dev.foxlauncher.feature.home.grid.GridSpec
 import javax.inject.Inject
 import kotlinx.collections.immutable.ImmutableMap
@@ -26,6 +22,7 @@ import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableMap
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -97,10 +94,20 @@ class HomeViewModel @Inject constructor(
         initialValue = HomeUiState(),
     )
 
-    /** Called once Fox is actually holding the home role; 2.7 hangs the default layout here. */
+    private var firstRun: Job? = null
+
+    /**
+     * Called on every resume while Fox holds the home role. The first time, it fills the dock with
+     * the device's default apps (task 2.7), then records that first run is over. The flag is read
+     * from the store: [uiState] says "first run" until the settings have loaded.
+     */
     fun onLauncherReady() {
-        if (!uiState.value.isFirstRun) return
-        viewModelScope.launch { settings.setFirstRun(false) }
+        if (!uiState.value.isFirstRun || firstRun?.isActive == true) return
+        firstRun = viewModelScope.launch {
+            if (!settings.isFirstRun.first()) return@launch
+            homeRepository.placeDefaultLayout(dockSlots = settings.homeGrid.first().third)
+            settings.setFirstRun(false)
+        }
     }
 
     fun onItemClick(item: HomeItem, sourceBounds: Rect?, options: Bundle?) {
@@ -156,32 +163,6 @@ class HomeViewModel @Inject constructor(
     /** A home drag ended; [action] is what `DragResolver` decided. */
     fun onDrop(item: HomeItem, action: DropAction) {
         viewModelScope.launch { homeRepository.applyDrop(item, action) }
-    }
-
-    /**
-     * DEBUG ONLY, TODO(2.7): remove. Fills the dock and page 0, plus a few on page 1, with the
-     * first apps of the catalog so rendering can be checked before drag and drop exists.
-     */
-    fun addTestItems() {
-        viewModelScope.launch {
-            val spec = uiState.value.gridSpec
-            val apps = appRepository.apps.first { it.isNotEmpty() }.iterator()
-            repeat(spec.dockSlots) { slot ->
-                if (apps.hasNext()) homeRepository.addApp(apps.next(), HomePosition(HomeContainer.DOCK, 0, slot, 0))
-            }
-            val engine = GridLayoutEngine(spec)
-            listOf(0 to spec.cols * 2, 1 to 3).forEach { (page, count) ->
-                val taken = uiState.value.layout.pages.getOrNull(page)?.items.orEmpty()
-                    .map { CellRect(it.position.col, it.position.row, it.position.spanX, it.position.spanY) }
-                    .toMutableList()
-                repeat(count) {
-                    val cell = engine.firstFree(1, 1, engine.occupancy(taken)) ?: return@repeat
-                    if (!apps.hasNext()) return@repeat
-                    homeRepository.addApp(apps.next(), HomePosition(HomeContainer.PAGE, page, cell.col, cell.row))
-                    taken += cell
-                }
-            }
-        }
     }
 
     /** Every shortcut item on the home: on pages, in the dock and in folders. */

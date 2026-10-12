@@ -52,6 +52,20 @@ abstract class HomeDao {
     @Query("SELECT MAX(page) FROM home_items WHERE container = 'PAGE'")
     abstract suspend fun maxPage(): Int?
 
+    @Query("SELECT COUNT(*) FROM home_items")
+    abstract suspend fun count(): Int
+
+    /**
+     * Inserts [items] only while the home is empty, so the first-run layout (task 2.7) never lands
+     * on a home that already has something. Returns whether it inserted.
+     */
+    @Transaction
+    open suspend fun insertIntoEmptyHome(items: List<HomeItemEntity>): Boolean {
+        if (count() > 0) return false
+        items.forEach { insert(it) }
+        return true
+    }
+
     @Query("SELECT * FROM home_items WHERE id = :id")
     abstract suspend fun getById(id: Long): HomeItemEntity?
 

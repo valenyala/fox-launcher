@@ -107,8 +107,6 @@ class HomeActivity : ComponentActivity() {
                                 viewModel = drawerViewModel,
                                 autoFocusSearch = autoFocusSearch,
                                 onOpenHiddenApps = { showHiddenApps = true },
-                                // TODO(2.7): remove with the first-run layout.
-                                onAddTestItems = viewModel::addTestItems.takeIf { BuildConfig.DEBUG },
                                 onAppLongPress = ::onAppLongPress,
                                 isShown = isShown,
                             )
