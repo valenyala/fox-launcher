@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 3 — Gesture engine (user, 2026-10-12: Phase 3 now, 2.8 later; Phase 2 still owes 2.8 and its device checklist; phases 0 and 1 owe their device checklists)
-**Next task:** 3.4 FoxAccessibilityService + ActionExecutor (2.8 deferred by the user)
+**Next task:** 3.5 Gesture settings UI, then check recents/power menu/screenshot for 3.4 (2.8 deferred by the user)
 
 ## Environment facts (verified 2026-09-17)
 
@@ -63,7 +63,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] 3.1 Gesture and action model + defaults
 - [x] 3.2 GestureClassifier + tests
 - [x] 3.3 GestureArena composable (device checklist passed 2026-10-12, POCO F3; emulators API 33/37)
-- [ ] 3.4 FoxAccessibilityService + ActionExecutor — emulators pass (disclosure, notifications, lock); POCO check pending; recents/power menu/screenshot need 3.5's remapping to check
+- [ ] 3.4 FoxAccessibilityService + ActionExecutor — POCO F3 2026-10-12: disclosure, enable without restart, notifications, quick settings, lock ✓; recents/power menu/screenshot to check once 3.5 can remap
 - [ ] 3.5 Gesture settings UI
 - [ ] 3.6 System gesture coexistence, predictive back, home intent
 - [ ] 3.7 Drag-follow drawer opening
@@ -160,6 +160,12 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-12 — 3.4 on the **POCO F3** (user): swipe down with the service off → `NEEDS_ACCESSIBILITY` and the
+  disclosure; after enabling "Fox gestures" in MIUI's settings the service connected in the same process (no restart)
+  and swipe down → notifications, two-finger swipe down → quick settings, double tap → lock all returned `DONE`;
+  gestures kept working after unlocking. No crash. Recents, power menu and screenshot have no default gesture, so they
+  wait for 3.5's remapping.
 
 - 2026-10-12 — 3.4 checkpoint. Pure `feature/gestures/ActionExecutor` behind three ports: `SystemActions`
   (`AccessibilitySystemActions` → `FoxAccessibilityService.perform`), `AppLauncher` (`RepositoryAppLauncher`, via
