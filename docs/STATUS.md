@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 2 — Home grid (phases 0 and 1 code complete; both device checklists still owed)
-**Next task:** performance pass requested by the user (pulls Phase 8.1–8.3 forward), then 2.7
+**Next task:** 2.7 First-run default layout (the performance pass is done; baseline profiles and stability reports stay in 8.1/8.2)
 
 ## Environment facts (verified 2026-09-17)
 
@@ -13,6 +13,11 @@ Update this file at the end of every session. Keep it terse. Newest session note
   first install fails with `INSTALL_FAILED_USER_RESTRICTED` if nobody taps Install). 120 Hz display with a faster touch-sampling rate, so one MotionEvent can carry
   several batched samples (see the 2026-10-10 note). Three-button navigation (`force_fsg_nav_bar` = 0).
 - Dev shell (0.1): nixpkgs pinned to b1b8759 (nixos-unstable, 2026-09-16); JDK 17.0.20.1, Android platform 37, build-tools 37.0.0 (bumped from 36 in 0.2, see ADR-12), platform-tools/adb 37.0.1, Gradle 8.14.4 from the shell. The build itself uses the wrapper, Gradle 9.7.1.
+- Emulators (2026-10-12, ADR-15): `nix develop .#emulator` adds emulator 37.1.11 and x86_64 Google APIs images.
+  `scripts/emulator.sh` AVDs: fox-api29 / fox-api33 / fox-api37 = emulator-5554 / -5556 / -5558, Pixel 7 profile
+  (1080×2400 @ 420 dpi), 4 GB RAM, `adb root` works. Cold boot about 30 s. API 29 has three-button navigation,
+  33 and 37 gesture navigation. Rendering is software (the emulator rejects the host GPU driver and falls back to
+  swangle/lavapipe), so no performance numbers from emulators. `--window` opens through XWayland.
 - Toolchain (0.2): AGP 9.4.0, Kotlin 2.3.21, KSP 2.3.12, compose-bom 2026.09.00, compileSdk/targetSdk 37, minSdk 29. AGP 9 rejects the `kotlin.android` plugin (ADR-11).
 
 ## Phase 0 — Toolchain & scaffold
@@ -149,6 +154,15 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-12 — **Emulators** (user request, before 2.7). `flake.nix` composes the SDK through `composeSdk`; the
+  default shell derivation is unchanged (checked: same `.drv`), and `devShells.emulator` adds the emulator, platforms
+  29/33 and the API 29/33/37 Google APIs x86_64 images (about 5 GB). The API 37 image is keyed `37.0` in androidenv,
+  so `platformVersions = [ "37" ]` would silently fetch no image. New `scripts/emulator.sh create|start|stop|list`
+  (re-enters `.#emulator` like `ci.sh`); avdmanager's "Could not load devices.xml" lines are harmless and filtered.
+  All three booted headless, took `installDebug` (with `ANDROID_SERIAL`) and showed Fox as home: an empty page and the
+  search pill, since nothing places a first-run layout yet (2.7). Windowed mode checked on API 29. Left running:
+  fox-api37. ADR-15; CLAUDE.md commands.
 
 - 2026-10-11 — Perf: **icons appeared late when returning home** (user report). Until Fox's first frame after a
   return, the system shows the bare wallpaper. Traced on the POCO F3: Home press to that frame took about 50 ms after

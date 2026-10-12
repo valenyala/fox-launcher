@@ -102,6 +102,16 @@ This retires the phone rotation checks in the device checklists: 0.3 "rotating d
 2.4 "rotation mid-drag", and Phase 2 item 6 "rotate with folder open". Instrumented tests still run in whatever
 orientation the test activity gets, so they must not assume one.
 
+## ADR-15 Emulators live in a second dev shell, `.#emulator`
+The user asked for virtual devices next to the POCO F3 (2026-10-12). `flake.nix` builds two SDKs from one
+`composeSdk` helper: the default shell is unchanged (same derivation), and `.#emulator` adds the emulator,
+platforms 29/33 and the x86_64 Google APIs images for API 29 (minSdk), 33 (the phone's level, and the last one
+where boost can kill other apps, ADR-5) and 37 (compile/target). The images are about 5 GB, and `scripts/ci.sh`
+enters the default shell on every commit, so they stay out of it. Google APIs images rather than Play Store or
+bare AOSP: Play services without the Play-signed lock-down, so `adb root` works. `scripts/emulator.sh` owns the
+AVDs (`fox-api<N>`, Pixel 7 profile, 4 GB RAM) and gives each a fixed console port, so serials are stable:
+emulator-5554/5556/5558. Another API level means adding it to `androidEmu` and to the script's tables.
+
 ## Dependency log
 (append `- <lib> <version> — reason` when adding a dependency)
 - AGP (com.android.application) 9.4.0 — build system; built-in Kotlin, see ADR-11.
