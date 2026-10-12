@@ -62,7 +62,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 ## Phase 3 — Gesture engine
 - [x] 3.1 Gesture and action model + defaults
 - [x] 3.2 GestureClassifier + tests
-- [ ] 3.3 GestureArena composable — emulator (API 33) passes; POCO device checklist pending
+- [ ] 3.3 GestureArena composable — emulators (API 33 tests + by hand, API 37 by hand) pass; POCO device checklist pending
 - [ ] 3.4 FoxAccessibilityService + ActionExecutor
 - [ ] 3.5 Gesture settings UI
 - [ ] 3.6 System gesture coexistence, predictive back, home intent
@@ -169,7 +169,8 @@ Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out o
   it. Added `aSwipeDownIsReportedAndLeavesTheDrawerClosed`. Feature tests then 59/59. By hand over adb: swipe down,
   long press on empty space, swipe left/right on a one-page home and double tap log their gesture and action; swipe
   up opens the drawer without a log line; a long press on an icon opens its popup; tapping Phone opens the dialer.
-  Installed on the POCO for the user's check.
+  Installed on the POCO for the user's check. Later the user launched **fox-api37**: the same hand check gives the same
+  results there (Compose tests cannot run on 37, see Known issues), no crash.
 
 - 2026-10-12 — 3.3 checkpoint, **code done; not yet run on an emulator** (none attached; the user launches them).
   `feature/gestures/GestureArena.kt`: `Modifier.gestureArena(enabled, isOnItem, onGesture, pagerTakesSwipeLeft/Right,
