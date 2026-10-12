@@ -45,8 +45,9 @@ private val ONE_FINGER_VERTICAL = setOf(
  * the pager does not page and items do not react. Single-finger horizontal swipes stay the pager's,
  * and a long press on an item ([isOnItem]) stays the item's.
  *
- * A gesture that starts while [enabled] is false, or whose events arrive already consumed (a drag
- * owns the finger), is ignored to its end; one that gets so midway is cancelled.
+ * A gesture that starts while [enabled] is false, at or below [systemGestureTop] (the system's own
+ * gesture strip: its home and recents swipes start there), or whose events arrive already consumed
+ * (a drag owns the finger), is ignored to its end; one that gets so midway is cancelled.
  *
  * Single-finger vertical swipes are reported but not consumed: until task 3.7 the home's drawer
  * detector still follows them and needs their release to fling.
@@ -60,6 +61,7 @@ fun Modifier.gestureArena(
     pagerTakesSwipeLeft: () -> Boolean = { false },
     pagerTakesSwipeRight: () -> Boolean = { false },
     dockTop: () -> Float = { Float.POSITIVE_INFINITY },
+    systemGestureTop: () -> Float = { Float.POSITIVE_INFINITY },
 ): Modifier = pointerInput(Unit) {
     val longPressMs = viewConfiguration.longPressTimeoutMillis
     var classifier: GestureClassifier? = null
@@ -75,7 +77,7 @@ fun Modifier.gestureArena(
             while (true) {
                 val event = awaitPointerEvent(PointerEventPass.Initial)
                 if (down.isEmpty()) {
-                    ignoring = !enabled() || event.changes.any { it.isConsumed }
+                    ignoring = !enabled() || event.changes.any { it.isConsumed || it.position.y >= systemGestureTop() }
                     consumeRest = false
                     // A new size means new thresholds; it only changes between gestures.
                     if (classifier == null || size != classifierSize) {

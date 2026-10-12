@@ -65,7 +65,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] 3.3 GestureArena composable (device checklist passed 2026-10-12, POCO F3; emulators API 33/37)
 - [x] 3.4 FoxAccessibilityService + ActionExecutor (POCO F3 2026-10-12: all six system actions, disclosure, stopped state, automatic restart)
 - [x] 3.5 Gesture settings UI (POCO F3 2026-10-12: remapping to recents, an app, notifications; reset; Home closes settings)
-- [ ] 3.6 System gesture coexistence, predictive back, home intent
+- [ ] 3.6 System gesture coexistence, predictive back, home intent — emulators (gesture navigation) pass; POCO (three-button) pending
 - [ ] 3.7 Drag-follow drawer opening
 - [ ] Device checklist passed on: —
 
@@ -160,6 +160,22 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-12 — 3.6 checkpoint. **Home key:** `onNewIntent` tells "while home" (window focus and no
+  `FLAG_ACTIVITY_BROUGHT_TO_FRONT`, Launcher3's test) from "back from an app". Every press closes what is open
+  (drag, popup, folder, drawer, settings, the accessibility dialog); a press while home with nothing open is the
+  `HOME_KEY` gesture through the executor (default: first page). Behaviour change: back from an app, Home now keeps
+  the page (it used to jump to page 0), as Launcher3. The Home button row is in the Gestures screen now.
+  **System strip:** `WindowInsets.mandatorySystemGestures` bottom; the arena ignores gestures starting at or below
+  `systemGestureTop`, and the drawer detector (now told the real down position, not the post-slop one) does too.
+  **Bug found and fixed:** Back with nothing open moved Fox's home task behind the last app (Android 12+ treats
+  unhandled Back on a root launcher activity as move-to-back); PLATFORM-NOTES G said no handler was needed. An empty
+  lowest-priority `onBackPressedDispatcher` callback in `HomeActivity.onCreate` now swallows it. Tests: arena +2
+  (strip), `HomeScreenGestureTest` +3 (Home while home / from an app / with the drawer open); fox-api33 93/93. By hand
+  on fox-api33 and fox-api37 (gesture navigation): Home while home → HOME_KEY → first page; from the Phone app → no
+  gesture; Home remapped to the drawer opens it, and Home then closes it; a system swipe from the bottom edge opens no
+  drawer; Back with nothing open stays home; Back closes the drawer and settings. Known gap: the gesture-navigation
+  home swipe made while already home arrives without window focus, so it closes things but is not `HOME_KEY`.
 
 - 2026-10-12 — **Surviving "clear recents" on MIUI** (user question). The phone's log: OneKeyClean killed processes at
   adj 0–200 regardless of foreground services, so nothing inside Fox can exempt it. The user locked Fox in Security →

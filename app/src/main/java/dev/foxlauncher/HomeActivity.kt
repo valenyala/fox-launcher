@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.provider.Settings
 import android.view.MotionEvent
 import androidx.activity.ComponentActivity
+import androidx.activity.addCallback
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -59,12 +60,19 @@ class HomeActivity : ComponentActivity() {
     /** 120 Hz while touched; MIUI would otherwise hold Fox at 60 Hz (see [HighRefreshRate]). */
     private val refreshRate = HighRefreshRate(this)
 
-    /** Bumped by every Home key press that reaches us while in front; the home screen reacts to it. */
+    /** Bumped by every Home press that reaches us; the home screen closes whatever is open. */
     private var homeKeyPresses by mutableIntStateOf(0)
+
+    /** The latest Home press came while Fox was already in front, not on the way back from an app. */
+    private var homeKeyWhileHome by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // A launcher has nowhere to go back to. Unhandled, Back on a root launcher activity makes Android 12+
+        // move the home task behind the last app, which then shows (task 3.6). Added first, so the drawer's,
+        // a folder's, a popup's and the settings' handlers, registered later while open, all come before it.
+        onBackPressedDispatcher.addCallback(this) {}
 
         setContent {
             FoxTheme {
@@ -74,8 +82,13 @@ class HomeActivity : ComponentActivity() {
                 val drawerViewModel: DrawerViewModel = hiltViewModel()
                 // Settings screens stack over the home, which stays composed under them (see SettingsRoute).
                 var settings by rememberSaveable { mutableStateOf(listOf<SettingsRoute>()) }
-                // Home goes home: it closes any settings screen, as it closes the drawer.
-                LaunchedEffect(homeKeyPresses) { if (homeKeyPresses > 0) settings = emptyList() }
+                // Home goes home: it closes any settings screen and the accessibility dialog, as it closes the drawer.
+                LaunchedEffect(homeKeyPresses) {
+                    if (homeKeyPresses > 0) {
+                        settings = emptyList()
+                        viewModel.dismissAccessibilityPrompt()
+                    }
+                }
 
                 var isDefault by remember { mutableStateOf(isDefaultLauncher()) }
 
@@ -100,6 +113,8 @@ class HomeActivity : ComponentActivity() {
                     ) {
                         HomeScreen(
                             homeKeyPresses = homeKeyPresses,
+                            // With a settings screen open, Home only closes it.
+                            homeKeyWhileHome = homeKeyWhileHome && settings.isEmpty(),
                             onDrawerClosed = drawerViewModel::onDrawerClosed,
                             state = homeState,
                             onItemClick = { item, bounds ->
@@ -163,14 +178,17 @@ class HomeActivity : ComponentActivity() {
     }
 
     /**
-     * Pressing Home while already home arrives here, because of `singleTask`. It closes the drawer
-     * (and, from Phase 2, scrolls back to the default page); never finish or recreate the activity.
+     * Every Home press arrives here, because of `singleTask`: on the way back from an app and while
+     * already home. Either closes what is open; the second is also the HOME_KEY gesture (task 3.6).
+     * Never finish or recreate the activity.
      */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        FoxLog.d("onNewIntent: ${intent.action}")
         if (intent.action == Intent.ACTION_MAIN) {
+            // Launcher3's test: Fox has the focus and was not brought to the front from another app.
+            homeKeyWhileHome = hasWindowFocus() && intent.flags and Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT == 0
+            FoxLog.d("Home pressed ${if (homeKeyWhileHome) "while home" else "from elsewhere"}")
             // Closing the drawer and scrolling home animate: run them at full rate too.
             refreshRate.onInteractionStart()
             refreshRate.onInteractionEnd()

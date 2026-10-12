@@ -8,8 +8,13 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.doubleClick
@@ -108,6 +113,25 @@ class GestureArenaTest {
     }
 
     @Test
+    fun aSwipeFromTheSystemGestureStripIsTheSystems() {
+        // The bottom tenth plays the system's strip (its home swipe in gesture navigation).
+        setArena(systemStrip = 0.1f)
+
+        arena().performTouchInput { swipeUp(startY = height * 0.95f, endY = height * 0.3f) }
+
+        assertTrue(gestures.isEmpty())
+    }
+
+    @Test
+    fun aSwipeStartingJustAboveTheStripIsOurs() {
+        setArena(systemStrip = 0.1f)
+
+        arena().performTouchInput { swipeUp(startY = height * 0.85f, endY = height * 0.3f) }
+
+        assertEquals(listOf(GestureType.SWIPE_UP), gestures)
+    }
+
+    @Test
     fun aSwipeLeftStillPagesThePager() {
         val pager = setPagerArena()
 
@@ -173,13 +197,20 @@ class GestureArenaTest {
 
     private fun arena() = composeRule.onNodeWithTag(ARENA)
 
-    private fun setArena(content: @Composable () -> Unit = {}) {
+    private fun setArena(systemStrip: Float = 0f, content: @Composable () -> Unit = {}) {
         composeRule.setContent {
+            var height by remember { mutableIntStateOf(0) }
             Box(
                 Modifier
                     .fillMaxSize()
                     .testTag(ARENA)
-                    .gestureArena(enabled = { enabled }, isOnItem = { onItem }, onGesture = { gestures += it }),
+                    .onSizeChanged { height = it.height }
+                    .gestureArena(
+                        enabled = { enabled },
+                        isOnItem = { onItem },
+                        onGesture = { gestures += it },
+                        systemGestureTop = { if (systemStrip > 0f) height * (1f - systemStrip) else Float.POSITIVE_INFINITY },
+                    ),
             ) { content() }
         }
     }

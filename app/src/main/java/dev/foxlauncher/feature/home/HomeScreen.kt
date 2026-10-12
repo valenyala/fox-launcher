@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.mandatorySystemGestures
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -53,6 +54,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.changedToDownIgnoreConsumed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.input.pointer.util.addPointerInputChange
@@ -177,7 +180,8 @@ interface HomeControls {
 /**
  * The home surface: wallpaper through the window, pages, the dock, and the app drawer as an overlay
  * that follows the finger (search lives only in the drawer). [homeKeyPresses] increments on every
- * Home key press while Fox is in front, which closes the drawer.
+ * Home press, which closes whatever is open; one made while already home ([homeKeyWhileHome]) with
+ * nothing open is the HOME_KEY gesture (task 3.6).
  * Long-pressing an item drags it, and so does long-pressing then moving an app in the drawer
  * ([DrawerScope]); [onDrop] receives what the drop should do (task 2.4). Removing a folder asks first.
  * Tapping a folder opens its [FolderSheet] (task 2.5); a changed title goes to [onRenameFolder].
@@ -198,6 +202,7 @@ fun HomeScreen(
     loadPopup: suspend (HomeItem) -> ItemPopupModel = { ItemPopupModel() },
     onPopupAction: (HomeItem, PopupAction, Rect?) -> Unit = { _, _, _ -> },
     onGesture: (GestureType, HomeControls) -> Unit = { _, _ -> },
+    homeKeyWhileHome: Boolean = false,
     drawer: @Composable DrawerScope.() -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -265,6 +270,11 @@ fun HomeScreen(
     val currentOnGesture by rememberUpdatedState(onGesture)
     val isRtl by rememberUpdatedState(LocalLayoutDirection.current == LayoutDirection.Rtl)
     val gestureMap by rememberUpdatedState(state.gestureMap)
+    // The bottom strip where the system's own swipes start (home, recents in gesture navigation; the
+    // bar in three-button). A gesture that starts there is the system's, never ours (task 3.6).
+    val systemGestureStrip by rememberUpdatedState(WindowInsets.mandatorySystemGestures.getBottom(LocalDensity.current))
+    // Where the current gesture's first finger went down; the drawer detector below only learns after touch slop.
+    val gestureDownY = remember { mutableFloatStateOf(0f) }
     val focusManager = LocalFocusManager.current
 
     /** A drag leaving the drawer: drop it at once so the home screen is the drop surface. */
@@ -331,14 +341,15 @@ fun HomeScreen(
     }
 
     LaunchedEffect(Unit) { if (isOpen) progress.snapTo(1f) }
-    // Home while home: close the drawer and go back to the default page (0 until it is a setting).
     LaunchedEffect(homeKeyPresses) {
         if (homeKeyPresses > 0) {
+            val nothingOpen = dragState.dragging == null && popup == null && openFolderId == null && !isOpen
             dragState.cancel()
             popup = null
             openFolderId = null
             settle(open = false)
-            pagerState.animateScrollToPage(DEFAULT_PAGE)
+            // Back from an app, Home keeps the page (as Launcher3); while home it runs its action (default: first page).
+            if (homeKeyWhileHome && nothingOpen) currentOnGesture(GestureType.HOME_KEY, currentHomeControls)
         }
     }
     WallpaperOffsetsEffect(pagerState)
@@ -373,7 +384,17 @@ fun HomeScreen(
                 pagerTakesSwipeLeft = { if (isRtl) pagerState.canScrollBackward else pagerState.canScrollForward },
                 pagerTakesSwipeRight = { if (isRtl) pagerState.canScrollForward else pagerState.canScrollBackward },
                 dockTop = dragState::dockTop,
+                systemGestureTop = { heightPx - systemGestureStrip },
             )
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        awaitPointerEvent(PointerEventPass.Initial).changes
+                            .firstOrNull { it.changedToDownIgnoreConsumed() }
+                            ?.let { gestureDownY.floatValue = it.position.y }
+                    }
+                }
+            }
             // TODO(3.7): temporary. The drawer's drag-follow moves into the classifier in task 3.7; until then
             // this detector opens the drawer, and the arena leaves single-finger vertical drags to it.
             .pointerInput(Unit) {
@@ -383,13 +404,16 @@ fun HomeScreen(
                 var dragProgress = 0f
                 var following = true
                 detectVerticalDragGestures(
-                    onDragStart = { start ->
+                    onDragStart = {
                         tracker.resetTracking()
                         dragProgress = progress.value
                         openedForSearch = false
-                        // A swipe up remapped away from the drawer is the arena's (task 3.5).
-                        val swipe = if (start.y >= dragState.dockTop()) GestureType.DOCK_SWIPE_UP else GestureType.SWIPE_UP
-                        following = isOpen || gestureMap[swipe] == GestureAction.OpenDrawer
+                        // A swipe up remapped away from the drawer is the arena's (task 3.5); one from the
+                        // system's gesture strip is the system's (task 3.6).
+                        val downY = gestureDownY.floatValue
+                        val swipe = if (downY >= dragState.dockTop()) GestureType.DOCK_SWIPE_UP else GestureType.SWIPE_UP
+                        following = downY < heightPx - systemGestureStrip &&
+                            (isOpen || gestureMap[swipe] == GestureAction.OpenDrawer)
                     },
                     onVerticalDrag = { change, dragAmount ->
                         if (!following) return@detectVerticalDragGestures

@@ -1,6 +1,10 @@
 package dev.foxlauncher.feature.home
 
 import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.doubleClick
@@ -50,6 +54,8 @@ class HomeScreenGestureTest {
     private val gestures = mutableListOf<GestureType>()
     private var controls: HomeControls? = null
     private var gestureMap = DEFAULT_GESTURE_MAP
+    private var homePresses by mutableIntStateOf(0)
+    private var homeWhileHome by mutableStateOf(false)
 
     @Test
     fun aSwipeUpStillOpensTheDrawerWhichTakesTheGesture() {
@@ -89,6 +95,36 @@ class HomeScreenGestureTest {
         composeRule.runOnUiThread { home.openDrawer() }
 
         composeRule.onNodeWithText("drawer search=false").assertIsDisplayed()
+    }
+
+    @Test
+    fun homePressedWhileHomeIsTheHomeKeyGesture() {
+        setHome()
+
+        pressHome(whileHome = true)
+
+        assertEquals(listOf(GestureType.HOME_KEY), gestures)
+    }
+
+    @Test
+    fun homeOnTheWayBackFromAnAppIsNoGesture() {
+        setHome()
+
+        pressHome(whileHome = false)
+
+        assertTrue(gestures.isEmpty())
+    }
+
+    @Test
+    fun homeWithTheDrawerOpenOnlyClosesIt() {
+        setHome()
+        composeRule.onRoot().performTouchInput { swipeUp() }
+        composeRule.waitForIdle()
+
+        pressHome(whileHome = true)
+
+        composeRule.onNodeWithTag(HomeTestTags.DRAWER).assertDoesNotExist()
+        assertTrue(gestures.isEmpty())
     }
 
     @Test
@@ -160,7 +196,8 @@ class HomeScreenGestureTest {
         composeRule.setContent {
             FoxTheme {
                 HomeScreen(
-                    homeKeyPresses = 0,
+                    homeKeyPresses = homePresses,
+                    homeKeyWhileHome = homeWhileHome,
                     onDrawerClosed = {},
                     state = HomeUiState(layout = layout, gridSpec = spec, gestureMap = gestureMap.toImmutableMap()),
                     onGesture = { type, home ->
@@ -170,6 +207,12 @@ class HomeScreenGestureTest {
                 ) { Text("drawer search=$isSearchRequested") }
             }
         }
+    }
+
+    private fun pressHome(whileHome: Boolean) {
+        homeWhileHome = whileHome
+        homePresses++
+        composeRule.waitForIdle()
     }
 
     /** Centre of a grid cell, in root px. The page grid is the pager minus its side padding. */

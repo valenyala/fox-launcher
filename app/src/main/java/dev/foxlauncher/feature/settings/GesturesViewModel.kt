@@ -98,7 +98,6 @@ class GesturesViewModel @Inject constructor(
         /** Xiaomi, Redmi and POCO phones all report Xiaomi. */
         val IS_XIAOMI = Build.MANUFACTURER.equals("Xiaomi", ignoreCase = true)
 
-        /** TODO(3.6): HOME_KEY joins once the Home key goes through the gesture map. */
-        val EDITABLE_GESTURES = GestureType.entries - GestureType.HOME_KEY
+        val EDITABLE_GESTURES = GestureType.entries
     }
 }

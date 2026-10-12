@@ -76,8 +76,11 @@ here contradicts what you remember, trust this file unless a device proves other
   the rest. We do not need it: the home screen does not use edge swipes.
 - Respect `WindowInsets.systemGestures` and `mandatorySystemGestures` for placing the dock and drawer handle; a swipe
   starting inside the bottom mandatory inset belongs to the system (home gesture), never to us.
-- Predictive back: `android:enableOnBackInvokedCallback="true"` in `<application>`. Use Compose `BackHandler` only when
-  something is open (drawer, folder, popup). With nothing open, do not register a handler; on a launcher, back is a no-op.
+- Predictive back: `android:enableOnBackInvokedCallback="true"` in `<application>`. Use Compose `BackHandler` for what
+  is open (drawer, folder, popup, settings). With nothing open, Back must still be **swallowed**: unhandled, Android
+  12+ treats Back on a root launcher activity as "move the task to the back", and for the home task that brings the
+  last app to the front (seen on fox-api33, 2026-10-12). `HomeActivity` registers an empty
+  `onBackPressedDispatcher` callback in `onCreate`, before any Compose handler, so it is always the last resort.
 - System actions available to `AccessibilityService.performGlobalAction`: `GLOBAL_ACTION_NOTIFICATIONS`,
   `GLOBAL_ACTION_QUICK_SETTINGS`, `GLOBAL_ACTION_LOCK_SCREEN` (28+), `GLOBAL_ACTION_RECENTS`, `GLOBAL_ACTION_BACK`,
   `GLOBAL_ACTION_HOME`, `GLOBAL_ACTION_POWER_DIALOG`, `GLOBAL_ACTION_TAKE_SCREENSHOT` (30+),
