@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 3 — Gesture engine (user, 2026-10-12: Phase 3 now, 2.8 later; Phase 2 still owes 2.8 and its device checklist; phases 0 and 1 owe their device checklists)
-**Next task:** 3.5 Gesture settings UI, then check recents/power menu/screenshot for 3.4 (2.8 deferred by the user)
+**Next task:** 3.6 System gesture coexistence, predictive back, home intent (2.8 deferred by the user)
 
 ## Environment facts (verified 2026-09-17)
 
@@ -63,7 +63,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] 3.1 Gesture and action model + defaults
 - [x] 3.2 GestureClassifier + tests
 - [x] 3.3 GestureArena composable (device checklist passed 2026-10-12, POCO F3; emulators API 33/37)
-- [ ] 3.4 FoxAccessibilityService + ActionExecutor — POCO F3: disclosure, enable without restart, notifications, quick settings, lock, recents, stopped-state advice ✓; power menu and screenshot ✓ on fox-api33/37, POCO pending
+- [x] 3.4 FoxAccessibilityService + ActionExecutor (POCO F3 2026-10-12: all six system actions, disclosure, stopped state, automatic restart)
 - [x] 3.5 Gesture settings UI (POCO F3 2026-10-12: remapping to recents, an app, notifications; reset; Home closes settings)
 - [ ] 3.6 System gesture coexistence, predictive back, home intent
 - [ ] 3.7 Drag-follow drawer opening
@@ -160,6 +160,15 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-12 — **3.4 done; automatic restart works on the POCO.** I granted WRITE_SECURE_SETTINGS over the existing
+  wireless adb at the user's request (the MIUI "USB debugging (Security settings)" toggle was already on). The user
+  cleared recents twice: each time OneKeyClean killed Fox, Fox restarted, and 2 s later `AccessibilityRepair` brought
+  the service back in about 0.5 s; swipe down then worked. Power menu and screenshot (two files saved) completed 3.4.
+  One glitch: a swipe 2 s after the restart started landed in the half second while Fox's entry is removed, read as
+  `OFF` and showed the disclosure. Now `AccessibilityRepair.isRepairing` makes `HomeViewModel` wait for the restart
+  and then run the action; checked on fox-api33 by swiping the moment the restart began (log: `NEEDS_ACCESSIBILITY`,
+  restarted, `after restarting the service: DONE`, shade open, no dialog).
 
 - 2026-10-12 — **Automatic restart of the stopped service (ADR-18)**, which the user asked for sooner. The POCO's log
   showed the stuck state again minutes later (13:24, new process). Fox declares WRITE_SECURE_SETTINGS; after the

@@ -54,6 +54,11 @@ class AccessibilityRepair @Inject constructor(
     private val component = ComponentName(context, FoxAccessibilityService::class.java)
     private val mutex = Mutex()
 
+    /** True while a restart is under way: meanwhile the service is briefly listed as off. */
+    @Volatile
+    var isRepairing: Boolean = false
+        private set
+
     /** The user has granted the permission, so Fox can restart its service by itself. */
     val isAvailable: Boolean
         get() = context.checkSelfPermission(Manifest.permission.WRITE_SECURE_SETTINGS) == PackageManager.PERMISSION_GRANTED
@@ -66,8 +71,9 @@ class AccessibilityRepair @Inject constructor(
             AccessibilityStatus.STOPPED -> if (!isAvailable) return false
         }
         FoxLog.i("Accessibility service stopped by the system; turning it off and on")
-        val others = withContext(io) { EnabledAccessibilityServices.read(context).filterNot { it == component } }
+        isRepairing = true
         try {
+            val others = withContext(io) { EnabledAccessibilityServices.read(context).filterNot { it == component } }
             withContext(io) { EnabledAccessibilityServices.write(context, others) }
             // The system reacts to each change of the setting: it must see "off" before "on".
             delay(TOGGLE_GAP_MS)
@@ -75,13 +81,15 @@ class AccessibilityRepair @Inject constructor(
                 EnabledAccessibilityServices.write(context, others + component)
                 Settings.Secure.putInt(context.contentResolver, Settings.Secure.ACCESSIBILITY_ENABLED, 1)
             }
+            val running = withTimeoutOrNull(CONNECT_TIMEOUT_MS) { FoxAccessibilityService.connected.first { it } } != null
+            FoxLog.i("Accessibility service ${if (running) "restarted" else "did not come back"}")
+            return running
         } catch (e: SecurityException) {
             FoxLog.w("WRITE_SECURE_SETTINGS was revoked", e)
             return false
+        } finally {
+            isRepairing = false
         }
-        val running = withTimeoutOrNull(CONNECT_TIMEOUT_MS) { FoxAccessibilityService.connected.first { it } } != null
-        FoxLog.i("Accessibility service ${if (running) "restarted" else "did not come back"}")
-        return running
     }
 
     private companion object {

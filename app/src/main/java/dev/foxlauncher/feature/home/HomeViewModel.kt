@@ -126,13 +126,20 @@ class HomeViewModel @Inject constructor(
         val result = actionExecutor.execute(action, context)
         FoxLog.d("Gesture $type -> $action: $result")
         when (result) {
-            ActionResult.NEEDS_ACCESSIBILITY -> _accessibilityPrompt.value = AccessibilityStatus.OFF
-            ActionResult.ACCESSIBILITY_STOPPED -> viewModelScope.launch {
-                // With the user's adb grant, restart the service and run the action after all (ADR-18).
-                if (accessibilityRepair.repairIfStopped()) {
-                    FoxLog.d("Gesture $type -> $action after restarting the service: ${actionExecutor.execute(action, context)}")
-                } else {
-                    _accessibilityPrompt.value = AccessibilityStatus.STOPPED
+            ActionResult.NEEDS_ACCESSIBILITY, ActionResult.ACCESSIBILITY_STOPPED -> {
+                // A stopped service can be restarted with the user's adb grant (ADR-18); one being restarted
+                // right now is listed as off for a moment. Either way, run the action once it is back.
+                val restartable = result == ActionResult.ACCESSIBILITY_STOPPED || accessibilityRepair.isRepairing
+                if (!restartable) {
+                    _accessibilityPrompt.value = AccessibilityStatus.OFF
+                    return
+                }
+                viewModelScope.launch {
+                    if (accessibilityRepair.repairIfStopped()) {
+                        FoxLog.d("Gesture $type -> $action after restarting the service: ${actionExecutor.execute(action, context)}")
+                    } else {
+                        _accessibilityPrompt.value = AccessibilityStatus.STOPPED
+                    }
                 }
             }
             ActionResult.DONE, ActionResult.NOTHING, ActionResult.FAILED -> Unit
