@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 3 — Gesture engine (user, 2026-10-12: Phase 3 now, 2.8 later; Phase 2 still owes 2.8 and its device checklist; phases 0 and 1 owe their device checklists)
-**Next task:** 3.2 GestureClassifier + tests (2.8 deferred by the user)
+**Next task:** 3.3 GestureArena composable (2.8 deferred by the user)
 
 ## Environment facts (verified 2026-09-17)
 
@@ -61,7 +61,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 
 ## Phase 3 — Gesture engine
 - [x] 3.1 Gesture and action model + defaults
-- [ ] 3.2 GestureClassifier + tests
+- [x] 3.2 GestureClassifier + tests
 - [ ] 3.3 GestureArena composable
 - [ ] 3.4 FoxAccessibilityService + ActionExecutor
 - [ ] 3.5 Gesture settings UI
@@ -160,6 +160,18 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-12 — **3.2 done.** `feature/gestures/classifier/` (no Android imports): `GestureClassifier`, `GestureConfig`,
+  `PointerSample`, `GestureResult`, and a least-squares `VelocityTracker` over the last 100 ms. 40 classifier + 6
+  velocity tests. Differences from the plan, on purpose: (1) a fifth result, **`Claimed`**, when a single finger
+  passes slop vertically or a second finger lands, so 3.3 can consume before the pager pages with two fingers or an
+  item reacts; the type still comes on the first lift. (2) `Recognized(type)` has no `consumePointer` flag: the arena
+  consumes on `Claimed`/`Recognized` and decides about item long presses itself. (3) The pager callbacks are
+  `pagerTakesSwipeLeft/Right` and are read **at the first DOWN**, since a swipe can page onto the last page before it
+  lifts. (4) The arena size is in `GestureConfig` for the 25 % rule. Two-finger = exactly two fingers down together
+  (three → `Cancelled`); pinch = spacing change past the threshold and larger than the fingers' common movement
+  (covers one finger held still); double tap is recognized when the second tap lifts; a long press ends the gesture
+  (moving on is an item drag). Nothing visible on a device yet.
 
 - 2026-10-12 — **3.1 done.** `core/model/GestureType` (15 gestures, stored by name) with `DEFAULT_GESTURE_MAP`, and
   `GestureAction` (sealed, `@Serializable`, stable `@SerialName`s, `requiresAccessibility` true for the six system
