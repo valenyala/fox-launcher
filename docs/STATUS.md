@@ -73,7 +73,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] 4.1 Sources and entries data layer (built-in images are generated placeholders until the user supplies some)
 - [x] 4.2 WallpaperPlaylist + tests
 - [x] 4.3 FoxWallpaperService crossfade engine (POCO F3 2026-10-12)
-- [ ] 4.4 RotationScheduler and triggers
+- [ ] 4.4 RotationScheduler and triggers — emulators pass (interval timer + WorkManager, unlock, gesture); POCO check pending; time-of-day schedule left as TODO (stretch)
 - [ ] 4.5 Static fallback
 - [ ] 4.6 Lock screen handling
 - [ ] 4.7 Wallpaper settings UI
@@ -160,6 +160,22 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-12 — 4.4 checkpoint. Pure `TriggerPolicy` (gesture/manual always; interval when ≥ 90 % of it has passed, as
+  WorkManager runs periodic work early within its window; unlock debounced 5 s; page change debounced 1 s; a clock set
+  back counts as long ago; `untilNextInterval` for the engine timer; offered intervals 1, 5, 10, 15, 30, 60 min, 3 h,
+  1 day; 11 tests). `FoxSettings`: `rotationTriggers`, `wallpaperChangedAt` (`setActiveWallpaper(id, changedAt)` replaces
+  `setActiveWallpaperEntryId`). `RotationScheduler.advanceIfDue(trigger)`, `syncSchedule()` (unique periodic
+  `RotationWorker` for ≥ 15 min, cancelled below; called at start and on change). Engine: intervals under 15 min on a
+  timer while visible (not in the preview); a runtime `ACTION_USER_PRESENT` receiver in the service. **Bug found on the
+  emulator:** registered `RECEIVER_NOT_EXPORTED`, it never fired — SystemUI sends `USER_PRESENT` under its own uid. Now
+  `RECEIVER_EXPORTED` (a protected broadcast, so no app can fake it). Page change: `HomeScreen.onPageSettled` →
+  `HomeViewModel` → `advanceIfDue(PAGE_CHANGE)`. **Pulled from 4.7:** a minimal Wallpaper settings screen (live
+  wallpaper status + Apply via the system preview, Next now, Change every, on unlock, on page change), reached from Home
+  settings; `WallpaperSettingsContentTest` 6. On fox-api33: 1-minute interval fired at once (last change long ago) and
+  a minute later; unlock changed it each time; the 15-minute `RotationWorker` ran and advanced with the emulator clock
+  moved 16 min ahead (WorkManager refuses forced periodic work "before schedule"; clock restored). fox-api37: unlock
+  and the 1-minute interval. 108/108 instrumented on fox-api33. Time-of-day schedule: not done (stretch).
 
 - 2026-10-12 — **4.3 done.** On the POCO (live wallpaper applied through the system preview, replacing the user's
   Wallpaper Changer app): 11 two-finger swipes up cycled the three built-ins with smooth crossfades, the image stayed

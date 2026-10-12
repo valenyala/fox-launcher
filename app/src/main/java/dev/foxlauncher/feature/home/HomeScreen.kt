@@ -45,6 +45,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
@@ -91,6 +92,7 @@ import dev.foxlauncher.feature.home.drag.rememberHomeDragState
 import dev.foxlauncher.feature.home.grid.GridLayoutEngine
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 
 /** Drag progress past which a released drawer snaps open instead of closed. */
@@ -178,7 +180,8 @@ interface HomeControls {
  * The home surface: wallpaper through the window, pages, the dock, and the app drawer as an overlay
  * that follows the finger (search lives only in the drawer). [homeKeyPresses] increments on every
  * Home press, which closes whatever is open; one made while already home ([homeKeyWhileHome]) with
- * nothing open is the HOME_KEY gesture (task 3.6).
+ * nothing open is the HOME_KEY gesture (task 3.6). [onPageSettled] hears each page the pager
+ * settles on after paging.
  * Long-pressing an item drags it, and so does long-pressing then moving an app in the drawer
  * ([DrawerScope]); [onDrop] receives what the drop should do (task 2.4). Removing a folder asks first.
  * Tapping a folder opens its [FolderSheet] (task 2.5); a changed title goes to [onRenameFolder].
@@ -200,6 +203,7 @@ fun HomeScreen(
     onPopupAction: (HomeItem, PopupAction, Rect?) -> Unit = { _, _, _ -> },
     onGesture: (GestureType, HomeControls) -> Unit = { _, _ -> },
     homeKeyWhileHome: Boolean = false,
+    onPageSettled: (Int) -> Unit = {},
     drawer: @Composable DrawerScope.() -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -360,6 +364,11 @@ fun HomeScreen(
         }
     }
     WallpaperOffsetsEffect(pagerState)
+    // A page settled after paging (task 4.4: the optional "change on page change" trigger).
+    val currentOnPageSettled by rememberUpdatedState(onPageSettled)
+    LaunchedEffect(pagerState) {
+        snapshotFlow { pagerState.settledPage }.drop(1).collect { currentOnPageSettled(it) }
+    }
     EdgeFlipEffect(dragState, pagerState)
     BackHandler(enabled = isOpen) { settle(open = false) }
     BackHandler(enabled = openFolder != null) { openFolderId = null }

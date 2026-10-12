@@ -17,6 +17,7 @@ import dev.foxlauncher.core.model.DEFAULT_GESTURE_MAP
 import dev.foxlauncher.core.model.GestureAction
 import dev.foxlauncher.core.model.GestureType
 import dev.foxlauncher.core.model.HomeItem
+import dev.foxlauncher.core.model.RotationTrigger
 import dev.foxlauncher.core.model.HomeLayout
 import dev.foxlauncher.feature.gestures.AccessibilityStatus
 import dev.foxlauncher.feature.gestures.ActionExecutor
@@ -24,6 +25,7 @@ import dev.foxlauncher.feature.gestures.ActionResult
 import dev.foxlauncher.feature.gestures.ExecContext
 import dev.foxlauncher.feature.gestures.system.AccessibilityRepair
 import dev.foxlauncher.feature.home.drag.DropAction
+import dev.foxlauncher.feature.wallpaper.RotationScheduler
 import dev.foxlauncher.feature.home.grid.GridSpec
 import javax.inject.Inject
 import kotlinx.collections.immutable.ImmutableMap
@@ -70,6 +72,7 @@ class HomeViewModel @Inject constructor(
     private val iconCache: IconCache,
     private val actionExecutor: ActionExecutor,
     private val accessibilityRepair: AccessibilityRepair,
+    private val rotation: RotationScheduler,
 ) : ViewModel() {
 
     private val appsByKey = appRepository.apps.map { apps -> apps.associateBy { it.key }.toImmutableMap() }
@@ -148,6 +151,11 @@ class HomeViewModel @Inject constructor(
 
     fun dismissAccessibilityPrompt() {
         _accessibilityPrompt.value = null
+    }
+
+    /** The pager settled on another page: the optional page-change wallpaper trigger (task 4.4). */
+    fun onPageSettled() {
+        viewModelScope.launch { rotation.advanceIfDue(RotationTrigger.PAGE_CHANGE) }
     }
 
     private var firstRun: Job? = null

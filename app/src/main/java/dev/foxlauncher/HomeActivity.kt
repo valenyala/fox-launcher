@@ -1,6 +1,8 @@
 package dev.foxlauncher
 
+import android.app.WallpaperManager
 import android.content.ActivityNotFoundException
+import android.content.ComponentName
 import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
@@ -45,6 +47,8 @@ import dev.foxlauncher.feature.settings.GesturesScreen
 import dev.foxlauncher.feature.settings.HiddenAppsScreen
 import dev.foxlauncher.feature.settings.HomeSettingsScreen
 import dev.foxlauncher.feature.settings.SettingsRoute
+import dev.foxlauncher.feature.settings.WallpaperSettingsScreen
+import dev.foxlauncher.feature.wallpaper.engine.FoxWallpaperService
 import javax.inject.Inject
 
 /**
@@ -115,6 +119,7 @@ class HomeActivity : ComponentActivity() {
                             homeKeyPresses = homeKeyPresses,
                             // With a settings screen open, Home only closes it.
                             homeKeyWhileHome = homeKeyWhileHome && settings.isEmpty(),
+                            onPageSettled = { viewModel.onPageSettled() },
                             onDrawerClosed = drawerViewModel::onDrawerClosed,
                             state = homeState,
                             onItemClick = { item, bounds ->
@@ -168,6 +173,11 @@ class HomeActivity : ComponentActivity() {
                                 onBack = closeSettings,
                                 onOpenAccessibilitySettings = ::openAccessibilitySettings,
                             )
+                            SettingsRoute.WALLPAPER -> WallpaperSettingsScreen(
+                                viewModel = hiltViewModel(),
+                                onBack = closeSettings,
+                                onApplyLiveWallpaper = ::applyLiveWallpaper,
+                            )
                             SettingsRoute.HIDDEN_APPS -> HiddenAppsScreen(hiltViewModel(), onBack = closeSettings)
                             null -> Unit
                         }
@@ -202,6 +212,17 @@ class HomeActivity : ComponentActivity() {
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> refreshRate.onInteractionEnd()
         }
         return super.dispatchTouchEvent(event)
+    }
+
+    /** The system's preview of Fox's live wallpaper, where the user applies it (PLATFORM-NOTES W). */
+    private fun applyLiveWallpaper() {
+        val intent = Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER)
+            .putExtra(WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT, ComponentName(this, FoxWallpaperService::class.java))
+        try {
+            startActivity(intent)
+        } catch (e: ActivityNotFoundException) {
+            FoxLog.e("No live wallpaper preview on this device", e)
+        }
     }
 
     private fun openAccessibilitySettings() {

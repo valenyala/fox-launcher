@@ -15,6 +15,7 @@ import dagger.hilt.android.HiltAndroidApp
 import dev.foxlauncher.core.common.ApplicationScope
 import dev.foxlauncher.core.common.FoxLog
 import dev.foxlauncher.feature.gestures.system.AccessibilityRepair
+import dev.foxlauncher.feature.wallpaper.RotationScheduler
 import dev.foxlauncher.feature.wallpaper.source.SourceScanner
 import dev.foxlauncher.feature.wallpaper.source.WallpaperSources
 import javax.inject.Inject
@@ -39,6 +40,8 @@ class FoxApp : Application(), Configuration.Provider, SingletonImageLoader.Facto
 
     @Inject lateinit var wallpaperSources: WallpaperSources
 
+    @Inject lateinit var rotation: RotationScheduler
+
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
             .setWorkerFactory(workerFactory)
@@ -58,6 +61,7 @@ class FoxApp : Application(), Configuration.Provider, SingletonImageLoader.Facto
         scope.launch {
             wallpaperSources.ensureBuiltIn()
             SourceScanner.scheduleDaily(WorkManager.getInstance(this@FoxApp))
+            rotation.syncSchedule()
         }
     }
 

@@ -15,7 +15,7 @@ import androidx.compose.ui.res.stringResource
 import dev.foxlauncher.R
 
 /** Where settings screens live while Fox has no NavHost (the home must stay composed under them). */
-enum class SettingsRoute { HOME, GESTURES, HIDDEN_APPS }
+enum class SettingsRoute { HOME, GESTURES, WALLPAPER, HIDDEN_APPS }
 
 /** The settings root (task 3.5): the "Home settings" gesture action and the drawer menu open it. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -41,6 +41,13 @@ fun HomeSettingsScreen(
                     headlineContent = { Text(stringResource(R.string.settings_gestures)) },
                     supportingContent = { Text(stringResource(R.string.settings_gestures_summary)) },
                     modifier = Modifier.clickable { onOpen(SettingsRoute.GESTURES) },
+                )
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.settings_wallpaper)) },
+                    supportingContent = { Text(stringResource(R.string.settings_wallpaper_summary)) },
+                    modifier = Modifier.clickable { onOpen(SettingsRoute.WALLPAPER) },
                 )
             }
             item {

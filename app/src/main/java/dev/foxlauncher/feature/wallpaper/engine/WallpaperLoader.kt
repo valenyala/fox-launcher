@@ -7,6 +7,7 @@ import android.graphics.ImageDecoder
 import android.graphics.Paint
 import android.graphics.Rect
 import android.net.Uri
+import androidx.core.graphics.createBitmap
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.foxlauncher.core.common.FoxLog
 import java.io.IOException
@@ -35,7 +36,7 @@ class WallpaperLoader @Inject constructor(@param:ApplicationContext private val 
             return null
         }
         val crop = WallpaperGeometry.cropRect(decoded.width, decoded.height, width, height)
-        val fitted = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val fitted = createBitmap(width, height)
         Canvas(fitted).drawBitmap(
             decoded,
             Rect(crop.left, crop.top, crop.right, crop.bottom),

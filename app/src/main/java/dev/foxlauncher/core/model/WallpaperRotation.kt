@@ -12,3 +12,13 @@ data class PlaylistState(
     val seed: Long? = null,
     val history: List<Long> = emptyList(),
 )
+
+/** What changes the wallpaper besides the user (task 4.4). [intervalMinutes] 0 means no interval. */
+data class RotationTriggers(
+    val intervalMinutes: Int = 0,
+    val onUnlock: Boolean = false,
+    val onPageChange: Boolean = false,
+)
+
+/** Why the rotation was asked to move on (task 4.4). */
+enum class RotationTrigger { INTERVAL, UNLOCK, PAGE_CHANGE, GESTURE, MANUAL }

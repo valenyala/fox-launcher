@@ -19,6 +19,7 @@ import dev.foxlauncher.core.model.GestureAction
 import dev.foxlauncher.core.model.GestureType
 import dev.foxlauncher.core.model.PlaylistMode
 import dev.foxlauncher.core.model.PlaylistState
+import dev.foxlauncher.core.model.RotationTriggers
 
 /**
  * Typed access to the Preferences DataStore. Reads are cold [Flow]s, writes are `suspend` and land
@@ -96,8 +97,39 @@ class FoxSettings @Inject constructor(
      */
     val activeWallpaperEntryId: Flow<Long?> = dataStore.data.map { it[Keys.ACTIVE_WALLPAPER] }
 
-    suspend fun setActiveWallpaperEntryId(id: Long) = withContext(io) {
-        dataStore.edit { it[Keys.ACTIVE_WALLPAPER] = id }
+    /** When the wallpaper last changed, epoch ms (task 4.4); null before the first change. */
+    val wallpaperChangedAt: Flow<Long?> = dataStore.data.map { it[Keys.WALLPAPER_CHANGED_AT] }
+
+    /** Records a change of wallpaper: the entry now active and when (task 4.4). */
+    suspend fun setActiveWallpaper(id: Long, changedAt: Long) = withContext(io) {
+        dataStore.edit {
+            it[Keys.ACTIVE_WALLPAPER] = id
+            it[Keys.WALLPAPER_CHANGED_AT] = changedAt
+        }
+        Unit
+    }
+
+    /** What changes the wallpaper by itself (task 4.4). */
+    val rotationTriggers: Flow<RotationTriggers> = dataStore.data.map {
+        RotationTriggers(
+            intervalMinutes = it[Keys.ROTATION_INTERVAL] ?: 0,
+            onUnlock = it[Keys.ROTATE_ON_UNLOCK] ?: false,
+            onPageChange = it[Keys.ROTATE_ON_PAGE_CHANGE] ?: false,
+        )
+    }
+
+    suspend fun setRotationInterval(minutes: Int) = withContext(io) {
+        dataStore.edit { it[Keys.ROTATION_INTERVAL] = minutes }
+        Unit
+    }
+
+    suspend fun setRotateOnUnlock(enabled: Boolean) = withContext(io) {
+        dataStore.edit { it[Keys.ROTATE_ON_UNLOCK] = enabled }
+        Unit
+    }
+
+    suspend fun setRotateOnPageChange(enabled: Boolean) = withContext(io) {
+        dataStore.edit { it[Keys.ROTATE_ON_PAGE_CHANGE] = enabled }
         Unit
     }
 
@@ -141,6 +173,10 @@ class FoxSettings @Inject constructor(
         val GESTURE_MAP = stringPreferencesKey("gesture_map")
         val ACTIVE_WALLPAPER = longPreferencesKey("wallpaper_active_entry")
         val CROSSFADE_MS = intPreferencesKey("wallpaper_crossfade_ms")
+        val WALLPAPER_CHANGED_AT = longPreferencesKey("wallpaper_changed_at")
+        val ROTATION_INTERVAL = intPreferencesKey("wallpaper_rotation_interval_minutes")
+        val ROTATE_ON_UNLOCK = booleanPreferencesKey("wallpaper_rotate_on_unlock")
+        val ROTATE_ON_PAGE_CHANGE = booleanPreferencesKey("wallpaper_rotate_on_page_change")
         val PLAYLIST_MODE = stringPreferencesKey("wallpaper_playlist_mode")
         val PLAYLIST_SEED = longPreferencesKey("wallpaper_playlist_seed")
         val PLAYLIST_HISTORY = stringPreferencesKey("wallpaper_playlist_history")
