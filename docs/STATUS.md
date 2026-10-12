@@ -62,7 +62,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 ## Phase 3 — Gesture engine
 - [x] 3.1 Gesture and action model + defaults
 - [x] 3.2 GestureClassifier + tests
-- [ ] 3.3 GestureArena composable
+- [ ] 3.3 GestureArena composable — code done; emulator run and device checklist pending
 - [ ] 3.4 FoxAccessibilityService + ActionExecutor
 - [ ] 3.5 Gesture settings UI
 - [ ] 3.6 System gesture coexistence, predictive back, home intent
@@ -160,6 +160,21 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-12 — 3.3 checkpoint, **code done; not yet run on an emulator** (none attached; the user launches them).
+  `feature/gestures/GestureArena.kt`: `Modifier.gestureArena(enabled, isOnItem, onGesture, pagerTakesSwipeLeft/Right,
+  dockTop)` (a modifier rather than the plan's wrapper composable) feeds every change, batched historical samples
+  included, to the classifier in the Initial pass and runs the long-press timer. It consumes the rest of a gesture
+  once it is the home's: two fingers (on `Claimed`), pinch, double tap, long press on empty space, three fingers, edge
+  swipes. **Deviation:** the 1.4 drawer detector stays until 3.7 and the arena never consumes single-finger vertical
+  swipes, so the drawer keeps following the finger and flinging (replacing it now would make the drawer jump open on
+  release until 3.7). Thresholds: touch slop, long-press and double-tap timeouts from `ViewConfiguration`; fling
+  300 dp/s (the drawer's; the system minimum, 50 dp/s, turns slow lifts into swipes); double-tap slop 100 dp (Android's,
+  absent from Compose); pinch 48 dp. In `HomeScreen` it sits after the drag layer (a drag that owns the finger has
+  consumed its events) and is off while the drawer, a folder, a popup or a drag is shown. `HomeDragState` gained
+  `dockTop()` and `itemAt(position)`; `GestureConfig.dockTop` became a lambda read at the first DOWN.
+  `HomeViewModel.onGesture` logs `Gesture <type> -> <action>` (debug builds) until 3.4 runs actions. New instrumented
+  `GestureArenaTest` (11) and `HomeScreenGestureTest` (5), not run yet.
 
 - 2026-10-12 — **3.2 done.** `feature/gestures/classifier/` (no Android imports): `GestureClassifier`, `GestureConfig`,
   `PointerSample`, `GestureResult`, and a least-squares `VelocityTracker` over the last 100 ms. 40 classifier + 6

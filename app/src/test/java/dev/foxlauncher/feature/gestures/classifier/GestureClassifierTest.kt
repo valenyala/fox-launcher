@@ -26,7 +26,7 @@ class GestureClassifierTest {
             pinchThresholdPx = 60f,
             arenaWidthPx = 1000f,
             arenaHeightPx = 2000f,
-            dockTopPx = 1800f,
+            dockTop = { 1800f },
             pagerTakesSwipeLeft = { pagerTakesLeft },
             pagerTakesSwipeRight = { pagerTakesRight },
         ),

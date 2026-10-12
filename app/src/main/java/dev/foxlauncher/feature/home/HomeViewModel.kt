@@ -9,9 +9,12 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.foxlauncher.core.apps.AppRepository
 import dev.foxlauncher.core.apps.IconCache
+import dev.foxlauncher.core.common.FoxLog
 import dev.foxlauncher.core.data.settings.FoxSettings
 import dev.foxlauncher.core.model.AppEntry
 import dev.foxlauncher.core.model.AppShortcut
+import dev.foxlauncher.core.model.DEFAULT_GESTURE_MAP
+import dev.foxlauncher.core.model.GestureType
 import dev.foxlauncher.core.model.HomeItem
 import dev.foxlauncher.core.model.HomeLayout
 import dev.foxlauncher.feature.home.drag.DropAction
@@ -93,6 +96,13 @@ class HomeViewModel @Inject constructor(
         started = SharingStarted.Eagerly,
         initialValue = HomeUiState(),
     )
+
+    private val gestureMap = settings.gestureMap.stateIn(viewModelScope, SharingStarted.Eagerly, DEFAULT_GESTURE_MAP)
+
+    /** A home gesture was recognized (task 3.3). Task 3.4 runs its action; until then it is logged. */
+    fun onGesture(type: GestureType) {
+        FoxLog.d("Gesture $type -> ${gestureMap.value[type]}")
+    }
 
     private var firstRun: Job? = null
 

@@ -12,7 +12,8 @@ data class PointerSample(val pointerId: Int, val x: Float, val y: Float, val tim
 /**
  * Everything the classifier does not decide itself (ADR-10): system thresholds (the arena reads
  * them from `ViewConfiguration`), the arena's size, where the dock starts, and whether the pager
- * would page for a single-finger swipe to the left (towards the next page) or to the right.
+ * would page for a single-finger swipe to the left (towards the next page) or to the right. The
+ * lambdas are read when a gesture's first finger goes down.
  */
 class GestureConfig(
     val touchSlopPx: Float,
@@ -23,7 +24,7 @@ class GestureConfig(
     val pinchThresholdPx: Float,
     val arenaWidthPx: Float,
     val arenaHeightPx: Float,
-    val dockTopPx: Float = Float.POSITIVE_INFINITY,
+    val dockTop: () -> Float = { Float.POSITIVE_INFINITY },
     val pagerTakesSwipeLeft: () -> Boolean = { false },
     val pagerTakesSwipeRight: () -> Boolean = { false },
 )
@@ -151,7 +152,7 @@ class GestureClassifier(private val config: GestureConfig) {
     private fun start(sample: PointerSample) {
         maxPointers = 0
         startTimeMs = sample.timeMs
-        startedOnDock = sample.y >= config.dockTopPx
+        startedOnDock = sample.y >= config.dockTop()
         // Read now: by the time the finger lifts, the pager may have paged onto its last page.
         pagerTakesLeft = config.pagerTakesSwipeLeft()
         pagerTakesRight = config.pagerTakesSwipeRight()

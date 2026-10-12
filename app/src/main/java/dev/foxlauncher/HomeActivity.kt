@@ -102,6 +102,7 @@ class HomeActivity : ComponentActivity() {
                             onPopupAction = { item, action, bounds ->
                                 viewModel.onPopupAction(item, action, bounds?.let { launchSource(view, it).sourceBounds })
                             },
+                            onGesture = viewModel::onGesture,
                         ) {
                             DrawerScreen(
                                 viewModel = drawerViewModel,

@@ -62,16 +62,20 @@ import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import dev.foxlauncher.R
 import dev.foxlauncher.core.model.AppEntry
+import dev.foxlauncher.core.model.GestureType
 import dev.foxlauncher.core.model.HomeItem
+import dev.foxlauncher.feature.gestures.gestureArena
 import dev.foxlauncher.feature.home.drag.DragOverlay
 import dev.foxlauncher.feature.home.drag.DropAction
 import dev.foxlauncher.feature.home.drag.DropHighlight
@@ -160,7 +164,8 @@ interface DrawerScope {
  * ([DrawerScope]); [onDrop] receives what the drop should do (task 2.4). Removing a folder asks first.
  * Tapping a folder opens its [FolderSheet] (task 2.5); a changed title goes to [onRenameFolder].
  * A long press that lifts in place opens the item's [ItemPopup] (task 2.6): [loadPopup] says what
- * it offers and [onPopupAction] receives the choice with the item's window bounds.
+ * it offers and [onPopupAction] receives the choice with the item's window bounds. [onGesture] hears
+ * every home gesture the arena recognizes while nothing else is open (task 3.3).
  */
 @Composable
 fun HomeScreen(
@@ -173,6 +178,7 @@ fun HomeScreen(
     onRenameFolder: (HomeItem.Folder, String) -> Unit = { _, _ -> },
     loadPopup: suspend (HomeItem) -> ItemPopupModel = { ItemPopupModel() },
     onPopupAction: (HomeItem, PopupAction, Rect?) -> Unit = { _, _, _ -> },
+    onGesture: (GestureType) -> Unit = {},
     drawer: @Composable DrawerScope.() -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -236,6 +242,8 @@ fun HomeScreen(
     val isDrawerShown by remember { derivedStateOf { progress.value > 0f } }
 
     val currentOnDrawerClosed by rememberUpdatedState(onDrawerClosed)
+    val currentOnGesture by rememberUpdatedState(onGesture)
+    val isRtl by rememberUpdatedState(LocalLayoutDirection.current == LayoutDirection.Rtl)
     val focusManager = LocalFocusManager.current
 
     /** A drag leaving the drawer: drop it at once so the home screen is the drop surface. */
@@ -317,7 +325,18 @@ fun HomeScreen(
                 popup = null
             }
             .homeDragLayer(dragState)
-            // TODO(phase3): temporary. GestureArena replaces this detector in task 3.3.
+            // After the drag layer: a drag that owns the finger has consumed its events before the arena sees them.
+            .gestureArena(
+                enabled = { !isDrawerShown && openFolderId == null && popup == null && dragState.dragging == null },
+                isOnItem = { dragState.itemAt(it) != null },
+                onGesture = { currentOnGesture(it) },
+                // A swipe to the left goes to the next page, or to the previous one right to left.
+                pagerTakesSwipeLeft = { if (isRtl) pagerState.canScrollBackward else pagerState.canScrollForward },
+                pagerTakesSwipeRight = { if (isRtl) pagerState.canScrollForward else pagerState.canScrollBackward },
+                dockTop = dragState::dockTop,
+            )
+            // TODO(3.7): temporary. The drawer's drag-follow moves into the classifier in task 3.7; until then
+            // this detector opens the drawer, and the arena leaves single-finger vertical drags to it.
             .pointerInput(Unit) {
                 val tracker = VelocityTracker()
                 // Kept in step with each drag event. progress.value lags behind while snapTo calls are

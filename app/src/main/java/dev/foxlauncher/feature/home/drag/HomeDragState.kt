@@ -251,6 +251,42 @@ class HomeDragState internal constructor(
         }
     }
 
+    /** The dock's top edge in drag-layer coordinates; infinity until the dock is placed. */
+    fun dockTop(): Float {
+        val layer = layer?.takeIf { it.isAttached } ?: return Float.POSITIVE_INFINITY
+        return dockBounds(layer)?.top ?: Float.POSITIVE_INFINITY
+    }
+
+    /**
+     * The item whose cell or dock slot holds [position] (drag-layer coordinates) on the page in
+     * view, if any: the gesture arena leaves long presses there to the item (task 3.3).
+     */
+    fun itemAt(position: Offset): HomeItem? {
+        val layer = layer?.takeIf { it.isAttached } ?: return null
+        val engine = engine()
+        val layout = layout()
+        dockBounds(layer)?.let { bounds ->
+            if (bounds.contains(position)) {
+                val slot = engine.dockSlotAt(position.x - bounds.left, bounds.width) ?: return null
+                return layout.dock.items.firstOrNull { it.position.col == slot }
+            }
+        }
+        // Off-screen pages clip to empty boxes, so only the page in view can contain the point.
+        val (index, page) = pages.entries.firstOrNull { (_, page) ->
+            page.isAttached && layer.localBoundingBoxOf(page).contains(position)
+        } ?: return null
+        val local = page.localPositionOf(layer, position)
+        val cell = engine.cellAt(
+            local.x,
+            local.y,
+            page.size.width.toFloat() / engine.spec.cols,
+            page.size.height.toFloat() / engine.spec.rows,
+        ) ?: return null
+        return layout.pages.getOrNull(index)?.items?.firstOrNull { item ->
+            CellRect(item.position.col, item.position.row, item.position.spanX, item.position.spanY).overlaps(cell)
+        }
+    }
+
     /** The cell or slot the current [preview] would fill, in drag-layer coordinates. */
     fun highlightBounds(): Rect? {
         val preview = preview ?: return null
