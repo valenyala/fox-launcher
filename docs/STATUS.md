@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 4 — Wallpaper rotation (Phase 3 done 2026-10-12; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists)
-**Next task:** 4.2 WallpaperPlaylist + tests (2.8 still deferred)
+**Next task:** 4.3 FoxWallpaperService crossfade engine (2.8 still deferred)
 
 ## Environment facts (verified 2026-09-17)
 
@@ -71,7 +71,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 
 ## Phase 4 — Wallpaper rotation
 - [x] 4.1 Sources and entries data layer (built-in images are generated placeholders until the user supplies some)
-- [ ] 4.2 WallpaperPlaylist + tests
+- [x] 4.2 WallpaperPlaylist + tests
 - [ ] 4.3 FoxWallpaperService crossfade engine
 - [ ] 4.4 RotationScheduler and triggers
 - [ ] 4.5 Static fallback
@@ -160,6 +160,15 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-12 — **4.2 done.** Pure `feature/wallpaper/WallpaperPlaylist` (immutable; `next()`/`previous()` return the id
+  and the playlist to keep). Shuffle walks a permutation drawn from the seed; at the end of a pass a new seed (fixed
+  LCG step, so a stored playlist replays the same) whose permutation does not start with the entry showing. When
+  entries change, the walk continues after the most recent history entry still present, so no old entry list needs
+  storing: removing the current wallpaper continues with its successor. `previous()` pops the history, skipping
+  vanished entries; history capped at 50. `core/model/PlaylistMode` + `PlaylistState`; `FoxSettings.playlistState`,
+  `setPlaylistMode`, `savePlaylist(seed, history)` (history as `IdListCodec` text; seed null until first chosen).
+  Tests: 18 playlist, 3 codec. Nothing visible until 4.4 wires it.
 
 - 2026-10-12 — **4.1 done.** Room v3 (auto-migration 2→3, `3.json` committed): `WallpaperSourceEntity` (FOLDER_TREE /
   PICKED_IMAGES / BUILT_IN, `needsReauth`) and `WallpaperEntryEntity` (cascade on source delete, unique `sourceId+uri`,

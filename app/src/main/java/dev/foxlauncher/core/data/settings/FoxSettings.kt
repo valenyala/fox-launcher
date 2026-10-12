@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import javax.inject.Inject
@@ -16,6 +17,8 @@ import kotlinx.coroutines.withContext
 import dev.foxlauncher.core.common.IoDispatcher
 import dev.foxlauncher.core.model.GestureAction
 import dev.foxlauncher.core.model.GestureType
+import dev.foxlauncher.core.model.PlaylistMode
+import dev.foxlauncher.core.model.PlaylistState
 
 /**
  * Typed access to the Preferences DataStore. Reads are cold [Flow]s, writes are `suspend` and land
@@ -87,6 +90,30 @@ class FoxSettings @Inject constructor(
         Unit
     }
 
+    /** The wallpaper rotation's mode, shuffle seed and history (task 4.2). */
+    val playlistState: Flow<PlaylistState> = dataStore.data.map {
+        PlaylistState(
+            mode = it[Keys.PLAYLIST_MODE]?.let { name -> PlaylistMode.entries.firstOrNull { mode -> mode.name == name } }
+                ?: PlaylistMode.SEQUENTIAL,
+            seed = it[Keys.PLAYLIST_SEED],
+            history = IdListCodec.decode(it[Keys.PLAYLIST_HISTORY]),
+        )
+    }
+
+    suspend fun setPlaylistMode(mode: PlaylistMode) = withContext(io) {
+        dataStore.edit { it[Keys.PLAYLIST_MODE] = mode.name }
+        Unit
+    }
+
+    /** After each change of wallpaper: the seed in use and the history with the new current one last. */
+    suspend fun savePlaylist(seed: Long, history: List<Long>) = withContext(io) {
+        dataStore.edit {
+            it[Keys.PLAYLIST_SEED] = seed
+            it[Keys.PLAYLIST_HISTORY] = IdListCodec.encode(history)
+        }
+        Unit
+    }
+
     private object Keys {
         val IS_FIRST_RUN = booleanPreferencesKey("is_first_run")
         val ICON_SHAPE = stringPreferencesKey("icon_shape")
@@ -98,6 +125,9 @@ class FoxSettings @Inject constructor(
         val DOCK_SLOTS = intPreferencesKey("dock_slots")
         val SHOW_HOME_LABELS = booleanPreferencesKey("show_home_labels")
         val GESTURE_MAP = stringPreferencesKey("gesture_map")
+        val PLAYLIST_MODE = stringPreferencesKey("wallpaper_playlist_mode")
+        val PLAYLIST_SEED = longPreferencesKey("wallpaper_playlist_seed")
+        val PLAYLIST_HISTORY = stringPreferencesKey("wallpaper_playlist_history")
     }
 
     companion object {
