@@ -161,6 +161,15 @@ Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out o
 
 ## Session notes
 
+- 2026-10-12 — **No search pill on the home (ADR-16, user request).** `HomeScreen` shows pages and the dock only;
+  swipe up opens the drawer, whose search field is the one search UI. The pill was the only thing that asked the drawer
+  to focus its search, so `openedBySearch`, the `drawer` slot's focus argument and `DrawerContent(autoFocusSearch)`
+  went too (Phase 3's `OpenSearch` re-adds a focus path; see ADR-16). The dock now sits right above the navigation bar.
+  Tests: the two pill tests are gone with the feature (`tappingThePillOpensTheDrawerWithSearchFocused`,
+  `reopeningWithThePillFocusesSearchAgain`); tests that only used the pill to open the drawer now swipe up; new
+  `theHomeHasNoSearchBar`. fox-api33: 53/53 pass. On fox-api33 and fox-api37 after `pm clear`: dock of four, no pill,
+  swipe up shows the drawer with its search field. The 2.7 free middle slot stays.
+
 - 2026-10-12 — **API 29 emulator removed** (user): `.#emulator` now carries only the API 33 and 37 images and
   platforms; `fox-api29` deleted with `avdmanager delete avd`; ADR-15 amended. The old image stays in the Nix store until
   the next `nix-collect-garbage`.

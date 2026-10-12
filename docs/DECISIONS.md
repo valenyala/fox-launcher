@@ -114,6 +114,14 @@ emulator-5554/5556/5558. Another API level means adding it to `androidEmu` and t
 Amended the same day, at the user's request: testing covers only the phone's API 33 and above, so API 29 (image,
 platform, `fox-api29`) is gone. The other two keep their ports, emulator-5556 and emulator-5558.
 
+## ADR-16 No search bar on the home screen; search lives in the drawer
+The user asked for it (2026-10-12). Phase 1.4 put a "Search apps" pill under the dock that opened the drawer with its
+search field focused. It is gone: the home shows pages and the dock only, swiping up opens the drawer, and the
+drawer's own search field is the one search UI. Nothing asks the drawer to focus its search any more, so that path
+went too (`DrawerContent(autoFocusSearch)`, the home's `openedBySearch`). Phase 3's `GestureAction.OpenSearch` brings
+it back with a real trigger; the removed code is in the commit that introduced this ADR. Supersedes the pill in
+phase 1.4 and the "drawer pill in the middle dock slot" of 2.7, whose free middle slot stays.
+
 ## Dependency log
 (append `- <lib> <version> — reason` when adding a dependency)
 - AGP (com.android.application) 9.4.0 — build system; built-in Kotlin, see ADR-11.

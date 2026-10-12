@@ -50,8 +50,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -92,14 +90,12 @@ object DrawerTestTags {
 }
 
 /**
- * The drawer wired to its ViewModel. [autoFocusSearch] is true only when opened by a search action.
- * [onAppLongPress] hears every long press, alongside the popup it opens. [isShown] is false while
- * the drawer is closed but kept composed.
+ * The drawer wired to its ViewModel. [onAppLongPress] hears every long press, alongside the popup
+ * it opens. [isShown] is false while the drawer is closed but kept composed.
  */
 @Composable
 fun DrawerScreen(
     viewModel: DrawerViewModel,
-    autoFocusSearch: Boolean,
     onOpenHiddenApps: () -> Unit,
     modifier: Modifier = Modifier,
     onAppLongPress: (AppEntry) -> Unit = {},
@@ -110,7 +106,6 @@ fun DrawerScreen(
     DrawerContent(
         state = state,
         searchState = viewModel.searchState,
-        autoFocusSearch = autoFocusSearch,
         onAppClick = { entry, bounds ->
             val source = bounds?.let { launchSource(view, it) }
             viewModel.onAppClick(entry, source?.sourceBounds, source?.options)
@@ -140,7 +135,6 @@ fun DrawerScreen(
 fun DrawerContent(
     state: DrawerUiState,
     searchState: TextFieldState,
-    autoFocusSearch: Boolean,
     onAppClick: (AppEntry, Rect?) -> Unit,
     onAppLongClick: (AppEntry) -> Unit,
     onDismissPopup: () -> Unit,
@@ -155,13 +149,9 @@ fun DrawerContent(
     isShown: Boolean = true,
 ) {
     val gridState = rememberLazyGridState()
-    val focusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
 
-    LaunchedEffect(autoFocusSearch) {
-        if (autoFocusSearch) focusRequester.requestFocus()
-    }
     LaunchedEffect(gridState) {
         snapshotFlow { gridState.isScrollInProgress }.filter { it }.collect {
             keyboard?.hide()
@@ -189,7 +179,6 @@ fun DrawerContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .focusRequester(focusRequester)
                     .testTag(DrawerTestTags.SEARCH),
             )
             val work = state.work

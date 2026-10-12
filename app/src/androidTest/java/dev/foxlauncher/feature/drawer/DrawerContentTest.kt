@@ -119,7 +119,6 @@ class DrawerContentTest {
                 DrawerContent(
                     state = DrawerUiState(sections = buildSections(many, ""), isLoading = false),
                     searchState = TextFieldState(),
-                    autoFocusSearch = false,
                     onAppClick = { _, _ -> },
                     onAppLongClick = {},
                     onDismissPopup = {},
@@ -159,7 +158,6 @@ class DrawerContentTest {
                 DrawerContent(
                     state = state,
                     searchState = TextFieldState(state.query),
-                    autoFocusSearch = false,
                     onAppClick = { entry, _ -> onAppClick(entry) },
                     onAppLongClick = {},
                     onDismissPopup = {},

@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -23,10 +22,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -51,7 +47,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
@@ -98,8 +93,6 @@ private const val OPEN_THRESHOLD = 0.2f
 /** Vertical fling speed (per second) that opens or closes the drawer regardless of progress. */
 private val FLING_VELOCITY = 300.dp
 
-private const val PILL_ALPHA = 0.35f
-
 private const val DEFAULT_PAGE = 0
 
 /** Dock height on top of the icon: room for a label and padding. */
@@ -129,7 +122,6 @@ private const val FOLDER_EXIT_DWELL_MS = 300L
 private val FOLDER_CELL_EXTRA_HEIGHT = 36.dp
 
 object HomeTestTags {
-    const val SEARCH_PILL = "home_search_pill"
     const val DRAWER = "home_drawer"
     const val PAGER = "home_pager"
     const val DOCK = "home_dock"
@@ -161,9 +153,9 @@ interface DrawerScope {
 }
 
 /**
- * The home surface: wallpaper through the window, a "Search apps" pill, and the app drawer as an
- * overlay that follows the finger. [homeKeyPresses] increments on every Home key press while Fox
- * is in front, which closes the drawer. [drawer] receives whether the search field should focus.
+ * The home surface: wallpaper through the window, pages, the dock, and the app drawer as an overlay
+ * that follows the finger (search lives only in the drawer). [homeKeyPresses] increments on every
+ * Home key press while Fox is in front, which closes the drawer.
  * Long-pressing an item drags it, and so does long-pressing then moving an app in the drawer
  * ([DrawerScope]); [onDrop] receives what the drop should do (task 2.4). Removing a folder asks first.
  * Tapping a folder opens its [FolderSheet] (task 2.5); a changed title goes to [onRenameFolder].
@@ -181,7 +173,7 @@ fun HomeScreen(
     onRenameFolder: (HomeItem.Folder, String) -> Unit = { _, _ -> },
     loadPopup: suspend (HomeItem) -> ItemPopupModel = { ItemPopupModel() },
     onPopupAction: (HomeItem, PopupAction, Rect?) -> Unit = { _, _, _ -> },
-    drawer: @Composable DrawerScope.(autoFocusSearch: Boolean) -> Unit,
+    drawer: @Composable DrawerScope.() -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     val engine = remember(state.gridSpec) { GridLayoutEngine(state.gridSpec) }
@@ -240,7 +232,6 @@ fun HomeScreen(
     // 0 = closed, 1 = fully open. The settled state is saved separately, since Animatable is not.
     val progress = remember { Animatable(0f) }
     var isOpen by rememberSaveable { mutableStateOf(false) }
-    var openedBySearch by rememberSaveable { mutableStateOf(false) }
     var heightPx by remember { mutableFloatStateOf(1f) }
     val isDrawerShown by remember { derivedStateOf { progress.value > 0f } }
 
@@ -250,9 +241,8 @@ fun HomeScreen(
     /** A drag leaving the drawer: drop it at once so the home screen is the drop surface. */
     fun closeDrawerNow() {
         if (isOpen) currentOnDrawerClosed()
-        // The drawer stays composed: drop its search focus (and the keyboard) and re-arm auto focus.
+        // The drawer stays composed: drop its search focus (and the keyboard).
         focusManager.clearFocus()
-        openedBySearch = false
         isOpen = false
         scope.launch { progress.snapTo(0f) }
     }
@@ -271,10 +261,7 @@ fun HomeScreen(
 
     fun settle(open: Boolean, velocity: Float = 0f) {
         if (isOpen && !open) currentOnDrawerClosed()
-        if (!open) {
-            focusManager.clearFocus()
-            openedBySearch = false
-        }
+        if (!open) focusManager.clearFocus()
         isOpen = open
         scope.launch {
             progress.animateTo(
@@ -340,7 +327,6 @@ fun HomeScreen(
                     onDragStart = {
                         tracker.resetTracking()
                         dragProgress = progress.value
-                        openedBySearch = false
                     },
                     onVerticalDrag = { change, dragAmount ->
                         // Takes the batched historical samples too: a fast flick can be one or two events.
@@ -412,13 +398,6 @@ fun HomeScreen(
                     .testTag(HomeTestTags.DOCK),
                 itemContent = itemContent,
             )
-            SearchPill(
-                onClick = {
-                    openedBySearch = true
-                    settle(open = true)
-                },
-                modifier = Modifier.padding(horizontal = 32.dp, vertical = 12.dp),
-            )
         }
         OpenFolder(
             folder = openFolder,
@@ -472,7 +451,7 @@ fun HomeScreen(
             progress = { progress.value },
             pull = drawerPull,
         ) {
-            drawerScope.drawer(openedBySearch)
+            drawerScope.drawer()
         }
     }
     folderToRemove?.let { folder ->
@@ -653,25 +632,5 @@ private fun EdgeFlipEffect(dragState: HomeDragState, pagerState: PagerState) {
             // The finger may not have moved, but the page under it has.
             dragState.refresh()
         }
-    }
-}
-
-@Composable
-private fun SearchPill(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    // Translucent and white: it sits directly on an arbitrary wallpaper.
-    Surface(
-        onClick = onClick,
-        shape = CircleShape,
-        color = Color.Black.copy(alpha = PILL_ALPHA),
-        contentColor = Color.White,
-        modifier = modifier
-            .fillMaxWidth()
-            .testTag(HomeTestTags.SEARCH_PILL),
-    ) {
-        Text(
-            text = stringResource(R.string.drawer_search_hint),
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(horizontal = 24.dp, vertical = 14.dp),
-        )
     }
 }

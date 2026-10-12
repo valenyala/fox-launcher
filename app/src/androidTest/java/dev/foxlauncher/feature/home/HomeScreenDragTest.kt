@@ -15,6 +15,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.foxlauncher.core.model.AppEntry
@@ -129,7 +130,8 @@ class HomeScreenDragTest {
     fun longPressThenMoveInTheDrawerDragsTheAppHome() {
         val entry = AppEntry("com.example/.Drawer", 0, "Drawer app", "com.example", false, false, true, 1)
         setHome { Box(Modifier.fillMaxSize().combinedClickable(onLongClick = { onAppLongPress(entry) }) {}) }
-        composeRule.onNodeWithTag(HomeTestTags.SEARCH_PILL).performClick()
+        composeRule.onRoot().performTouchInput { swipeUp() }
+        composeRule.waitForIdle()
 
         drag(from = center(HomeTestTags.DRAWER)) { cellCenter(3, 4) }
 
@@ -152,7 +154,7 @@ class HomeScreenDragTest {
 
     private fun setHome(
         items: ImmutableList<HomeItem> = persistentListOf(first, second),
-        drawer: @Composable DrawerScope.(Boolean) -> Unit = { Text("drawer") },
+        drawer: @Composable DrawerScope.() -> Unit = { Text("drawer") },
     ) {
         val layout = HomeLayout(pages = persistentListOf(HomePage(0, items)))
         composeRule.setContent {

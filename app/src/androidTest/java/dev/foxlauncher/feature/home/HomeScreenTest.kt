@@ -18,12 +18,12 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
-import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
+import dev.foxlauncher.R
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.foxlauncher.core.ui.theme.FoxTheme
 import kotlin.test.assertEquals
@@ -42,26 +42,25 @@ class HomeScreenTest {
     fun drawerIsClosedInitially() {
         setHome()
 
-        composeRule.onNodeWithTag(HomeTestTags.SEARCH_PILL).assertIsDisplayed()
+        composeRule.onNodeWithTag(HomeTestTags.PAGER).assertIsDisplayed()
         composeRule.onNodeWithTag(HomeTestTags.DRAWER).assertDoesNotExist()
     }
 
     @Test
-    fun tappingThePillOpensTheDrawerWithSearchFocused() {
+    fun theHomeHasNoSearchBar() {
         setHome()
 
-        composeRule.onNodeWithTag(HomeTestTags.SEARCH_PILL).performClick()
-
-        composeRule.onNodeWithText("drawer focus=true").assertIsDisplayed()
+        // Search lives only in the drawer (user request, 2026-10-12).
+        composeRule.onNodeWithText(composeRule.activity.getString(R.string.drawer_search_hint)).assertDoesNotExist()
     }
 
     @Test
-    fun swipingUpOpensTheDrawerWithoutFocus() {
+    fun swipingUpOpensTheDrawer() {
         setHome()
 
         composeRule.onRoot().performTouchInput { swipeUp() }
 
-        composeRule.onNodeWithText("drawer focus=false").assertIsDisplayed()
+        composeRule.onNodeWithText("drawer").assertIsDisplayed()
     }
 
     @Test
@@ -73,7 +72,7 @@ class HomeScreenTest {
             swipeUp(startY = height * 0.75f, endY = height * 0.65f, durationMillis = 60)
         }
 
-        composeRule.onNodeWithText("drawer focus=false").assertIsDisplayed()
+        composeRule.onNodeWithText("drawer").assertIsDisplayed()
     }
 
     @Test
@@ -127,30 +126,8 @@ class HomeScreenTest {
         composeRule.onRoot().captureToImage()
 
         assertEquals(drawsBefore, draws)
-        composeRule.onNodeWithTag(HomeTestTags.SEARCH_PILL).performClick()
-        composeRule.onNodeWithText("drawer").assertIsDisplayed()
-    }
-
-    @Test
-    fun reopeningWithThePillFocusesSearchAgain() {
-        var presses by mutableIntStateOf(0)
-        composeRule.setContent {
-            FoxTheme {
-                HomeScreen(homeKeyPresses = presses, onDrawerClosed = {}) { focus -> Text("drawer focus=$focus") }
-            }
-        }
-        composeRule.onNodeWithTag(HomeTestTags.SEARCH_PILL).performClick()
-        composeRule.onNodeWithText("drawer focus=true").assertIsDisplayed()
-        presses++
-        composeRule.waitForIdle()
         composeRule.onRoot().performTouchInput { swipeUp() }
-        composeRule.onNodeWithText("drawer focus=false").assertIsDisplayed()
-        presses++
-        composeRule.waitForIdle()
-
-        composeRule.onNodeWithTag(HomeTestTags.SEARCH_PILL).performClick()
-
-        composeRule.onNodeWithText("drawer focus=true").assertIsDisplayed()
+        composeRule.onNodeWithText("drawer").assertIsDisplayed()
     }
 
     @Test
@@ -162,7 +139,7 @@ class HomeScreenTest {
                 HomeScreen(homeKeyPresses = presses, onDrawerClosed = { closed++ }) { Text("drawer") }
             }
         }
-        composeRule.onNodeWithTag(HomeTestTags.SEARCH_PILL).performClick()
+        composeRule.onRoot().performTouchInput { swipeUp() }
         composeRule.onNodeWithText("drawer").assertIsDisplayed()
 
         presses++
@@ -175,7 +152,7 @@ class HomeScreenTest {
     @Test
     fun swipingDownOnTheDrawerListAtItsTopClosesTheDrawer() {
         setHomeWithList(LazyListState())
-        composeRule.onNodeWithTag(HomeTestTags.SEARCH_PILL).performClick()
+        composeRule.onRoot().performTouchInput { swipeUp() }
 
         composeRule.onNodeWithTag(LIST).performTouchInput { swipeDown() }
         composeRule.waitForIdle()
@@ -187,7 +164,7 @@ class HomeScreenTest {
     fun swipingDownOnAScrolledDrawerListScrollsItInstead() {
         val listState = LazyListState(firstVisibleItemIndex = 40)
         setHomeWithList(listState)
-        composeRule.onNodeWithTag(HomeTestTags.SEARCH_PILL).performClick()
+        composeRule.onRoot().performTouchInput { swipeUp() }
 
         composeRule.onNodeWithTag(LIST).performTouchInput {
             swipeDown(startY = centerY, endY = centerY + height / 4f, durationMillis = 600)
@@ -214,7 +191,7 @@ class HomeScreenTest {
     private fun setHome() {
         composeRule.setContent {
             FoxTheme {
-                HomeScreen(homeKeyPresses = 0, onDrawerClosed = {}) { focus -> Text("drawer focus=$focus") }
+                HomeScreen(homeKeyPresses = 0, onDrawerClosed = {}) { Text("drawer") }
             }
         }
     }

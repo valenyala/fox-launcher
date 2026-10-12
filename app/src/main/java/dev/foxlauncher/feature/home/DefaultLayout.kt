@@ -18,8 +18,8 @@ fun interface DefaultAppResolver {
 /**
  * The first-run home: each [DefaultApp] the resolver finds in the personal profile's catalog goes
  * into the dock, in [DefaultApp] order; pages stay empty. An odd dock wider than the app count
- * keeps its middle slot free, above the "Search apps" pill, with the apps split evenly around it
- * (a 5-slot dock: 0, 1, 3, 4). An app that resolves to nothing leaves no gap: the rest move up.
+ * keeps its middle slot free for an app of the user's choosing, with the apps split evenly around
+ * it (a 5-slot dock: 0, 1, 3, 4). An app that resolves to nothing leaves no gap: the rest move up.
  */
 object DefaultLayoutBuilder {
 

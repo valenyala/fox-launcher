@@ -107,7 +107,7 @@ Read `PLATFORM-NOTES.md` sections A (shortcuts), C, S (uninstall, app info) befo
 
 ## Phase device checklist
 
-1. Fresh install → dock has 4 apps + drawer pill.
+1. Fresh install → dock has 4 apps, middle slot free (no search pill on the home since ADR-16).
 2. Drag 6 apps to page 0 and 2 to page 1; reboot; layout identical.
 3. Make a folder, rename it, add 3 apps, remove down to 1 → collapses.
 4. Pin a shortcut; reboot; still opens.

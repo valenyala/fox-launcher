@@ -96,7 +96,7 @@ Read `PLATFORM-NOTES.md` section A before starting.
 
 ## Phase device checklist
 
-1. Fresh install → set default → Home shows wallpaper and pill.
+1. Fresh install → set default → Home shows wallpaper (no pill since ADR-16; swipe up opens the drawer).
 2. Install any app from Play while Fox is in the background → open drawer → it is listed with icon.
 3. Uninstall it → it disappears without restarting Fox.
 4. Rotate device on home and in drawer → no flash, drawer state kept.

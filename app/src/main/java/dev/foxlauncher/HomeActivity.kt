@@ -102,10 +102,9 @@ class HomeActivity : ComponentActivity() {
                             onPopupAction = { item, action, bounds ->
                                 viewModel.onPopupAction(item, action, bounds?.let { launchSource(view, it).sourceBounds })
                             },
-                        ) { autoFocusSearch ->
+                        ) {
                             DrawerScreen(
                                 viewModel = drawerViewModel,
-                                autoFocusSearch = autoFocusSearch,
                                 onOpenHiddenApps = { showHiddenApps = true },
                                 onAppLongPress = ::onAppLongPress,
                                 isShown = isShown,
