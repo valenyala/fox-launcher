@@ -29,6 +29,8 @@
     <string name="accessibility_service_description">Lets Fox Launcher open notifications and quick settings, lock the screen, show recent apps, the power menu or take a screenshot when you make a home-screen gesture. It does not read what is on your screen.</string>
     <string name="accessibility_disclosure_title">Allow system gestures?</string>
     <string name="accessibility_disclosure">Fox Launcher uses the accessibility service only to perform system actions, such as opening notifications when you gesture. It does not read screen content. Turn on \"Fox gestures\" in the accessibility settings.</string>
+    <string name="accessibility_stopped_title">Fox gestures stopped</string>
+    <string name="accessibility_stopped">Android stopped the \"Fox gestures\" service, which happens when recent apps are cleared. In the accessibility settings, turn \"Fox gestures\" off and on again.</string>
     <string name="accessibility_open_settings">Open settings</string>
     <string name="accessibility_not_now">Not now</string>
     <string name="settings_title">Home settings</string>
@@ -43,6 +45,7 @@
     <string name="gestures_no_shortcuts">This app has no shortcuts.</string>
     <string name="gestures_accessibility_off">Actions marked with a shield need the \"Fox gestures\" accessibility service, which is off.</string>
     <string name="gestures_accessibility_on">\"Fox gestures\" is on: system actions work.</string>
+    <string name="gestures_accessibility_stopped">\"Fox gestures\" is on but stopped, which clearing recent apps does. Turn it off and on again in the accessibility settings.</string>
     <string name="gestures_turn_on">Turn on</string>
     <string name="gestures_needs_accessibility">Needs the accessibility service</string>
     <string name="gesture_swipe_up">Swipe up</string>

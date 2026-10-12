@@ -18,6 +18,7 @@ import dev.foxlauncher.core.model.GestureAction
 import dev.foxlauncher.core.model.GestureType
 import dev.foxlauncher.core.model.HomeItem
 import dev.foxlauncher.core.model.HomeLayout
+import dev.foxlauncher.feature.gestures.AccessibilityStatus
 import dev.foxlauncher.feature.gestures.ActionExecutor
 import dev.foxlauncher.feature.gestures.ActionResult
 import dev.foxlauncher.feature.gestures.ExecContext
@@ -109,21 +110,28 @@ class HomeViewModel @Inject constructor(
         initialValue = HomeUiState(),
     )
 
-    private val _accessibilityPrompt = MutableStateFlow(false)
+    private val _accessibilityPrompt = MutableStateFlow<AccessibilityStatus?>(null)
 
-    /** True while the disclosure for Fox's accessibility service should show (a system action needs it). */
-    val accessibilityPrompt: StateFlow<Boolean> = _accessibilityPrompt.asStateFlow()
+    /**
+     * Set while the accessibility dialog should show: a system action needed the service, which is
+     * [AccessibilityStatus.OFF] (the disclosure) or [AccessibilityStatus.STOPPED] (turn it off and on).
+     */
+    val accessibilityPrompt: StateFlow<AccessibilityStatus?> = _accessibilityPrompt.asStateFlow()
 
     /** A home gesture was recognized (task 3.3): run the action it is mapped to (task 3.4). */
     fun onGesture(type: GestureType, context: ExecContext) {
         val action = gestureMap.value[type] ?: GestureAction.None
         val result = actionExecutor.execute(action, context)
         FoxLog.d("Gesture $type -> $action: $result")
-        if (result == ActionResult.NEEDS_ACCESSIBILITY) _accessibilityPrompt.value = true
+        when (result) {
+            ActionResult.NEEDS_ACCESSIBILITY -> _accessibilityPrompt.value = AccessibilityStatus.OFF
+            ActionResult.ACCESSIBILITY_STOPPED -> _accessibilityPrompt.value = AccessibilityStatus.STOPPED
+            ActionResult.DONE, ActionResult.NOTHING, ActionResult.FAILED -> Unit
+        }
     }
 
     fun dismissAccessibilityPrompt() {
-        _accessibilityPrompt.value = false
+        _accessibilityPrompt.value = null
     }
 
     private var firstRun: Job? = null

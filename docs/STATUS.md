@@ -161,6 +161,18 @@ Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out o
 
 ## Session notes
 
+- 2026-10-12 — **Accessibility "stopped" state** (user report on the POCO: "turned it on but it doesn't get up").
+  The phone's log: after double tap → recents, the user cleared recent apps; MIUI's OneKeyClean killed Fox (home or
+  not) and `dumpsys accessibility` showed the service Enabled + Crashed, nothing Bound, `accessibility_enabled` 0. The
+  system settings still show the switch on and the system never restarts it; turning it off and on fixes it. Fox said
+  "turn it on", which misled. Now `SystemActions.status` is `AccessibilityStatus` ON / STOPPED / OFF (connected;
+  listed in `ENABLED_ACCESSIBILITY_SERVICES` but not connected; neither), the executor returns
+  `ACCESSIBILITY_STOPPED`, and both the dialog and the Gestures banner say to turn it off and on. On fox-api33 an
+  instrumented run produces the same stuck state (a plain kill or a reinstall recovers by itself): the stopped dialog
+  and banner showed, and off+on brought the service back without restarting Fox. fox-api37: on and off paths
+  unchanged. Tests: executor +1 (11), `GesturesContentTest` +1 (8), dialog +1 (3); fox-api33 83/83. PLATFORM-NOTES G
+  updated; CLAUDE.md notes the re-toggle after instrumented runs.
+
 - 2026-10-12 — 3.5 checkpoint. `feature/settings/`: `HomeSettingsScreen` (root: Gestures, Hidden apps; opened by the
   "Home settings" action, i.e. long press on empty space, and by a new drawer-menu entry), `GesturesScreen` /
   `GesturesContent` (every gesture but `HOME_KEY`, which joins in 3.6, with its action; action picker; app chooser

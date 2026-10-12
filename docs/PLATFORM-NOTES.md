@@ -91,8 +91,16 @@ here contradicts what you remember, trust this file unless a device proves other
   as opening notifications when you gesture; it does not read screen content") before opening the system settings.
 - The service instance is reachable from the app via a `companion object` holding a `WeakReference` set in
   `onServiceConnected`/`onDestroy`, plus a `MutableStateFlow<Boolean>` for "connected".
-- Check enabled state with `AccessibilityManager.getEnabledAccessibilityServiceList(FEEDBACK_ALL_MASK)` comparing
-  `resolveInfo.serviceInfo` component to ours. Deep link: `Settings.ACTION_ACCESSIBILITY_SETTINGS`.
+- Enabled state: `getEnabledAccessibilityServiceList` lists only services that are running, so it cannot tell "off"
+  from "stopped". Fox reads `Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES` instead: connected → on, listed but not
+  connected → stopped, else off (`AccessibilitySystemActions.status`). Deep link: `Settings.ACTION_ACCESSIBILITY_SETTINGS`.
+- **A stopped Fox can leave its service stuck** (measured 2026-10-12). When Fox's process is stopped in a way that
+  does not restart services, `dumpsys accessibility` shows our service under Enabled *and* Crashed with no Bound
+  services, `accessibility_enabled` drops to 0, and the system never starts it again until the user turns it off and
+  on. Seen with MIUI's "clear recent apps" (OneKeyClean kills Fox although it is the home app) and after an
+  instrumented test run on the emulator. A plain `kill -9` or `adb install -r` recovers by itself on stock API 33.
+  The system settings still show the switch on, so Fox tells the user to turn it off and on (`STOPPED`). Recovering
+  by itself would take WRITE_SECURE_SETTINGS (an adb grant, or Shizuku in phase 9) to toggle the setting.
 - Haptics: `View.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS / GESTURE_START / CONFIRM)`; in Compose use
   `LocalHapticFeedback`.
 

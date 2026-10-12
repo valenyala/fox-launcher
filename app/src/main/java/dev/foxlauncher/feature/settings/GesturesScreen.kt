@@ -56,6 +56,7 @@ import dev.foxlauncher.core.model.AppShortcut
 import dev.foxlauncher.core.model.GestureAction
 import dev.foxlauncher.core.model.GestureType
 import dev.foxlauncher.core.ui.AppIcon
+import dev.foxlauncher.feature.gestures.AccessibilityStatus
 import dev.foxlauncher.feature.gestures.system.AccessibilityDisclosureDialog
 
 object GesturesTestTags {
@@ -143,13 +144,13 @@ fun GesturesContent(
             modifier = modifier.fillMaxSize(),
         ) { padding ->
             LazyColumn(contentPadding = padding) {
-                item { AccessibilityStatus(state.accessibilityOn, onTurnOn = { showDisclosure = true }) }
+                item { AccessibilityBanner(state.accessibility, onFix = { showDisclosure = true }) }
                 items(state.rows, key = { it.type }) { row ->
                     ListItem(
                         headlineContent = { Text(stringResource(row.type.labelRes())) },
                         supportingContent = { Text(actionLabel(row.action, appsByKey)) },
                         trailingContent = if (row.action.requiresAccessibility) {
-                            { ShieldIcon(isOn = state.accessibilityOn) }
+                            { ShieldIcon(isOn = state.accessibility == AccessibilityStatus.ON) }
                         } else {
                             null
                         },
@@ -163,7 +164,7 @@ fun GesturesContent(
     editing?.let { type ->
         ActionPickerDialog(
             current = state.rows.firstOrNull { it.type == type }?.action ?: GestureAction.None,
-            accessibilityOn = state.accessibilityOn,
+            accessibilityOn = state.accessibility == AccessibilityStatus.ON,
             onPick = { action ->
                 editing = null
                 onSetGesture(type, action)
@@ -192,6 +193,7 @@ fun GesturesContent(
     }
     if (showDisclosure) {
         AccessibilityDisclosureDialog(
+            stopped = state.accessibility == AccessibilityStatus.STOPPED,
             onOpenSettings = {
                 showDisclosure = false
                 onOpenAccessibilitySettings()
@@ -201,8 +203,10 @@ fun GesturesContent(
     }
 }
 
+/** The service's state heading the list; when it is off or stopped, [onFix] leads to the settings. */
 @Composable
-private fun AccessibilityStatus(isOn: Boolean, onTurnOn: () -> Unit) {
+private fun AccessibilityBanner(status: AccessibilityStatus, onFix: () -> Unit) {
+    val isOn = status == AccessibilityStatus.ON
     Surface(
         color = if (isOn) MaterialTheme.colorScheme.surfaceContainer else MaterialTheme.colorScheme.errorContainer,
         shape = MaterialTheme.shapes.medium,
@@ -214,11 +218,21 @@ private fun AccessibilityStatus(isOn: Boolean, onTurnOn: () -> Unit) {
             ShieldIcon(isOn)
             Spacer(Modifier.width(12.dp))
             Text(
-                text = stringResource(if (isOn) R.string.gestures_accessibility_on else R.string.gestures_accessibility_off),
+                text = stringResource(
+                    when (status) {
+                        AccessibilityStatus.ON -> R.string.gestures_accessibility_on
+                        AccessibilityStatus.STOPPED -> R.string.gestures_accessibility_stopped
+                        AccessibilityStatus.OFF -> R.string.gestures_accessibility_off
+                    },
+                ),
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.weight(1f),
             )
-            if (!isOn) TextButton(onClick = onTurnOn) { Text(stringResource(R.string.gestures_turn_on)) }
+            when (status) {
+                AccessibilityStatus.ON -> Unit
+                AccessibilityStatus.STOPPED -> TextButton(onClick = onFix) { Text(stringResource(R.string.accessibility_open_settings)) }
+                AccessibilityStatus.OFF -> TextButton(onClick = onFix) { Text(stringResource(R.string.gestures_turn_on)) }
+            }
         }
     }
 }

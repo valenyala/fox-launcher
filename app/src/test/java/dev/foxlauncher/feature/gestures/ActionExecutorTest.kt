@@ -42,7 +42,7 @@ class ActionExecutorTest {
 
     @Test
     fun eachSystemActionReachesTheService() {
-        system.isEnabled = true
+        system.status = AccessibilityStatus.ON
         val expected = mapOf(
             GestureAction.Notifications to SystemAction.NOTIFICATIONS,
             GestureAction.QuickSettings to SystemAction.QUICK_SETTINGS,
@@ -60,15 +60,24 @@ class ActionExecutorTest {
 
     @Test
     fun aSystemActionWithTheServiceOffAsksForItAndPerformsNothing() {
-        system.isEnabled = false
+        system.status = AccessibilityStatus.OFF
 
         assertEquals(ActionResult.NEEDS_ACCESSIBILITY, executor.execute(GestureAction.Notifications, context))
         assertTrue(system.performed.isEmpty())
     }
 
     @Test
-    fun anEnabledServiceThatIsNotConnectedYetFailsWithoutAsking() {
-        system.isEnabled = true
+    fun aSystemActionWithTheServiceStoppedSaysSoAndPerformsNothing() {
+        // Turned on in the settings, but the system stopped it (MIUI clearing recent apps).
+        system.status = AccessibilityStatus.STOPPED
+
+        assertEquals(ActionResult.ACCESSIBILITY_STOPPED, executor.execute(GestureAction.Notifications, context))
+        assertTrue(system.performed.isEmpty())
+    }
+
+    @Test
+    fun aRunningServiceTheSystemRefusesFails() {
+        system.status = AccessibilityStatus.ON
         system.accepts = false
 
         assertEquals(ActionResult.FAILED, executor.execute(GestureAction.LockScreen, context))
@@ -76,7 +85,7 @@ class ActionExecutorTest {
 
     @Test
     fun everyActionThatNeedsAccessibilityIsASystemAction() {
-        system.isEnabled = false
+        system.status = AccessibilityStatus.OFF
         val all = listOf(
             GestureAction.None, GestureAction.OpenDrawer, GestureAction.OpenSearch, GestureAction.Notifications,
             GestureAction.QuickSettings, GestureAction.LockScreen, GestureAction.Recents, GestureAction.PowerMenu,
@@ -122,7 +131,7 @@ class ActionExecutorTest {
     }
 
     private class FakeSystemActions : SystemActions {
-        override var isEnabled = true
+        override var status = AccessibilityStatus.ON
         var accepts = true
         val performed = mutableListOf<SystemAction>()
 

@@ -1,11 +1,11 @@
 package dev.foxlauncher.feature.gestures.system
 
 import android.accessibilityservice.AccessibilityService
-import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.ComponentName
 import android.content.Context
-import android.view.accessibility.AccessibilityManager
+import android.provider.Settings
 import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.foxlauncher.feature.gestures.AccessibilityStatus
 import dev.foxlauncher.feature.gestures.SystemAction
 import dev.foxlauncher.feature.gestures.SystemActions
 import javax.inject.Inject
@@ -15,14 +15,24 @@ class AccessibilitySystemActions @Inject constructor(
     @param:ApplicationContext private val context: Context,
 ) : SystemActions {
 
-    private val accessibilityManager = context.getSystemService(AccessibilityManager::class.java)
     private val component = ComponentName(context, FoxAccessibilityService::class.java)
 
-    /** Turned on in the system settings; it may not be bound yet (PLATFORM-NOTES G). */
-    override val isEnabled: Boolean
-        get() = FoxAccessibilityService.connected.value ||
-            accessibilityManager.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
-                .any { it.resolveInfo.serviceInfo.let { info -> ComponentName(info.packageName, info.name) == component } }
+    /**
+     * Connected means on. Otherwise the settings' list of enabled services tells "off" from
+     * "stopped": a service the system stopped stays listed (PLATFORM-NOTES G).
+     */
+    override val status: AccessibilityStatus
+        get() = when {
+            FoxAccessibilityService.connected.value -> AccessibilityStatus.ON
+            isListedAsEnabled() -> AccessibilityStatus.STOPPED
+            else -> AccessibilityStatus.OFF
+        }
+
+    private fun isListedAsEnabled(): Boolean {
+        val enabled = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+            ?: return false
+        return enabled.split(':').any { ComponentName.unflattenFromString(it) == component }
+    }
 
     override fun perform(action: SystemAction): Boolean = FoxAccessibilityService.perform(
         when (action) {

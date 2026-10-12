@@ -42,10 +42,18 @@ class AccessibilityDisclosureDialogTest {
         assertEquals(1, dismissed)
     }
 
-    private fun setDialog() {
+    @Test
+    fun aStoppedServiceIsToBeTurnedOffAndOn() {
+        setDialog(stopped = true)
+
+        composeRule.onNodeWithText(string(R.string.accessibility_stopped)).assertIsDisplayed()
+        composeRule.onNodeWithText(string(R.string.accessibility_disclosure)).assertDoesNotExist()
+    }
+
+    private fun setDialog(stopped: Boolean = false) {
         composeRule.setContent {
             FoxTheme {
-                AccessibilityDisclosureDialog(onOpenSettings = { opened++ }, onDismiss = { dismissed++ })
+                AccessibilityDisclosureDialog(onOpenSettings = { opened++ }, onDismiss = { dismissed++ }, stopped = stopped)
             }
         }
     }

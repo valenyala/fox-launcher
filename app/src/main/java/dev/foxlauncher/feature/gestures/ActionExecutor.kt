@@ -7,10 +7,25 @@ import javax.inject.Inject
 /** The global actions Fox can ask the system for (ADR-4). */
 enum class SystemAction { NOTIFICATIONS, QUICK_SETTINGS, LOCK_SCREEN, RECENTS, POWER_MENU, SCREENSHOT }
 
+/** Fox's accessibility service as the system has it. */
+enum class AccessibilityStatus {
+    /** Running for Fox: system actions work. */
+    ON,
+
+    /**
+     * Turned on in the settings but not running. The system stopped it (MIUI's "clear recent apps"
+     * kills Fox, home screen or not) and will not start it again until the user turns it off and
+     * on (PLATFORM-NOTES G). Just after Fox starts, a service about to reconnect also looks so.
+     */
+    STOPPED,
+
+    /** Not turned on. */
+    OFF,
+}
+
 /** System actions through `FoxAccessibilityService.performGlobalAction`. */
 interface SystemActions {
-    /** The user has turned the service on in the system's accessibility settings. */
-    val isEnabled: Boolean
+    val status: AccessibilityStatus
 
     /** False when the service is not connected (yet) or the system refused. */
     fun perform(action: SystemAction): Boolean
@@ -39,6 +54,9 @@ enum class ActionResult {
 
     /** A system action, but the accessibility service is off: the UI shows its disclosure. */
     NEEDS_ACCESSIBILITY,
+
+    /** A system action, but the service is on and stopped: the UI says to turn it off and on. */
+    ACCESSIBILITY_STOPPED,
 
     /** The app or shortcut is gone, or the system refused. */
     FAILED,
@@ -75,14 +93,10 @@ class ActionExecutor @Inject constructor(
             appLauncher.startShortcut(action.packageName, action.shortcutId, action.userSerial).toResult()
     }
 
-    /**
-     * Prompts only when the service is off: right after Fox restarts, an enabled service takes a
-     * moment to reconnect, and a gesture then simply does nothing.
-     */
-    private fun system(action: SystemAction): ActionResult = when {
-        !systemActions.isEnabled -> ActionResult.NEEDS_ACCESSIBILITY
-        systemActions.perform(action) -> ActionResult.DONE
-        else -> ActionResult.FAILED
+    private fun system(action: SystemAction): ActionResult = when (systemActions.status) {
+        AccessibilityStatus.OFF -> ActionResult.NEEDS_ACCESSIBILITY
+        AccessibilityStatus.STOPPED -> ActionResult.ACCESSIBILITY_STOPPED
+        AccessibilityStatus.ON -> if (systemActions.perform(action)) ActionResult.DONE else ActionResult.FAILED
     }
 
     private inline fun done(run: () -> Unit): ActionResult {

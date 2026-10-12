@@ -5,6 +5,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -18,6 +21,8 @@ import dev.foxlauncher.core.model.AppShortcut
 import dev.foxlauncher.core.model.GestureAction
 import dev.foxlauncher.core.model.GestureType
 import dev.foxlauncher.core.ui.theme.FoxTheme
+import dev.foxlauncher.feature.gestures.AccessibilityStatus
+import dev.foxlauncher.feature.gestures.system.ACCESSIBILITY_DISCLOSURE_TAG
 import kotlin.test.assertEquals
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -100,7 +105,7 @@ class GesturesContentTest {
 
     @Test
     fun withTheServiceOffTurnOnShowsTheDisclosureFirst() {
-        setContent(accessibilityOn = false)
+        setContent(accessibility = AccessibilityStatus.OFF)
 
         composeRule.onNodeWithText(string(R.string.gestures_turn_on)).performClick()
         composeRule.onNodeWithText(string(R.string.accessibility_disclosure)).assertIsDisplayed()
@@ -111,18 +116,34 @@ class GesturesContentTest {
 
     @Test
     fun withTheServiceOnThereIsNothingToTurnOn() {
-        setContent(accessibilityOn = true)
+        setContent(accessibility = AccessibilityStatus.ON)
 
         composeRule.onNodeWithText(string(R.string.gestures_turn_on)).assertDoesNotExist()
+        composeRule.onNodeWithText(string(R.string.accessibility_open_settings)).assertDoesNotExist()
     }
 
-    private fun setContent(accessibilityOn: Boolean = true) {
+    @Test
+    fun withTheServiceStoppedItSaysToTurnItOffAndOn() {
+        setContent(accessibility = AccessibilityStatus.STOPPED)
+
+        composeRule.onNodeWithText(string(R.string.gestures_accessibility_stopped)).assertIsDisplayed()
+        composeRule.onNodeWithText(string(R.string.accessibility_open_settings)).performClick()
+        composeRule.onNodeWithText(string(R.string.accessibility_stopped)).assertIsDisplayed()
+        // The banner has an "Open settings" too: press the dialog's.
+        composeRule.onNode(
+            hasText(string(R.string.accessibility_open_settings)) and hasAnyAncestor(hasTestTag(ACCESSIBILITY_DISCLOSURE_TAG)),
+        ).performClick()
+
+        assertEquals(1, settingsOpened)
+    }
+
+    private fun setContent(accessibility: AccessibilityStatus = AccessibilityStatus.ON) {
         composeRule.setContent {
             FoxTheme {
                 // The store as it is when the screen opens; tests check the store, not a recomposed list.
                 val rows = store.map { (type, action) -> GestureRow(type, action) }.toImmutableList()
                 GesturesContent(
-                    state = GesturesUiState(rows = rows, apps = persistentListOf(camera, chrome), accessibilityOn = accessibilityOn),
+                    state = GesturesUiState(rows = rows, apps = persistentListOf(camera, chrome), accessibility = accessibility),
                     onSetGesture = { type, action -> store[type] = action },
                     onReset = { resets++ },
                     loadShortcuts = { entry -> if (entry == chrome) listOf(incognito) else emptyList() },

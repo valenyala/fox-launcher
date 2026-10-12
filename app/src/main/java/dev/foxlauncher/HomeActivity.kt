@@ -32,6 +32,7 @@ import dev.foxlauncher.core.ui.launchSource
 import dev.foxlauncher.core.ui.theme.FoxTheme
 import dev.foxlauncher.feature.drawer.DrawerScreen
 import dev.foxlauncher.feature.drawer.DrawerViewModel
+import dev.foxlauncher.feature.gestures.AccessibilityStatus
 import dev.foxlauncher.feature.gestures.ExecContext
 import dev.foxlauncher.feature.gestures.system.AccessibilityDisclosureDialog
 import dev.foxlauncher.feature.home.HomeRoot
@@ -134,8 +135,9 @@ class HomeActivity : ComponentActivity() {
                             )
                         }
                         val accessibilityPrompt by viewModel.accessibilityPrompt.collectAsStateWithLifecycle()
-                        if (accessibilityPrompt) {
+                        accessibilityPrompt?.let { status ->
                             AccessibilityDisclosureDialog(
+                                stopped = status == AccessibilityStatus.STOPPED,
                                 onOpenSettings = {
                                     viewModel.dismissAccessibilityPrompt()
                                     openAccessibilitySettings()

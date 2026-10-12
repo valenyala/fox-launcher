@@ -14,16 +14,19 @@ const val ACCESSIBILITY_DISCLOSURE_TAG = "accessibility_disclosure"
 /**
  * Shown when a gesture maps to a system action while Fox's accessibility service is off (task
  * 3.4). It says what the service does and does not do before sending the user to the system's
- * accessibility settings (PLATFORM-NOTES G).
+ * accessibility settings (PLATFORM-NOTES G). When the service is on but [stopped], it says to turn
+ * it off and on again instead.
  */
 @Composable
-fun AccessibilityDisclosureDialog(onOpenSettings: () -> Unit, onDismiss: () -> Unit) {
+fun AccessibilityDisclosureDialog(onOpenSettings: () -> Unit, onDismiss: () -> Unit, stopped: Boolean = false) {
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = { TextButton(onClick = onOpenSettings) { Text(stringResource(R.string.accessibility_open_settings)) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.accessibility_not_now)) } },
-        title = { Text(stringResource(R.string.accessibility_disclosure_title)) },
-        text = { Text(stringResource(R.string.accessibility_disclosure)) },
+        title = {
+            Text(stringResource(if (stopped) R.string.accessibility_stopped_title else R.string.accessibility_disclosure_title))
+        },
+        text = { Text(stringResource(if (stopped) R.string.accessibility_stopped else R.string.accessibility_disclosure)) },
         modifier = Modifier.testTag(ACCESSIBILITY_DISCLOSURE_TAG),
     )
 }

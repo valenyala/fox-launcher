@@ -10,6 +10,7 @@ import dev.foxlauncher.core.model.AppEntry
 import dev.foxlauncher.core.model.AppShortcut
 import dev.foxlauncher.core.model.GestureAction
 import dev.foxlauncher.core.model.GestureType
+import dev.foxlauncher.feature.gestures.AccessibilityStatus
 import dev.foxlauncher.feature.gestures.SystemActions
 import dev.foxlauncher.feature.gestures.system.FoxAccessibilityService
 import javax.inject.Inject
@@ -31,8 +32,8 @@ data class GesturesUiState(
     val rows: ImmutableList<GestureRow> = persistentListOf(),
     /** The catalog, sorted, for naming apps and choosing one. */
     val apps: ImmutableList<AppEntry> = persistentListOf(),
-    /** Fox's accessibility service is on, so system actions work. */
-    val accessibilityOn: Boolean = true,
+    /** Fox's accessibility service: system actions work only while it is [AccessibilityStatus.ON]. */
+    val accessibility: AccessibilityStatus = AccessibilityStatus.ON,
 )
 
 /** Gesture settings (task 3.5): every gesture with its action, editable. */
@@ -43,24 +44,25 @@ class GesturesViewModel @Inject constructor(
     private val systemActions: SystemActions,
 ) : ViewModel() {
 
-    private val accessibilityEnabled = MutableStateFlow(systemActions.isEnabled)
+    /** Bumped to re-read the status: the settings change it while this screen is away. */
+    private val statusChecks = MutableStateFlow(0)
 
     val uiState: StateFlow<GesturesUiState> = combine(
         settings.gestureMap,
         appRepository.apps,
-        accessibilityEnabled,
+        statusChecks,
         FoxAccessibilityService.connected,
-    ) { map, apps, enabled, connected ->
+    ) { map, apps, _, _ ->
         GesturesUiState(
             rows = EDITABLE_GESTURES.map { GestureRow(it, map[it] ?: GestureAction.None) }.toImmutableList(),
             apps = apps,
-            accessibilityOn = enabled || connected,
+            accessibility = systemActions.status,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), GesturesUiState())
 
-    /** The service can be turned on or off in the system settings while this screen is away. */
+    /** Coming back from the system settings: the service may have been turned on or off there. */
     fun refreshAccessibility() {
-        accessibilityEnabled.value = systemActions.isEnabled
+        statusChecks.value++
     }
 
     fun setGesture(type: GestureType, action: GestureAction) {
