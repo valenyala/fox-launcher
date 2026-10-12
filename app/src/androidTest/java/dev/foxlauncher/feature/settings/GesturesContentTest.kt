@@ -49,6 +49,7 @@ class GesturesContentTest {
     )
     private var resets = 0
     private var settingsOpened = 0
+    private var restarts = 0
 
     @Test
     fun choosingLockScreenForDoubleTapWritesIt() {
@@ -137,18 +138,46 @@ class GesturesContentTest {
         assertEquals(1, settingsOpened)
     }
 
-    private fun setContent(accessibility: AccessibilityStatus = AccessibilityStatus.ON) {
+    @Test
+    fun withTheGrantAStoppedServiceIsRestartedInPlace() {
+        setContent(accessibility = AccessibilityStatus.STOPPED, autoRestart = true)
+
+        composeRule.onNodeWithText(string(R.string.gestures_accessibility_stopped_restartable)).assertIsDisplayed()
+        composeRule.onNodeWithText(string(R.string.gestures_restart)).performClick()
+
+        assertEquals(1, restarts)
+        assertEquals(0, settingsOpened)
+        composeRule.onNodeWithText(string(R.string.accessibility_stopped)).assertDoesNotExist()
+    }
+
+    @Test
+    fun withoutTheGrantTheAdbCommandIsShown() {
+        setContent(autoRestart = false)
+
+        composeRule.onNodeWithText(string(R.string.gestures_auto_restart_command)).assertIsDisplayed()
+    }
+
+    @Test
+    fun withTheGrantAutomaticRestartIsOn() {
+        setContent(autoRestart = true)
+
+        composeRule.onNodeWithText(string(R.string.gestures_auto_restart_on)).assertIsDisplayed()
+        composeRule.onNodeWithText(string(R.string.gestures_auto_restart_command)).assertDoesNotExist()
+    }
+
+    private fun setContent(accessibility: AccessibilityStatus = AccessibilityStatus.ON, autoRestart: Boolean = false) {
         composeRule.setContent {
             FoxTheme {
                 // The store as it is when the screen opens; tests check the store, not a recomposed list.
                 val rows = store.map { (type, action) -> GestureRow(type, action) }.toImmutableList()
                 GesturesContent(
-                    state = GesturesUiState(rows = rows, apps = persistentListOf(camera, chrome), accessibility = accessibility),
+                    state = GesturesUiState(rows = rows, apps = persistentListOf(camera, chrome), accessibility = accessibility, autoRestart = autoRestart),
                     onSetGesture = { type, action -> store[type] = action },
                     onReset = { resets++ },
                     loadShortcuts = { entry -> if (entry == chrome) listOf(incognito) else emptyList() },
                     onOpenAccessibilitySettings = { settingsOpened++ },
                     onBack = {},
+                    onRestartService = { restarts++ },
                     iconContent = { Box(Modifier.size(40.dp)) },
                 )
             }

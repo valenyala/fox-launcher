@@ -99,8 +99,11 @@ here contradicts what you remember, trust this file unless a device proves other
   services, `accessibility_enabled` drops to 0, and the system never starts it again until the user turns it off and
   on. Seen with MIUI's "clear recent apps" (OneKeyClean kills Fox although it is the home app) and after an
   instrumented test run on the emulator. A plain `kill -9` or `adb install -r` recovers by itself on stock API 33.
-  The system settings still show the switch on, so Fox tells the user to turn it off and on (`STOPPED`). Recovering
-  by itself would take WRITE_SECURE_SETTINGS (an adb grant, or Shizuku in phase 9) to toggle the setting.
+  The system settings still show the switch on, so Fox tells the user to turn it off and on (`STOPPED`). With the
+  opt-in adb grant of WRITE_SECURE_SETTINGS, `AccessibilityRepair` does that itself (ADR-18): it writes the list
+  without Fox, waits 500 ms (the system must see the removal; two quick writes coalesce), writes it back with
+  `ACCESSIBILITY_ENABLED` = 1, and waits up to 3 s for the service to connect. On MIUI, `pm grant` of this permission
+  also needs Developer options → "USB debugging (Security settings)".
 - Haptics: `View.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS / GESTURE_START / CONFIRM)`; in Compose use
   `LocalHapticFeedback`.
 

@@ -121,7 +121,7 @@ Unidirectional data flow everywhere: repositories expose `Flow`, ViewModels expo
 
 ## Hard rules
 
-- **No hidden-API reflection** (`StatusBarManager.expandNotificationsPanel`, `IActivityManager`, etc.). It is blocklisted at runtime and rejected by Play. System actions go through `FoxAccessibilityService.performGlobalAction` only. Shizuku is the one sanctioned privileged path and lives in Phase 9 behind explicit opt-in.
+- **No hidden-API reflection** (`StatusBarManager.expandNotificationsPanel`, `IActivityManager`, etc.). It is blocklisted at runtime and rejected by Play. System actions go through `FoxAccessibilityService.performGlobalAction` only. Privileged paths are opt-in only: Shizuku in Phase 9 (ADR-9), and an adb-granted WRITE_SECURE_SETTINGS used solely to restart Fox's own stopped accessibility service (ADR-18).
 - **Memory boost must be honest.** `ActivityManager.killBackgroundProcesses` affects other apps only on API ≤ 33; on API 34+ it only kills our own processes. Never show a fabricated "freed X MB"; show the measured delta and, on 34+, say what the widget can and cannot do.
 - **`HomeActivity` must never visibly restart.** Keep `configChanges` covering orientation/screen size/uiMode/locale/density and handle them in Compose. A recreating launcher looks like a crash.
 - **Nothing from `PackageManager`, `LauncherApps`, bitmap decoding or Room touches the main thread.**

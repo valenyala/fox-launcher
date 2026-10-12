@@ -22,6 +22,7 @@ import dev.foxlauncher.feature.gestures.AccessibilityStatus
 import dev.foxlauncher.feature.gestures.ActionExecutor
 import dev.foxlauncher.feature.gestures.ActionResult
 import dev.foxlauncher.feature.gestures.ExecContext
+import dev.foxlauncher.feature.gestures.system.AccessibilityRepair
 import dev.foxlauncher.feature.home.drag.DropAction
 import dev.foxlauncher.feature.home.grid.GridSpec
 import javax.inject.Inject
@@ -68,6 +69,7 @@ class HomeViewModel @Inject constructor(
     private val appRepository: AppRepository,
     private val iconCache: IconCache,
     private val actionExecutor: ActionExecutor,
+    private val accessibilityRepair: AccessibilityRepair,
 ) : ViewModel() {
 
     private val appsByKey = appRepository.apps.map { apps -> apps.associateBy { it.key }.toImmutableMap() }
@@ -125,7 +127,14 @@ class HomeViewModel @Inject constructor(
         FoxLog.d("Gesture $type -> $action: $result")
         when (result) {
             ActionResult.NEEDS_ACCESSIBILITY -> _accessibilityPrompt.value = AccessibilityStatus.OFF
-            ActionResult.ACCESSIBILITY_STOPPED -> _accessibilityPrompt.value = AccessibilityStatus.STOPPED
+            ActionResult.ACCESSIBILITY_STOPPED -> viewModelScope.launch {
+                // With the user's adb grant, restart the service and run the action after all (ADR-18).
+                if (accessibilityRepair.repairIfStopped()) {
+                    FoxLog.d("Gesture $type -> $action after restarting the service: ${actionExecutor.execute(action, context)}")
+                } else {
+                    _accessibilityPrompt.value = AccessibilityStatus.STOPPED
+                }
+            }
             ActionResult.DONE, ActionResult.NOTHING, ActionResult.FAILED -> Unit
         }
     }

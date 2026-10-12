@@ -6,6 +6,11 @@
     <uses-permission
         android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
+    <!-- Opt-in, granted only over adb: restarts Fox's own accessibility service when the system leaves it
+         stopped (ADR-18, PLATFORM-NOTES G). Never granted to a normal install. -->
+    <uses-permission
+        android:name="android.permission.WRITE_SECURE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
     <!-- Uninstall from the app popup. -->
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
 

@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -45,6 +46,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -86,6 +88,7 @@ fun GesturesScreen(
         onOpenAccessibilitySettings = onOpenAccessibilitySettings,
         onBack = onBack,
         modifier = modifier,
+        onRestartService = viewModel::restartService,
     )
 }
 
@@ -105,6 +108,7 @@ fun GesturesContent(
     onOpenAccessibilitySettings: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    onRestartService: () -> Unit = {},
     iconContent: @Composable (AppEntry) -> Unit = { AppIcon(it, ROW_ICON_SIZE.dp) },
 ) {
     val appsByKey = remember(state.apps) { state.apps.associateBy { it.key } }
@@ -144,7 +148,16 @@ fun GesturesContent(
             modifier = modifier.fillMaxSize(),
         ) { padding ->
             LazyColumn(contentPadding = padding) {
-                item { AccessibilityBanner(state.accessibility, onFix = { showDisclosure = true }) }
+                item {
+                    // With the adb grant, a stopped service is restarted in place; otherwise it is the settings.
+                    val restartsInPlace = state.accessibility == AccessibilityStatus.STOPPED && state.autoRestart
+                    AccessibilityBanner(
+                        status = state.accessibility,
+                        canRestart = state.autoRestart,
+                        onFix = { if (restartsInPlace) onRestartService() else showDisclosure = true },
+                    )
+                }
+                item { AutoRestartRow(state.autoRestart) }
                 items(state.rows, key = { it.type }) { row ->
                     ListItem(
                         headlineContent = { Text(stringResource(row.type.labelRes())) },
@@ -203,9 +216,12 @@ fun GesturesContent(
     }
 }
 
-/** The service's state heading the list; when it is off or stopped, [onFix] leads to the settings. */
+/**
+ * The service's state heading the list. When it is off, or stopped and Fox cannot restart it,
+ * [onFix] leads to the settings; when it is stopped and [canRestart], [onFix] restarts it.
+ */
 @Composable
-private fun AccessibilityBanner(status: AccessibilityStatus, onFix: () -> Unit) {
+private fun AccessibilityBanner(status: AccessibilityStatus, canRestart: Boolean, onFix: () -> Unit) {
     val isOn = status == AccessibilityStatus.ON
     Surface(
         color = if (isOn) MaterialTheme.colorScheme.surfaceContainer else MaterialTheme.colorScheme.errorContainer,
@@ -221,7 +237,8 @@ private fun AccessibilityBanner(status: AccessibilityStatus, onFix: () -> Unit) 
                 text = stringResource(
                     when (status) {
                         AccessibilityStatus.ON -> R.string.gestures_accessibility_on
-                        AccessibilityStatus.STOPPED -> R.string.gestures_accessibility_stopped
+                        AccessibilityStatus.STOPPED ->
+                            if (canRestart) R.string.gestures_accessibility_stopped_restartable else R.string.gestures_accessibility_stopped
                         AccessibilityStatus.OFF -> R.string.gestures_accessibility_off
                     },
                 ),
@@ -230,11 +247,36 @@ private fun AccessibilityBanner(status: AccessibilityStatus, onFix: () -> Unit) 
             )
             when (status) {
                 AccessibilityStatus.ON -> Unit
-                AccessibilityStatus.STOPPED -> TextButton(onClick = onFix) { Text(stringResource(R.string.accessibility_open_settings)) }
+                AccessibilityStatus.STOPPED -> TextButton(onClick = onFix) {
+                    Text(stringResource(if (canRestart) R.string.gestures_restart else R.string.accessibility_open_settings))
+                }
                 AccessibilityStatus.OFF -> TextButton(onClick = onFix) { Text(stringResource(R.string.gestures_turn_on)) }
             }
         }
     }
+}
+
+/** Whether Fox restarts a stopped service by itself, and if not, the one adb command that lets it (ADR-18). */
+@Composable
+private fun AutoRestartRow(isOn: Boolean) {
+    ListItem(
+        headlineContent = { Text(stringResource(R.string.gestures_auto_restart)) },
+        supportingContent = {
+            Column {
+                Text(stringResource(if (isOn) R.string.gestures_auto_restart_on else R.string.gestures_auto_restart_off))
+                if (!isOn) {
+                    SelectionContainer {
+                        Text(
+                            text = stringResource(R.string.gestures_auto_restart_command),
+                            fontFamily = FontFamily.Monospace,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                    }
+                }
+            }
+        },
+    )
 }
 
 @Composable

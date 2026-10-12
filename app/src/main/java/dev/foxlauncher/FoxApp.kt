@@ -11,8 +11,13 @@ import coil3.disk.directory
 import coil3.memory.MemoryCache
 import coil3.request.crossfade
 import dagger.hilt.android.HiltAndroidApp
+import dev.foxlauncher.core.common.ApplicationScope
 import dev.foxlauncher.core.common.FoxLog
+import dev.foxlauncher.feature.gestures.system.AccessibilityRepair
 import javax.inject.Inject
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Application entry point: Hilt root, WorkManager factory and the Coil singleton loader.
@@ -25,6 +30,10 @@ class FoxApp : Application(), Configuration.Provider, SingletonImageLoader.Facto
 
     @Inject lateinit var workerFactory: HiltWorkerFactory
 
+    @Inject lateinit var accessibilityRepair: AccessibilityRepair
+
+    @Inject @ApplicationScope lateinit var scope: CoroutineScope
+
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
             .setWorkerFactory(workerFactory)
@@ -34,6 +43,12 @@ class FoxApp : Application(), Configuration.Provider, SingletonImageLoader.Facto
     override fun onCreate() {
         super.onCreate()
         FoxLog.i("FoxApp started")
+        // A new process may be one the system killed with Fox's accessibility service in it, which then
+        // stays stopped (PLATFORM-NOTES G). Give an ordinary rebind its moment first.
+        scope.launch {
+            delay(ACCESSIBILITY_REPAIR_DELAY_MS)
+            accessibilityRepair.repairIfStopped()
+        }
     }
 
     override fun newImageLoader(context: PlatformContext): ImageLoader =
@@ -57,5 +72,6 @@ class FoxApp : Application(), Configuration.Provider, SingletonImageLoader.Facto
         const val MEMORY_CACHE_FRACTION = 0.15
         const val DISK_CACHE_BYTES = 64L * 1024 * 1024
         const val IMAGE_CACHE_DIR = "image_cache"
+        const val ACCESSIBILITY_REPAIR_DELAY_MS = 2_000L
     }
 }

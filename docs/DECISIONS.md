@@ -130,6 +130,19 @@ be rebuilt on return, the costliest work in the app (see the perf notes). `HomeA
 touches). Each screen's back pops one route; the Home key clears them all. The navigation-compose dependency stays
 unused until a destination needs real navigation (deep links, arguments).
 
+## ADR-18 An adb-granted WRITE_SECURE_SETTINGS restarts Fox's own stopped accessibility service
+Narrows ADR-9 ("Shizuku is the only privileged path"), at the user's request (2026-10-12). MIUI's "clear recent apps"
+kills Fox and leaves its accessibility service enabled but crashed; the system never restarts it until it is turned
+off and on (PLATFORM-NOTES G), and it happened several times a day on the POCO. Fox declares WRITE_SECURE_SETTINGS,
+which no install receives: the user opts in by running `adb shell pm grant dev.foxlauncher
+android.permission.WRITE_SECURE_SETTINGS` once (on MIUI, "USB debugging (Security settings)" must be on). With it,
+`AccessibilityRepair` turns Fox's own entry in `ENABLED_ACCESSIBILITY_SERVICES` off and on, two seconds after any
+process start and when a gesture finds the service stopped. Limits, all binding: it touches only Fox's own entry; it
+acts only when the service is already listed as enabled (`STOPPED`), never turning it on for the user (the disclosure
+of PLATFORM-NOTES G stays the only way in); nothing else may use the permission without a new ADR; without the grant
+Fox behaves exactly as before, telling the user to turn the service off and on. It is public API
+(`Settings.Secure.putString`), not hidden-API reflection.
+
 ## Dependency log
 (append `- <lib> <version> — reason` when adding a dependency)
 - AGP (com.android.application) 9.4.0 — build system; built-in Kotlin, see ADR-11.

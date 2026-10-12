@@ -46,7 +46,13 @@
     <string name="gestures_accessibility_off">Actions marked with a shield need the \"Fox gestures\" accessibility service, which is off.</string>
     <string name="gestures_accessibility_on">\"Fox gestures\" is on: system actions work.</string>
     <string name="gestures_accessibility_stopped">\"Fox gestures\" is on but stopped, which clearing recent apps does. Turn it off and on again in the accessibility settings.</string>
+    <string name="gestures_accessibility_stopped_restartable">\"Fox gestures\" was stopped, which clearing recent apps does. Fox can restart it.</string>
     <string name="gestures_turn_on">Turn on</string>
+    <string name="gestures_restart">Restart</string>
+    <string name="gestures_auto_restart">Restart it by itself</string>
+    <string name="gestures_auto_restart_on">On: when Android stops \"Fox gestures\", Fox turns it off and on again.</string>
+    <string name="gestures_auto_restart_off">Off. Android stops \"Fox gestures\" when recent apps are cleared. To let Fox restart it, grant this once from a computer:</string>
+    <string name="gestures_auto_restart_command" translatable="false">adb shell pm grant dev.foxlauncher android.permission.WRITE_SECURE_SETTINGS</string>
     <string name="gestures_needs_accessibility">Needs the accessibility service</string>
     <string name="gesture_swipe_up">Swipe up</string>
     <string name="gesture_swipe_down">Swipe down</string>

@@ -63,8 +63,8 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] 3.1 Gesture and action model + defaults
 - [x] 3.2 GestureClassifier + tests
 - [x] 3.3 GestureArena composable (device checklist passed 2026-10-12, POCO F3; emulators API 33/37)
-- [ ] 3.4 FoxAccessibilityService + ActionExecutor — POCO F3: disclosure, enable without restart, notifications, quick settings, lock ✓; recents/power menu/screenshot ✓ on fox-api33/37 (via 3.5), POCO check pending
-- [ ] 3.5 Gesture settings UI — emulators (API 33 tests + by hand, API 37 by hand) pass; POCO check pending
+- [ ] 3.4 FoxAccessibilityService + ActionExecutor — POCO F3: disclosure, enable without restart, notifications, quick settings, lock, recents, stopped-state advice ✓; power menu and screenshot ✓ on fox-api33/37, POCO pending
+- [x] 3.5 Gesture settings UI (POCO F3 2026-10-12: remapping to recents, an app, notifications; reset; Home closes settings)
 - [ ] 3.6 System gesture coexistence, predictive back, home intent
 - [ ] 3.7 Drag-follow drawer opening
 - [ ] Device checklist passed on: —
@@ -160,6 +160,19 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-12 — **Automatic restart of the stopped service (ADR-18)**, which the user asked for sooner. The POCO's log
+  showed the stuck state again minutes later (13:24, new process). Fox declares WRITE_SECURE_SETTINGS; after the
+  user's one-time `adb shell pm grant dev.foxlauncher android.permission.WRITE_SECURE_SETTINGS`, `AccessibilityRepair`
+  turns Fox's own entry off and on when the service is `STOPPED`: 2 s after every process start (`FoxApp`), when a
+  gesture meets a stopped service (`HomeViewModel` restarts it and then runs the action), and from a Restart button on
+  the Gestures banner. A "Restart it by itself" row shows whether it is on, or the adb command. Never turns the service
+  on (`OFF` keeps the disclosure). ADR-9's rule in CLAUDE.md now names both privileged paths. On **fox-api33**: 86/86
+  instrumented (then 11/11 `GesturesContentTest` after a wording fix: next to Restart the banner no longer says to
+  use the settings); after a test run left the service crashed, starting Fox restarted it by itself; the Restart
+  button restarted it; a swipe down on a stopped service restarted it and opened the shade in one go. On
+  **fox-api37** a test run's force-stop *removes* Fox from the enabled list instead (status `OFF`, the disclosure),
+  so the crashed state is an Android 13 / MIUI behaviour; the repair rightly leaves `OFF` alone.
 
 - 2026-10-12 — **Accessibility "stopped" state** (user report on the POCO: "turned it on but it doesn't get up").
   The phone's log: after double tap → recents, the user cleared recent apps; MIUI's OneKeyClean killed Fox (home or

@@ -3,7 +3,6 @@ package dev.foxlauncher.feature.gestures.system
 import android.accessibilityservice.AccessibilityService
 import android.content.ComponentName
 import android.content.Context
-import android.provider.Settings
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.foxlauncher.feature.gestures.AccessibilityStatus
 import dev.foxlauncher.feature.gestures.SystemAction
@@ -28,11 +27,7 @@ class AccessibilitySystemActions @Inject constructor(
             else -> AccessibilityStatus.OFF
         }
 
-    private fun isListedAsEnabled(): Boolean {
-        val enabled = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
-            ?: return false
-        return enabled.split(':').any { ComponentName.unflattenFromString(it) == component }
-    }
+    private fun isListedAsEnabled(): Boolean = component in EnabledAccessibilityServices.read(context)
 
     override fun perform(action: SystemAction): Boolean = FoxAccessibilityService.perform(
         when (action) {
