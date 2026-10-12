@@ -161,6 +161,13 @@ Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out o
 
 ## Session notes
 
+- 2026-10-12 — 4.4 POCO round 1: interval, unlock (×2), two-finger swipe changed it; unlock with its switch off was
+  skipped. Two follow-ups: (1) after a skipped interval check (a manual change 44 s earlier) the timer waited a whole
+  extra interval; now it recomputes from the last change (fox-api33: manual 23:40:47 → interval 23:41:47). (2) no
+  page-change log on the phone: on fox-api33 with a second page (made by dragging Messages to the right edge), each
+  settle changed it (`Page settled: 1` → next, `Page settled: 0` → next); a bounce seen first came from the script's
+  Home presses. New debug-only logs: `Page settled: N`, `Configuration changed: …` (to catch restarts).
+
 - 2026-10-12 — 4.4 checkpoint. Pure `TriggerPolicy` (gesture/manual always; interval when ≥ 90 % of it has passed, as
   WorkManager runs periodic work early within its window; unlock debounced 5 s; page change debounced 1 s; a clock set
   back counts as long ago; `untilNextInterval` for the engine timer; offered intervals 1, 5, 10, 15, 30, 60 min, 3 h,

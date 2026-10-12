@@ -184,10 +184,12 @@ class FoxWallpaperService : WallpaperService() {
             if (isPreview || !visible || minutes !in 1 until TriggerPolicy.WORK_MANAGER_MIN_MINUTES) return
             timerJob = scope.launch {
                 while (isActive) {
-                    val wait = TriggerPolicy.untilNextInterval(minutes, settings.wallpaperChangedAt.first(), System.currentTimeMillis())
-                    delay(wait)
-                    // Nothing to change to (no entries): wait a whole interval before trying again.
-                    if (rotation.advanceIfDue(RotationTrigger.INTERVAL) == null) delay(minutes * MS_PER_MINUTE)
+                    delay(TriggerPolicy.untilNextInterval(minutes, settings.wallpaperChangedAt.first(), System.currentTimeMillis()))
+                    // Not due (something else changed it meanwhile): the loop waits from that change. Due and still
+                    // nothing changed (no entries): wait a whole interval rather than spin.
+                    val changed = rotation.advanceIfDue(RotationTrigger.INTERVAL) != null
+                    val stillDue = TriggerPolicy.untilNextInterval(minutes, settings.wallpaperChangedAt.first(), System.currentTimeMillis()) == 0L
+                    if (!changed && stillDue) delay(minutes * MS_PER_MINUTE)
                 }
             }
         }

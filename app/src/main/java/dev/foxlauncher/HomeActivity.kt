@@ -4,6 +4,7 @@ import android.app.WallpaperManager
 import android.content.ActivityNotFoundException
 import android.content.ComponentName
 import android.content.Intent
+import android.content.res.Configuration
 import android.os.Bundle
 import android.provider.Settings
 import android.view.MotionEvent
@@ -119,7 +120,10 @@ class HomeActivity : ComponentActivity() {
                             homeKeyPresses = homeKeyPresses,
                             // With a settings screen open, Home only closes it.
                             homeKeyWhileHome = homeKeyWhileHome && settings.isEmpty(),
-                            onPageSettled = { viewModel.onPageSettled() },
+                            onPageSettled = { page ->
+                                FoxLog.d("Page settled: $page")
+                                viewModel.onPageSettled()
+                            },
                             onDrawerClosed = drawerViewModel::onDrawerClosed,
                             state = homeState,
                             onItemClick = { item, bounds ->
@@ -204,6 +208,11 @@ class HomeActivity : ComponentActivity() {
             refreshRate.onInteractionEnd()
             homeKeyPresses++
         }
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        FoxLog.d("Configuration changed: $newConfig")
     }
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
