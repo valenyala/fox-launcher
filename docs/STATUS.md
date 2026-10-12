@@ -2,8 +2,8 @@
 
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
-**Current phase:** 2 — Home grid (phases 0 and 1 code complete; both device checklists still owed)
-**Next task:** user checks 2.7 on the POCO F3, then 2.8 Missing / suspended app handling
+**Current phase:** 3 — Gesture engine (user, 2026-10-12: Phase 3 now, 2.8 later; Phase 2 still owes 2.8 and its device checklist; phases 0 and 1 owe their device checklists)
+**Next task:** 3.1 Gesture and action model + defaults (2.8 deferred by the user)
 
 ## Environment facts (verified 2026-09-17)
 
@@ -55,8 +55,8 @@ Update this file at the end of every session. Keep it terse. Newest session note
   - [x] App shortcuts in the popup (UI tested; the LauncherApps query not yet seen on the phone)
   - [x] Drag a shortcut out → pinned `Shortcut` item, pin sync, shortcut icons (not device-verified)
   - [x] Device checklist (user: shortcuts for Messages/Chrome, open, pin by drag, survives reboot, remove)
-- [ ] 2.7 First-run default layout — code done, emulators API 33/37 pass; POCO F3 check pending
-- [ ] 2.8 Missing / suspended app handling
+- [x] 2.7 First-run default layout (user confirmed on the POCO F3, 2026-10-12; middle dock slot stays free)
+- [ ] 2.8 Missing / suspended app handling (deferred until after Phase 3, user 2026-10-12)
 - [ ] Device checklist passed on: —
 
 ## Phase 3 — Gesture engine
