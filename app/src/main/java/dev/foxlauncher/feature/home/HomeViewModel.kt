@@ -14,9 +14,13 @@ import dev.foxlauncher.core.data.settings.FoxSettings
 import dev.foxlauncher.core.model.AppEntry
 import dev.foxlauncher.core.model.AppShortcut
 import dev.foxlauncher.core.model.DEFAULT_GESTURE_MAP
+import dev.foxlauncher.core.model.GestureAction
 import dev.foxlauncher.core.model.GestureType
 import dev.foxlauncher.core.model.HomeItem
 import dev.foxlauncher.core.model.HomeLayout
+import dev.foxlauncher.feature.gestures.ActionExecutor
+import dev.foxlauncher.feature.gestures.ActionResult
+import dev.foxlauncher.feature.gestures.ExecContext
 import dev.foxlauncher.feature.home.drag.DropAction
 import dev.foxlauncher.feature.home.grid.GridSpec
 import javax.inject.Inject
@@ -27,8 +31,10 @@ import kotlinx.collections.immutable.toImmutableMap
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -58,6 +64,7 @@ class HomeViewModel @Inject constructor(
     private val homeRepository: HomeRepository,
     private val appRepository: AppRepository,
     private val iconCache: IconCache,
+    private val actionExecutor: ActionExecutor,
 ) : ViewModel() {
 
     private val appsByKey = appRepository.apps.map { apps -> apps.associateBy { it.key }.toImmutableMap() }
@@ -99,9 +106,21 @@ class HomeViewModel @Inject constructor(
 
     private val gestureMap = settings.gestureMap.stateIn(viewModelScope, SharingStarted.Eagerly, DEFAULT_GESTURE_MAP)
 
-    /** A home gesture was recognized (task 3.3). Task 3.4 runs its action; until then it is logged. */
-    fun onGesture(type: GestureType) {
-        FoxLog.d("Gesture $type -> ${gestureMap.value[type]}")
+    private val _accessibilityPrompt = MutableStateFlow(false)
+
+    /** True while the disclosure for Fox's accessibility service should show (a system action needs it). */
+    val accessibilityPrompt: StateFlow<Boolean> = _accessibilityPrompt.asStateFlow()
+
+    /** A home gesture was recognized (task 3.3): run the action it is mapped to (task 3.4). */
+    fun onGesture(type: GestureType, context: ExecContext) {
+        val action = gestureMap.value[type] ?: GestureAction.None
+        val result = actionExecutor.execute(action, context)
+        FoxLog.d("Gesture $type -> $action: $result")
+        if (result == ActionResult.NEEDS_ACCESSIBILITY) _accessibilityPrompt.value = true
+    }
+
+    fun dismissAccessibilityPrompt() {
+        _accessibilityPrompt.value = false
     }
 
     private var firstRun: Job? = null

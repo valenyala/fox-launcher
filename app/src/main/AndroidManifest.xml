@@ -42,6 +42,21 @@
             </intent-filter>
         </activity>
 
+        <!-- System actions for gestures (ADR-4, PLATFORM-NOTES G). Bound only by the system, which holds
+             BIND_ACCESSIBILITY_SERVICE. -->
+        <service
+            android:name=".feature.gestures.system.FoxAccessibilityService"
+            android:exported="true"
+            android:label="@string/accessibility_service_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
+
         <!-- WorkManager is initialized on demand from FoxApp (Configuration.Provider) so that
              Hilt can inject workers; the default startup initializer must be removed. -->
         <provider

@@ -130,7 +130,7 @@ class HomeScreenGestureTest {
                     homeKeyPresses = 0,
                     onDrawerClosed = {},
                     state = HomeUiState(layout = layout, gridSpec = spec),
-                    onGesture = { gestures += it },
+                    onGesture = { type, _ -> gestures += type },
                 ) { Text("drawer") }
             }
         }

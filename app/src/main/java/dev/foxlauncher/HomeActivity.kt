@@ -1,7 +1,9 @@
 package dev.foxlauncher
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.os.Bundle
+import android.provider.Settings
 import android.view.MotionEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -29,6 +31,8 @@ import dev.foxlauncher.core.ui.launchSource
 import dev.foxlauncher.core.ui.theme.FoxTheme
 import dev.foxlauncher.feature.drawer.DrawerScreen
 import dev.foxlauncher.feature.drawer.DrawerViewModel
+import dev.foxlauncher.feature.gestures.ExecContext
+import dev.foxlauncher.feature.gestures.system.AccessibilityDisclosureDialog
 import dev.foxlauncher.feature.home.HomeRoot
 import dev.foxlauncher.feature.home.HomeScreen
 import dev.foxlauncher.feature.home.HomeViewModel
@@ -102,13 +106,35 @@ class HomeActivity : ComponentActivity() {
                             onPopupAction = { item, action, bounds ->
                                 viewModel.onPopupAction(item, action, bounds?.let { launchSource(view, it).sourceBounds })
                             },
-                            onGesture = viewModel::onGesture,
+                            onGesture = { type, home ->
+                                viewModel.onGesture(
+                                    type,
+                                    ExecContext(
+                                        openDrawer = home::openDrawer,
+                                        openSearch = home::openSearch,
+                                        scrollToDefaultPage = home::scrollToDefaultPage,
+                                        openPageOverview = home::openPageOverview,
+                                        // TODO(3.5): the settings screen; there is no home settings screen yet.
+                                        openHomeSettings = { FoxLog.d("No home settings screen yet") },
+                                    ),
+                                )
+                            },
                         ) {
                             DrawerScreen(
                                 viewModel = drawerViewModel,
                                 onOpenHiddenApps = { showHiddenApps = true },
                                 onAppLongPress = ::onAppLongPress,
                                 isShown = isShown,
+                            )
+                        }
+                        val accessibilityPrompt by viewModel.accessibilityPrompt.collectAsStateWithLifecycle()
+                        if (accessibilityPrompt) {
+                            AccessibilityDisclosureDialog(
+                                onOpenSettings = {
+                                    viewModel.dismissAccessibilityPrompt()
+                                    openAccessibilitySettings()
+                                },
+                                onDismiss = viewModel::dismissAccessibilityPrompt,
                             )
                         }
                         if (showHiddenApps) {
@@ -142,6 +168,14 @@ class HomeActivity : ComponentActivity() {
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> refreshRate.onInteractionEnd()
         }
         return super.dispatchTouchEvent(event)
+    }
+
+    private fun openAccessibilitySettings() {
+        try {
+            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        } catch (e: ActivityNotFoundException) {
+            FoxLog.e("No accessibility settings screen", e)
+        }
     }
 
     override fun onPause() {

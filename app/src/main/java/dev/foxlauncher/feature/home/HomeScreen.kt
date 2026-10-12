@@ -72,6 +72,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import dev.foxlauncher.R
+import dev.foxlauncher.core.common.FoxLog
 import dev.foxlauncher.core.model.AppEntry
 import dev.foxlauncher.core.model.GestureType
 import dev.foxlauncher.core.model.HomeItem
@@ -156,6 +157,19 @@ interface DrawerScope {
     fun onAppLongPress(entry: AppEntry)
 }
 
+/** What a gesture's action can ask of the home screen itself (task 3.4, `ExecContext`). */
+interface HomeControls {
+    fun openDrawer()
+
+    /** TODO(3.5): also focus the drawer's search once the action picker can choose this (ADR-16). */
+    fun openSearch()
+
+    fun scrollToDefaultPage()
+
+    /** Does nothing yet: no phase has built a page overview. */
+    fun openPageOverview()
+}
+
 /**
  * The home surface: wallpaper through the window, pages, the dock, and the app drawer as an overlay
  * that follows the finger (search lives only in the drawer). [homeKeyPresses] increments on every
@@ -165,7 +179,8 @@ interface DrawerScope {
  * Tapping a folder opens its [FolderSheet] (task 2.5); a changed title goes to [onRenameFolder].
  * A long press that lifts in place opens the item's [ItemPopup] (task 2.6): [loadPopup] says what
  * it offers and [onPopupAction] receives the choice with the item's window bounds. [onGesture] hears
- * every home gesture the arena recognizes while nothing else is open (task 3.3).
+ * every home gesture the arena recognizes while nothing else is open (task 3.3), with the
+ * [HomeControls] its action may use (task 3.4).
  */
 @Composable
 fun HomeScreen(
@@ -178,7 +193,7 @@ fun HomeScreen(
     onRenameFolder: (HomeItem.Folder, String) -> Unit = { _, _ -> },
     loadPopup: suspend (HomeItem) -> ItemPopupModel = { ItemPopupModel() },
     onPopupAction: (HomeItem, PopupAction, Rect?) -> Unit = { _, _, _ -> },
-    onGesture: (GestureType) -> Unit = {},
+    onGesture: (GestureType, HomeControls) -> Unit = { _, _ -> },
     drawer: @Composable DrawerScope.() -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -280,6 +295,16 @@ fun HomeScreen(
         }
     }
 
+    val homeControls = object : HomeControls {
+        override fun openDrawer() = settle(open = true)
+        override fun openSearch() = settle(open = true)
+        override fun scrollToDefaultPage() {
+            scope.launch { pagerState.animateScrollToPage(DEFAULT_PAGE) }
+        }
+        override fun openPageOverview() = FoxLog.d("No page overview yet")
+    }
+    val currentHomeControls by rememberUpdatedState(homeControls)
+
     val density = LocalDensity.current
     val drawerPull = remember(density) {
         DrawerPullConnection(
@@ -329,7 +354,7 @@ fun HomeScreen(
             .gestureArena(
                 enabled = { !isDrawerShown && openFolderId == null && popup == null && dragState.dragging == null },
                 isOnItem = { dragState.itemAt(it) != null },
-                onGesture = { currentOnGesture(it) },
+                onGesture = { currentOnGesture(it, currentHomeControls) },
                 // A swipe to the left goes to the next page, or to the previous one right to left.
                 pagerTakesSwipeLeft = { if (isRtl) pagerState.canScrollBackward else pagerState.canScrollForward },
                 pagerTakesSwipeRight = { if (isRtl) pagerState.canScrollForward else pagerState.canScrollBackward },

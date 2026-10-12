@@ -25,4 +25,10 @@
         <item quantity="one">The folder and its %1$d app leave the home screen. The app stays installed.</item>
         <item quantity="other">The folder and the %1$d apps in it leave the home screen. The apps stay installed.</item>
     </plurals>
+    <string name="accessibility_service_label">Fox gestures</string>
+    <string name="accessibility_service_description">Lets Fox Launcher open notifications and quick settings, lock the screen, show recent apps, the power menu or take a screenshot when you make a home-screen gesture. It does not read what is on your screen.</string>
+    <string name="accessibility_disclosure_title">Allow system gestures?</string>
+    <string name="accessibility_disclosure">Fox Launcher uses the accessibility service only to perform system actions, such as opening notifications when you gesture. It does not read screen content. Turn on \"Fox gestures\" in the accessibility settings.</string>
+    <string name="accessibility_open_settings">Open settings</string>
+    <string name="accessibility_not_now">Not now</string>
 </resources>

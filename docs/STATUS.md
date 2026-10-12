@@ -63,7 +63,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] 3.1 Gesture and action model + defaults
 - [x] 3.2 GestureClassifier + tests
 - [x] 3.3 GestureArena composable (device checklist passed 2026-10-12, POCO F3; emulators API 33/37)
-- [ ] 3.4 FoxAccessibilityService + ActionExecutor
+- [ ] 3.4 FoxAccessibilityService + ActionExecutor — emulators pass (disclosure, notifications, lock); POCO check pending; recents/power menu/screenshot need 3.5's remapping to check
 - [ ] 3.5 Gesture settings UI
 - [ ] 3.6 System gesture coexistence, predictive back, home intent
 - [ ] 3.7 Drag-follow drawer opening
@@ -160,6 +160,21 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-12 — 3.4 checkpoint. Pure `feature/gestures/ActionExecutor` behind three ports: `SystemActions`
+  (`AccessibilitySystemActions` → `FoxAccessibilityService.perform`), `AppLauncher` (`RepositoryAppLauncher`, via
+  `AppRepository`), `WallpaperAdvancer` (`feature/wallpaper`, `NoOpWallpaperAdvancer` until phase 4); bound in
+  `GesturesModule`, not activity-scoped (nothing needs the Activity). `execute` returns an `ActionResult` instead of
+  emitting an event; `NEEDS_ACCESSIBILITY` only when the service is **off in settings** (`AccessibilityManager` list),
+  so an enabled service still reconnecting after a restart does not prompt. `FoxAccessibilityService` asks for no
+  events (`eventTypes = 0` on connect), companion `connected` + `perform`; manifest entry, `accessibility_service_config`,
+  label "Fox gestures". `HomeScreen.onGesture` now passes `HomeControls` (open drawer/search, default page, page
+  overview); `HomeActivity` adds home settings and builds `ExecContext`; `HomeViewModel.onGesture` runs the mapped
+  action and raises `accessibilityPrompt` → `AccessibilityDisclosureDialog` → `ACTION_ACCESSIBILITY_SETTINGS`.
+  **Not built yet:** page overview and home settings screens (no phase plans them; both log), `OpenSearch` focus
+  (opens the drawer; TODO(3.5), ADR-16). Tests: `ActionExecutorTest` 10, `AccessibilityDisclosureDialogTest` 2;
+  fox-api33 72/72. By hand on fox-api33 and fox-api37: service off → swipe down shows the disclosure, Open settings
+  opens the accessibility settings; service on (adb) → swipe down opens the shade, double tap locks.
 
 - 2026-10-12 — **3.3 done.** User on the POCO F3: paging, drawer follow and close, icon popup and drag, folders all
   normal; a two-finger swipe left does not page. The phone's log showed every gesture tried: SWIPE_LEFT/RIGHT only on
