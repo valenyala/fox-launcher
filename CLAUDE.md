@@ -53,7 +53,7 @@ adb shell am start -a android.intent.action.MAIN -c android.intent.category.HOME
 adb shell cmd package set-home-activity dev.foxlauncher/.HomeActivity          # make default launcher without the dialog
 adb shell settings put secure enabled_accessibility_services dev.foxlauncher/dev.foxlauncher.feature.gestures.system.FoxAccessibilityService
 adb shell settings put secure accessibility_enabled 1                          # enable our service for gesture system actions
-adb shell settings put secure enabled_accessibility_services null              # first, after an instrumented run: it leaves the service stuck (PLATFORM-NOTES G)
+adb shell settings put secure enabled_accessibility_services null              # first, after an instrumented run: it leaves the service stuck (PLATFORM-NOTES G); if still "Binding", adb install -r
 adb shell appops set dev.foxlauncher GET_USAGE_STATS allow                     # usage-stats special permission
 adb logcat -s FoxLauncher:V AndroidRuntime:E
 

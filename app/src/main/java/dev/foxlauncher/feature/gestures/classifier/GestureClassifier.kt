@@ -13,7 +13,9 @@ data class PointerSample(val pointerId: Int, val x: Float, val y: Float, val tim
  * Everything the classifier does not decide itself (ADR-10): system thresholds (the arena reads
  * them from `ViewConfiguration`), the arena's size, where the dock starts, and whether the pager
  * would page for a single-finger swipe to the left (towards the next page) or to the right. The
- * lambdas are read when a gesture's first finger goes down.
+ * lambdas are read when a gesture's first finger goes down, except [followsVerticalDrag]: asked
+ * when one finger passes slop vertically (did it start on the dock, is it going up), it decides
+ * whether that drag is followed as it moves instead of becoming a swipe when it lifts.
  */
 class GestureConfig(
     val touchSlopPx: Float,
@@ -27,6 +29,7 @@ class GestureConfig(
     val dockTop: () -> Float = { Float.POSITIVE_INFINITY },
     val pagerTakesSwipeLeft: () -> Boolean = { false },
     val pagerTakesSwipeRight: () -> Boolean = { false },
+    val followsVerticalDrag: (fromDock: Boolean, upward: Boolean) -> Boolean = { _, _ -> false },
 )
 
 /** What [GestureClassifier.feed] and [GestureClassifier.onTimer] report. */
@@ -46,6 +49,15 @@ sealed interface GestureResult {
 
     /** A CANCEL, or a third finger: the gesture is dropped. */
     data object Cancelled : GestureResult
+
+    /** A followed vertical drag began: the finger is [dy] px from where it went down (y grows downwards). */
+    data class DragStarted(val dy: Float) : GestureResult
+
+    /** The followed finger moved [dy] px since the last report. */
+    data class DragUpdate(val dy: Float) : GestureResult
+
+    /** The followed finger lifted at [velocityY] px/s (0 when the gesture was cancelled). */
+    data class DragEnd(val velocityY: Float) : GestureResult
 }
 
 /**
@@ -63,6 +75,9 @@ sealed interface GestureResult {
  *   and [GestureConfig.doubleTapSlopPx] of its position; recognized when it lifts.
  * - **Long press**: one finger, never past slop, for [GestureConfig.longPressMs]; the arena drives
  *   [onTimer]. Afterwards the gesture is over: moving on is an item drag, not a swipe.
+ * - **Followed drag** (task 3.7): a single-finger vertical drag that [GestureConfig.followsVerticalDrag]
+ *   accepts reports its movement as it happens and its velocity when it lifts, and is never a swipe;
+ *   other fingers are then ignored.
  */
 class GestureClassifier(private val config: GestureConfig) {
 
@@ -79,6 +94,9 @@ class GestureClassifier(private val config: GestureConfig) {
     private var pinchStartSpacing = 0f
     private var isSecondTap = false
     private var lastTap: Tap? = null
+    /** The finger whose vertical drag is followed, and where it was last reported; null when none. */
+    private var followed: Int? = null
+    private var followedY = 0f
 
     fun feed(sample: PointerSample): GestureResult = when (sample.phase) {
         PointerPhase.DOWN -> onDown(sample)
@@ -97,6 +115,10 @@ class GestureClassifier(private val config: GestureConfig) {
 
     private fun onDown(sample: PointerSample): GestureResult {
         if (pointers.isEmpty()) start(sample)
+        if (followed != null) {
+            pointers[sample.pointerId] = Track(sample)
+            return GestureResult.None
+        }
         // A new finger starts its displacement here, and so does every finger already down.
         pointers.values.forEach { it.rebase() }
         pointers[sample.pointerId] = Track(sample)
@@ -118,15 +140,34 @@ class GestureClassifier(private val config: GestureConfig) {
     private fun onMove(sample: PointerSample): GestureResult {
         val track = pointers[sample.pointerId] ?: return GestureResult.None
         track.moveTo(sample)
+        followed?.let { id ->
+            if (id != sample.pointerId) return GestureResult.None
+            val dy = sample.y - followedY
+            followedY = sample.y
+            return GestureResult.DragUpdate(dy)
+        }
         if (decided || movedPastSlop || hypot(track.dx, track.dy) <= config.touchSlopPx) return GestureResult.None
         movedPastSlop = true
-        // A vertical drag is never the pager's; a horizontal one is, until it lifts.
-        return if (pointers.size == 1 && abs(track.dy) > abs(track.dx)) claim() else GestureResult.None
+        // A horizontal drag is the pager's until it lifts; a vertical one never is.
+        if (pointers.size != 1 || abs(track.dy) <= abs(track.dx)) return GestureResult.None
+        if (config.followsVerticalDrag(startedOnDock, track.dy < 0)) {
+            followed = sample.pointerId
+            followedY = sample.y
+            claimed = true
+            decided = true
+            return GestureResult.DragStarted(track.dy)
+        }
+        return claim()
     }
 
     private fun onUp(sample: PointerSample): GestureResult {
         val track = pointers[sample.pointerId] ?: return GestureResult.None
         track.moveTo(sample)
+        if (followed == sample.pointerId) {
+            followed = null
+            pointers.remove(sample.pointerId)
+            return GestureResult.DragEnd(track.velocity.velocity().yPerS)
+        }
         val result = if (decided) {
             GestureResult.None
         } else {
@@ -142,11 +183,17 @@ class GestureClassifier(private val config: GestureConfig) {
     }
 
     private fun cancel(): GestureResult {
+        val wasFollowing = followed != null
         val wasActive = pointers.isNotEmpty() && !decided
         pointers.clear()
+        followed = null
         decided = true
         lastTap = null
-        return if (wasActive) GestureResult.Cancelled else GestureResult.None
+        return when {
+            wasFollowing -> GestureResult.DragEnd(0f)
+            wasActive -> GestureResult.Cancelled
+            else -> GestureResult.None
+        }
     }
 
     private fun start(sample: PointerSample) {
@@ -159,6 +206,7 @@ class GestureClassifier(private val config: GestureConfig) {
         movedPastSlop = false
         claimed = false
         decided = false
+        followed = null
         isSecondTap = lastTap?.let { tap ->
             sample.timeMs - tap.upTimeMs <= config.doubleTapMs &&
                 hypot(sample.x - tap.x, sample.y - tap.y) <= config.doubleTapSlopPx

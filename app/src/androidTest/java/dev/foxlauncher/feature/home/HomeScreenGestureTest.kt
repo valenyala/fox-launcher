@@ -58,15 +58,60 @@ class HomeScreenGestureTest {
     private var homeWhileHome by mutableStateOf(false)
 
     @Test
-    fun aSwipeUpStillOpensTheDrawerWhichTakesTheGesture() {
+    fun aSwipeUpDragsTheDrawerOpenInsteadOfBeingReported() {
         setHome()
 
         composeRule.onRoot().performTouchInput { swipeUp() }
 
         composeRule.onNodeWithText("drawer search=false").assertIsDisplayed()
-        // Until 3.7 the drawer follows the finger itself; once it shows, the arena is off, so the swipe
-        // is not reported as well (3.4 would otherwise open the drawer a second time).
+        // A followed drag (task 3.7) is never also a swipe: the drawer would open twice.
         assertTrue(gestures.isEmpty())
+    }
+
+    @Test
+    fun theDrawerFollowsTheFingerBeforeItLifts() {
+        setHome()
+        composeRule.onRoot().performTouchInput {
+            down(Offset(centerX, height * 0.6f))
+            repeat(6) { moveBy(Offset(0f, -height * 0.05f)) }
+        }
+        composeRule.waitForIdle()
+
+        // 30 % up and still held: the drawer is on its way, not waiting for the lift.
+        composeRule.onNodeWithTag(HomeTestTags.DRAWER).assertExists()
+
+        composeRule.onRoot().performTouchInput { up() }
+        composeRule.waitForIdle()
+        // Past the 20 % threshold, it settles open.
+        composeRule.onNodeWithText("drawer search=false").assertIsDisplayed()
+    }
+
+    @Test
+    fun draggingTheOpenDrawersSurfaceDownClosesIt() {
+        setHome()
+        composeRule.onRoot().performTouchInput { swipeUp() }
+        composeRule.waitForIdle()
+
+        composeRule.onRoot().performTouchInput {
+            swipeDown(startY = height * 0.3f, endY = height * 0.6f, durationMillis = 1_000)
+        }
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag(HomeTestTags.DRAWER).assertDoesNotExist()
+    }
+
+    @Test
+    fun aShortPullOnTheOpenDrawerLeavesItOpen() {
+        setHome()
+        composeRule.onRoot().performTouchInput { swipeUp() }
+        composeRule.waitForIdle()
+
+        composeRule.onRoot().performTouchInput {
+            swipeDown(startY = height * 0.3f, endY = height * 0.4f, durationMillis = 1_000)
+        }
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithText("drawer search=false").assertIsDisplayed()
     }
 
     @Test

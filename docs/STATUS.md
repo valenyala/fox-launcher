@@ -66,7 +66,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] 3.4 FoxAccessibilityService + ActionExecutor (POCO F3 2026-10-12: all six system actions, disclosure, stopped state, automatic restart)
 - [x] 3.5 Gesture settings UI (POCO F3 2026-10-12: remapping to recents, an app, notifications; reset; Home closes settings)
 - [x] 3.6 System gesture coexistence, predictive back, home intent (gesture navigation: fox-api33/37; three-button: POCO F3, 2026-10-12)
-- [ ] 3.7 Drag-follow drawer opening
+- [ ] 3.7 Drag-follow drawer opening — emulators pass; POCO check pending
 - [ ] Device checklist passed on: —
 
 ## Phase 4 — Wallpaper rotation
@@ -160,6 +160,20 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-12 — 3.7 checkpoint. The classifier follows a single-finger vertical drag when
+  `GestureConfig.followsVerticalDrag(fromDock, upward)` says so (asked at slop): `DragStarted(dy)`, `DragUpdate(dy)`,
+  `DragEnd(velocityY)` (`DragEnd(0)` on CANCEL), never a swipe; other fingers are then ignored (+9 tests, 49). The arena
+  passes them to `onDragStart/onDrag/onDragEnd`, now consumes every single-finger vertical swipe, and reads `enabled`
+  only when a gesture starts (the drawer it opens would otherwise cancel its own drag). `HomeScreen` follows a swipe up
+  only while it maps to Open drawer (pages or dock); downward and remapped swipes fire on lift. **The 1.4 detector
+  and its 3.5/3.6 workarounds are gone** (down tracker, `following`). The open drawer's surface outside its list
+  (search, tabs) closes with a `draggable` on `DrawerLayer`, by the list's rule (closes once pulled 20 % down).
+  Tests: `HomeScreenGestureTest` +3 (follows before lift, surface drag closes, short pull stays); fox-api33 96/96. By
+  hand on fox-api33 and fox-api37: held 30 % up the drawer is half-way (screenshot), then opens; 10 % flick opens, 10 %
+  slow drag does not; swipe down → shade; dock swipe up opens; header drag 30 % closes, 10 % stays; list scroll and
+  pull-at-top unchanged; system strip ignored. Found: an instrumented run can leave the service in "Binding services"
+  (PLATFORM-NOTES G); `adb install -r` clears it.
 
 - 2026-10-12 — **3.6 done.** On the POCO (three-button): Home while home → `HOME_KEY` → first page; Home from an app →
   no gesture, page kept; Home with settings open only closed them; Home remapped to Open drawer opened it, and the next

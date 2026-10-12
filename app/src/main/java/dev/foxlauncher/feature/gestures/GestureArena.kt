@@ -30,27 +30,22 @@ private val DOUBLE_TAP_SLOP = 100.dp
 
 private val PINCH_THRESHOLD = 48.dp
 
-private val ONE_FINGER_VERTICAL = setOf(
-    GestureType.SWIPE_UP,
-    GestureType.SWIPE_DOWN,
-    GestureType.DOCK_SWIPE_UP,
-    GestureType.DOCK_SWIPE_DOWN,
-)
-
 /**
  * The home's gesture arena (task 3.3, ADR-10): every pointer event goes through a
  * [GestureClassifier] in the Initial pass, before the pages, items and dock below see it, and
- * [onGesture] hears what it recognizes. Once a gesture is the home's (two fingers, a pinch, a
- * double tap, a long press on empty space, three fingers) the rest of its events are consumed, so
- * the pager does not page and items do not react. Single-finger horizontal swipes stay the pager's,
- * and a long press on an item ([isOnItem]) stays the item's.
+ * [onGesture] hears what it recognizes. Once a gesture is the home's (a vertical drag, two
+ * fingers, a pinch, a double tap, a long press on empty space, three fingers) the rest of its
+ * events are consumed, so the pager does not page and items do not react. Single-finger horizontal
+ * swipes stay the pager's, and a long press on an item ([isOnItem]) stays the item's.
+ *
+ * A single-finger vertical drag that [followsVerticalDrag] accepts (it started on the dock, it goes
+ * up) is followed instead of recognized (task 3.7): [onDragStart], then [onDrag] with each move in
+ * px, then [onDragEnd] with the release velocity in px/s.
  *
  * A gesture that starts while [enabled] is false, at or below [systemGestureTop] (the system's own
  * gesture strip: its home and recents swipes start there), or whose events arrive already consumed
- * (a drag owns the finger), is ignored to its end; one that gets so midway is cancelled.
- *
- * Single-finger vertical swipes are reported but not consumed: until task 3.7 the home's drawer
- * detector still follows them and needs their release to fling.
+ * (a drag owns the finger), is ignored to its end; one whose events get consumed midway is
+ * cancelled. [enabled] is read only when a gesture starts: a followed drag may open what disables it.
  *
  * The lambdas are read on every event, so they must read current state rather than capture it.
  */
@@ -62,6 +57,10 @@ fun Modifier.gestureArena(
     pagerTakesSwipeRight: () -> Boolean = { false },
     dockTop: () -> Float = { Float.POSITIVE_INFINITY },
     systemGestureTop: () -> Float = { Float.POSITIVE_INFINITY },
+    followsVerticalDrag: (fromDock: Boolean, upward: Boolean) -> Boolean = { _, _ -> false },
+    onDragStart: () -> Unit = {},
+    onDrag: (dyPx: Float) -> Unit = {},
+    onDragEnd: (velocityYPxPerS: Float) -> Unit = {},
 ): Modifier = pointerInput(Unit) {
     val longPressMs = viewConfiguration.longPressTimeoutMillis
     var classifier: GestureClassifier? = null
@@ -95,6 +94,7 @@ fun Modifier.gestureArena(
                                 dockTop = dockTop,
                                 pagerTakesSwipeLeft = pagerTakesSwipeLeft,
                                 pagerTakesSwipeRight = pagerTakesSwipeRight,
+                                followsVerticalDrag = followsVerticalDrag,
                             ),
                         )
                     }
@@ -102,7 +102,7 @@ fun Modifier.gestureArena(
                 event.changes.forEach { if (it.pressed) down += it.id else down -= it.id }
                 val active = checkNotNull(classifier)
 
-                if (!ignoring && (!enabled() || event.changes.any { it.isConsumed })) {
+                if (!ignoring && event.changes.any { it.isConsumed }) {
                     longPress?.cancel()
                     val change = event.changes.first()
                     active.feed(PointerSample(change.id.toInt(), change.position.x, change.position.y, change.uptimeMillis, PointerPhase.CANCEL))
@@ -127,13 +127,21 @@ fun Modifier.gestureArena(
                                 }
                                 GestureResult.Claimed -> {
                                     longPress?.cancel()
-                                    if (down.size > 1) consumeRest = true
+                                    consumeRest = true
                                 }
                                 is GestureResult.Recognized -> {
                                     longPress?.cancel()
-                                    if (result.type !in ONE_FINGER_VERTICAL) consumeRest = true
+                                    consumeRest = true
                                     onGesture(result.type)
                                 }
+                                is GestureResult.DragStarted -> {
+                                    longPress?.cancel()
+                                    consumeRest = true
+                                    onDragStart()
+                                    onDrag(result.dy)
+                                }
+                                is GestureResult.DragUpdate -> onDrag(result.dy)
+                                is GestureResult.DragEnd -> onDragEnd(result.velocityY)
                                 GestureResult.Cancelled -> {
                                     longPress?.cancel()
                                     consumeRest = true

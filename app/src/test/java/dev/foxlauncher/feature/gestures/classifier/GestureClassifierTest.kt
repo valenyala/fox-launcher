@@ -16,6 +16,10 @@ class GestureClassifierTest {
     private var pagerTakesLeft = true
     private var pagerTakesRight = true
 
+    /** Answers the classifier's "follow this vertical drag?" and records what it was asked. */
+    private var follows: (fromDock: Boolean, upward: Boolean) -> Boolean = { _, _ -> false }
+    private val followAsked = mutableListOf<Pair<Boolean, Boolean>>()
+
     private val classifier = GestureClassifier(
         GestureConfig(
             touchSlopPx = SLOP,
@@ -29,6 +33,10 @@ class GestureClassifierTest {
             dockTop = { 1800f },
             pagerTakesSwipeLeft = { pagerTakesLeft },
             pagerTakesSwipeRight = { pagerTakesRight },
+            followsVerticalDrag = { fromDock, upward ->
+                followAsked += fromDock to upward
+                follows(fromDock, upward)
+            },
         ),
     )
 
@@ -333,6 +341,109 @@ class GestureClassifierTest {
         clock += 50
 
         assertEquals(None, tap(500f, 1000f))
+    }
+
+    // --- followed drags (task 3.7) ---
+
+    @Test
+    fun aFollowedDragReportsItsStartItsMovesAndItsEnd() {
+        follows = { _, upward -> upward }
+
+        val results = swipe(dx = 0f, dy = -400f)
+
+        assertEquals(LongPressPending, results.first())
+        // Each of the ten moves is 40 px, past the 20 px slop: the first one starts the drag.
+        assertEquals(GestureResult.DragStarted(-40f), results[1])
+        assertTrue(results.subList(2, results.size - 1).all { it == GestureResult.DragUpdate(-40f) })
+        val end = results.last()
+        assertTrue(end is GestureResult.DragEnd && end.velocityY < -300f, "$end")
+    }
+
+    @Test
+    fun theReportedMovesAddUpToTheWholeDrag() {
+        follows = { _, _ -> true }
+
+        val results = swipe(dx = 0f, dy = -400f)
+
+        val total = results.sumOf {
+            when (it) {
+                is GestureResult.DragStarted -> it.dy.toDouble()
+                is GestureResult.DragUpdate -> it.dy.toDouble()
+                else -> 0.0
+            }
+        }
+        assertEquals(-400.0, total, 0.01)
+    }
+
+    @Test
+    fun aFollowedDragIsNeverASwipe() {
+        follows = { _, _ -> true }
+
+        assertTrue(swipe(dx = 0f, dy = -400f).none { it is Recognized })
+    }
+
+    @Test
+    fun theFollowIsAskedWithWhereAndWhichWay() {
+        swipe(dx = 0f, dy = -400f)
+        swipe(dx = 0f, dy = 400f)
+        swipe(dx = 0f, dy = -400f, from = 500f to 1900f)
+
+        assertEquals(listOf(false to true, false to false, true to true), followAsked)
+    }
+
+    @Test
+    fun anUnfollowedDragIsStillASwipeWhenItLifts() {
+        follows = { _, upward -> upward }
+
+        // Downwards: not followed, so the old rules apply.
+        val results = swipe(dx = 0f, dy = 400f)
+
+        assertTrue(Claimed in results)
+        assertEquals(recognized(GestureType.SWIPE_DOWN), results.last())
+    }
+
+    @Test
+    fun aHorizontalDragIsNeverOfferedForFollowing() {
+        follows = { _, _ -> true }
+        pagerTakesLeft = false
+
+        assertEquals(recognized(GestureType.SWIPE_LEFT), swipe(dx = -400f, dy = 0f).last())
+        assertTrue(followAsked.isEmpty())
+    }
+
+    @Test
+    fun aFollowedFingerMayTurnBack() {
+        follows = { _, _ -> true }
+        down(0, 500f, 1000f)
+        moveBy(0, from = 500f to 1000f, dx = 0f, dy = -300f, durationMs = 100)
+
+        val back = move(0, 500f, 800f)
+
+        assertEquals(GestureResult.DragUpdate(100f), back)
+    }
+
+    @Test
+    fun aCancelEndsAFollowedDragAtRest() {
+        follows = { _, _ -> true }
+        down(0, 500f, 1000f)
+        moveBy(0, from = 500f to 1000f, dx = 0f, dy = -300f, durationMs = 100)
+
+        assertEquals(GestureResult.DragEnd(0f), classifier.feed(PointerSample(0, 500f, 700f, clock, PointerPhase.CANCEL)))
+        // The next gesture starts clean.
+        follows = { _, _ -> false }
+        assertEquals(recognized(GestureType.SWIPE_UP), swipe(dx = 0f, dy = -400f).last())
+    }
+
+    @Test
+    fun anotherFingerDuringAFollowedDragIsIgnored() {
+        follows = { _, _ -> true }
+        down(0, 500f, 1000f)
+        moveBy(0, from = 500f to 1000f, dx = 0f, dy = -300f, durationMs = 100)
+
+        assertEquals(None, down(1, 300f, 1000f))
+        assertEquals(None, move(1, 300f, 800f))
+        assertEquals(None, up(1, 300f, 800f))
+        assertTrue(up(0, 500f, 700f) is GestureResult.DragEnd)
     }
 
     // --- helpers ---

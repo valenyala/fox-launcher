@@ -10,7 +10,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
@@ -54,11 +56,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.changedToDownIgnoreConsumed
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.util.VelocityTracker
-import androidx.compose.ui.input.pointer.util.addPointerInputChange
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onPlaced
@@ -273,8 +270,6 @@ fun HomeScreen(
     // The bottom strip where the system's own swipes start (home, recents in gesture navigation; the
     // bar in three-button). A gesture that starts there is the system's, never ours (task 3.6).
     val systemGestureStrip by rememberUpdatedState(WindowInsets.mandatorySystemGestures.getBottom(LocalDensity.current))
-    // Where the current gesture's first finger went down; the drawer detector below only learns after touch slop.
-    val gestureDownY = remember { mutableFloatStateOf(0f) }
     val focusManager = LocalFocusManager.current
 
     /** A drag leaving the drawer: drop it at once so the home screen is the drop surface. */
@@ -330,6 +325,18 @@ fun HomeScreen(
     val currentHomeControls by rememberUpdatedState(homeControls)
 
     val density = LocalDensity.current
+    val flingPx by rememberUpdatedState(with(density) { FLING_VELOCITY.toPx() })
+    // Where a dragged drawer is, kept in step with each move: progress.value lags behind while snapTo
+    // calls are still queued, and the last move and the lift often arrive in the same frame.
+    val drawerDrag = remember { mutableFloatStateOf(0f) }
+    fun dragDrawerTo(target: Float) {
+        val clamped = target.coerceIn(0f, 1f)
+        drawerDrag.floatValue = clamped
+        scope.launch { progress.snapTo(clamped) }
+    }
+    // The open drawer's own surface outside its list (search field, tabs): dragging it down closes it, by
+    // the list's rule (DrawerPullConnection), as does a fling.
+    val drawerSurfaceDrag = rememberDraggableState { delta -> dragDrawerTo(drawerDrag.floatValue - delta / heightPx) }
     val drawerPull = remember(density) {
         DrawerPullConnection(
             progress = { progress.value },
@@ -385,59 +392,25 @@ fun HomeScreen(
                 pagerTakesSwipeRight = { if (isRtl) pagerState.canScrollForward else pagerState.canScrollBackward },
                 dockTop = dragState::dockTop,
                 systemGestureTop = { heightPx - systemGestureStrip },
-            )
-            .pointerInput(Unit) {
-                awaitPointerEventScope {
-                    while (true) {
-                        awaitPointerEvent(PointerEventPass.Initial).changes
-                            .firstOrNull { it.changedToDownIgnoreConsumed() }
-                            ?.let { gestureDownY.floatValue = it.position.y }
+                // Task 3.7: a swipe up that opens the drawer drags it with the finger; any other vertical swipe
+                // (remapped, downwards) is recognized when it lifts.
+                followsVerticalDrag = { fromDock, upward ->
+                    upward && gestureMap[if (fromDock) GestureType.DOCK_SWIPE_UP else GestureType.SWIPE_UP] == GestureAction.OpenDrawer
+                },
+                onDragStart = {
+                    drawerDrag.floatValue = progress.value
+                    openedForSearch = false
+                },
+                onDrag = { dy -> dragDrawerTo(drawerDrag.floatValue - dy / heightPx) },
+                onDragEnd = { velocityY ->
+                    val open = when {
+                        velocityY < -flingPx -> true
+                        velocityY > flingPx -> false
+                        else -> drawerDrag.floatValue > OPEN_THRESHOLD
                     }
-                }
-            }
-            // TODO(3.7): temporary. The drawer's drag-follow moves into the classifier in task 3.7; until then
-            // this detector opens the drawer, and the arena leaves single-finger vertical drags to it.
-            .pointerInput(Unit) {
-                val tracker = VelocityTracker()
-                // Kept in step with each drag event. progress.value lags behind while snapTo calls are
-                // still queued, and the last move and the up often arrive in the same frame.
-                var dragProgress = 0f
-                var following = true
-                detectVerticalDragGestures(
-                    onDragStart = {
-                        tracker.resetTracking()
-                        dragProgress = progress.value
-                        openedForSearch = false
-                        // A swipe up remapped away from the drawer is the arena's (task 3.5); one from the
-                        // system's gesture strip is the system's (task 3.6).
-                        val downY = gestureDownY.floatValue
-                        val swipe = if (downY >= dragState.dockTop()) GestureType.DOCK_SWIPE_UP else GestureType.SWIPE_UP
-                        following = downY < heightPx - systemGestureStrip &&
-                            (isOpen || gestureMap[swipe] == GestureAction.OpenDrawer)
-                    },
-                    onVerticalDrag = { change, dragAmount ->
-                        if (!following) return@detectVerticalDragGestures
-                        // Takes the batched historical samples too: a fast flick can be one or two events.
-                        tracker.addPointerInputChange(change)
-                        change.consume()
-                        dragProgress = (dragProgress - dragAmount / heightPx).coerceIn(0f, 1f)
-                        val target = dragProgress
-                        scope.launch { progress.snapTo(target) }
-                    },
-                    onDragEnd = {
-                        if (!following) return@detectVerticalDragGestures
-                        val velocityY = tracker.calculateVelocity().y
-                        val fling = FLING_VELOCITY.toPx()
-                        val open = when {
-                            velocityY < -fling -> true
-                            velocityY > fling -> false
-                            else -> dragProgress > OPEN_THRESHOLD
-                        }
-                        settle(open, velocity = -velocityY / heightPx)
-                    },
-                    onDragCancel = { if (following) settle(dragProgress > OPEN_THRESHOLD) },
-                )
-            },
+                    settle(open, velocity = -velocityY / heightPx)
+                },
+            ),
     ) {
         DropHighlight(dragState)
         Column(
@@ -539,6 +512,20 @@ fun HomeScreen(
             isShown = { isDrawerShown },
             progress = { progress.value },
             pull = drawerPull,
+            surfaceDrag = Modifier.draggable(
+                state = drawerSurfaceDrag,
+                orientation = Orientation.Vertical,
+                enabled = isOpen,
+                onDragStarted = { drawerDrag.floatValue = progress.value },
+                onDragStopped = { velocity ->
+                    val open = when {
+                        velocity > flingPx -> false
+                        velocity < -flingPx -> true
+                        else -> drawerDrag.floatValue > 1f - OPEN_THRESHOLD
+                    }
+                    settle(open, -velocity / heightPx)
+                },
+            ),
         ) {
             drawerScope.drawer()
         }
@@ -620,6 +607,7 @@ private fun DrawerLayer(
     isShown: () -> Boolean,
     progress: () -> Float,
     pull: NestedScrollConnection,
+    surfaceDrag: Modifier,
     content: @Composable () -> Unit,
 ) {
     val shown = isShown()
@@ -640,7 +628,9 @@ private fun DrawerLayer(
                 } else {
                     Modifier.clearAndSetSemantics { }.drawWithContent { }
                 },
-            ),
+            )
+            // After the layer's translation, so it moves with the drawer.
+            .then(surfaceDrag),
     ) {
         Box(Modifier.fillMaxSize().graphicsLayer()) {
             content()

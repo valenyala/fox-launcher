@@ -58,7 +58,7 @@ data class HomeUiState(
     val showLabels: Boolean = FoxSettings.DEFAULT_SHOW_HOME_LABELS,
     /** Icons of the shortcut items, keyed by `HomeItem.Shortcut.shortcutKey`; missing ones show their app's icon. */
     val shortcutIcons: ImmutableMap<String, ImageBitmap> = persistentMapOf(),
-    /** What each gesture does (task 3.1); the drawer's swipe-up detector reads it until task 3.7. */
+    /** What each gesture does (task 3.1); the home screen reads it to know which swipes drag the drawer (task 3.7). */
     val gestureMap: ImmutableMap<GestureType, GestureAction> = DEFAULT_GESTURE_MAP.toImmutableMap(),
 )
 

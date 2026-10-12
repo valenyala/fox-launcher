@@ -105,7 +105,11 @@ here contradicts what you remember, trust this file unless a device proves other
   The system settings still show the switch on, so Fox tells the user to turn it off and on (`STOPPED`). With the
   opt-in adb grant of WRITE_SECURE_SETTINGS, `AccessibilityRepair` does that itself (ADR-18): it writes the list
   without Fox, waits 500 ms (the system must see the removal; two quick writes coalesce), writes it back with
-  `ACCESSIBILITY_ENABLED` = 1, and waits up to 3 s for the service to connect. On MIUI, `pm grant` of this permission
+  `ACCESSIBILITY_ENABLED` = 1, and waits up to 3 s for the service to connect.
+- A third stuck state, seen only around instrumented runs: the runner force-stops Fox ("stop due to start instr")
+  while the system is still binding the service, which then sits in `dumpsys accessibility`'s "Binding services"
+  forever. The system skips anything it is binding, so off and on (by the user or `AccessibilityRepair`) cannot help;
+  a package update (`adb install -r`) clears it. On MIUI, `pm grant` of this permission
   also needs Developer options → "USB debugging (Security settings)".
 - **MIUI's "clear recent apps" ignores importance** (measured 2026-10-12): OneKeyClean killed processes at oom adj 0,
   100 and 200 alike, including foreground services (Garmin Connect, Camera) and Fox as the home app. No foreground
