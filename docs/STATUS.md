@@ -14,11 +14,11 @@ Update this file at the end of every session. Keep it terse. Newest session note
   several batched samples (see the 2026-10-10 note). Three-button navigation (`force_fsg_nav_bar` = 0).
 - Dev shell (0.1): nixpkgs pinned to b1b8759 (nixos-unstable, 2026-09-16); JDK 17.0.20.1, Android platform 37, build-tools 37.0.0 (bumped from 36 in 0.2, see ADR-12), platform-tools/adb 37.0.1, Gradle 8.14.4 from the shell. The build itself uses the wrapper, Gradle 9.7.1.
 - Emulators (2026-10-12, ADR-15): `nix develop .#emulator` adds emulator 37.1.11 and x86_64 Google APIs images.
-  `scripts/emulator.sh` AVDs: fox-api29 / fox-api33 / fox-api37 = emulator-5554 / -5556 / -5558, Pixel 7 profile
-  (1080×2400 @ 420 dpi), 4 GB RAM, `adb root` works. Cold boot about 30 s. API 29 has three-button navigation,
-  33 and 37 gesture navigation. Rendering is software (the emulator rejects the host GPU driver and falls back to
+  `scripts/emulator.sh` AVDs: fox-api33 / fox-api37 = emulator-5556 / -5558, Pixel 7 profile
+  (1080×2400 @ 420 dpi), 4 GB RAM, `adb root` works. Cold boot about 30 s. Both use gesture navigation
+  (the phone uses three buttons). Rendering is software (the emulator rejects the host GPU driver and falls back to
   swangle/lavapipe), so no performance numbers from emulators. `--window` opens through XWayland.
-  **Test on API 33 (the phone's level) and above only** (user, 2026-10-12): fox-api33 and fox-api37; fox-api29 is not used.
+  **Test on API 33 (the phone's level) and above only** (user, 2026-10-12); the API 29 emulator was removed.
 - Toolchain (0.2): AGP 9.4.0, Kotlin 2.3.21, KSP 2.3.12, compose-bom 2026.09.00, compileSdk/targetSdk 37, minSdk 29. AGP 9 rejects the `kotlin.android` plugin (ADR-11).
 
 ## Phase 0 — Toolchain & scaffold
@@ -160,6 +160,10 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-12 — **API 29 emulator removed** (user): `.#emulator` now carries only the API 33 and 37 images and
+  platforms; `fox-api29` deleted with `avdmanager delete avd`; ADR-15 amended. The old image stays in the Nix store until
+  the next `nix-collect-garbage`.
 
 - 2026-10-12 — 2.7 First-run default layout, **code done; POCO F3 check pending.** Pure `DefaultLayoutBuilder`
   (`DefaultLayout.kt`, 11 tests) takes a `DefaultAppResolver` (role → launcher component), the catalog and the dock

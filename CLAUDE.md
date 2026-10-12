@@ -34,7 +34,7 @@ nix develop            # JDK 17, Android SDK (platform + build-tools), platform-
 
 `flake.nix` and `.envrc` are created in Phase 0 task 0.1. Android SDK on NixOS needs the aapt2 override in `GRADLE_OPTS`; the flake sets it. If Gradle says `aapt2` failed to execute, the override is missing.
 
-Device testing needs a physical phone over adb or an emulator. The emulator and its system images (API 29, 33, 37) live in a second shell, `nix develop .#emulator`, so the default shell and the CI gate stay lean (ADR-15); `scripts/emulator.sh` creates and boots the AVDs and enters that shell on its own. Device checklists in phase files are only runnable with a device attached.
+Device testing needs a physical phone over adb or an emulator. The emulator and its system images (API 33, the phone's level, and 37) live in a second shell, `nix develop .#emulator`, so the default shell and the CI gate stay lean (ADR-15); `scripts/emulator.sh` creates and boots the AVDs and enters that shell on its own. Device checklists in phase files are only runnable with a device attached.
 
 ## Commands (valid once Phase 0 is complete)
 
@@ -56,7 +56,7 @@ adb shell settings put secure accessibility_enabled 1                          #
 adb shell appops set dev.foxlauncher GET_USAGE_STATS allow                     # usage-stats special permission
 adb logcat -s FoxLauncher:V AndroidRuntime:E
 
-# emulators (fox-api29 / fox-api33 / fox-api37 = emulator-5554 / -5556 / -5558)
+# emulators (fox-api33 / fox-api37 = emulator-5556 / -5558; test on the phone's API 33 and above only)
 ./scripts/emulator.sh start 33 [--window]                  # create if missing, boot headless (or windowed), wait for boot
 ./scripts/emulator.sh list | stop [33|all]
 ANDROID_SERIAL=emulator-5556 ./gradlew installDebug          # pick one device when the phone is attached too

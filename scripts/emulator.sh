@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
 # Android emulators for Fox. One AVD per system image in the `.#emulator` dev shell, each on a fixed
 # console port, so its adb serial never changes:
-#   fox-api29  emulator-5554   minSdk
 #   fox-api33  emulator-5556   same API as the POCO F3; boost can still kill other apps (ADR-5)
 #   fox-api37  emulator-5558   compile/target SDK
 #
 # Usage:
 #   emulator.sh create                 create the missing AVDs (Pixel 7: 1080x2400 @ 420 dpi, close to the phone)
-#   emulator.sh start <29|33|37> [--window]   boot it (headless unless --window) and wait for boot_completed
-#   emulator.sh stop [<29|33|37>|all]  shut it down (default: all running fox emulators)
+#   emulator.sh start <33|37> [--window]   boot it (headless unless --window) and wait for boot_completed
+#   emulator.sh stop [<33|37>|all]  shut it down (default: all running fox emulators)
 #   emulator.sh list                   AVDs and the ones running
 #
 # With the phone on adb as well, plain `adb shell` and the perf scripts need ANDROID_SERIAL=emulator-5556 (or the
@@ -28,13 +27,13 @@ if ! command -v emulator >/dev/null 2>&1; then
     exec nix develop .#emulator -c "$0" "$@"
 fi
 
-apis=(29 33 37)
+apis=(33 37)
 logs="$root/build/emulator"
 
 avd_of() { echo "fox-api$1"; }
 port_of() {
     case "$1" in
-        29) echo 5554 ;; 33) echo 5556 ;; 37) echo 5558 ;;
+        33) echo 5556 ;; 37) echo 5558 ;;
         *) echo "fox emulator: unknown API '$1' (have: ${apis[*]})" >&2; exit 1 ;;
     esac
 }
@@ -68,7 +67,7 @@ create() {
 }
 
 start() {
-    local api=${1:?usage: emulator.sh start <29|33|37> [--window]} window=${2:-}
+    local api=${1:?usage: emulator.sh start <33|37> [--window]} window=${2:-}
     local avd port serial
     avd=$(avd_of "$api"); port=$(port_of "$api"); serial="emulator-$port"
     if running "$api"; then
@@ -124,5 +123,5 @@ case "${1:-}" in
     start) shift; start "$@" ;;
     stop) shift; stop "$@" ;;
     list) list ;;
-    *) sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+    *) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
 esac

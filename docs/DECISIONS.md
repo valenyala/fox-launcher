@@ -111,6 +111,8 @@ enters the default shell on every commit, so they stay out of it. Google APIs im
 bare AOSP: Play services without the Play-signed lock-down, so `adb root` works. `scripts/emulator.sh` owns the
 AVDs (`fox-api<N>`, Pixel 7 profile, 4 GB RAM) and gives each a fixed console port, so serials are stable:
 emulator-5554/5556/5558. Another API level means adding it to `androidEmu` and to the script's tables.
+Amended the same day, at the user's request: testing covers only the phone's API 33 and above, so API 29 (image,
+platform, `fox-api29`) is gone. The other two keep their ports, emulator-5556 and emulator-5558.
 
 ## Dependency log
 (append `- <lib> <version> — reason` when adding a dependency)

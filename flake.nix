@@ -27,11 +27,12 @@
 
       android = composeSdk { };
 
-      # Emulator SDK: the default one plus the emulator and x86_64 Google APIs images for API 29 (minSdk),
-      # 33 (the POCO F3; last level where boost can kill other apps, ADR-5) and 37 (target). System images
-      # come per platform version, and the image for 37 is keyed "37.0". About 5 GB, so only `.#emulator` has it.
+      # Emulator SDK: the default one plus the emulator and x86_64 Google APIs images for API 33 (the POCO F3;
+      # last level where boost can kill other apps, ADR-5) and 37 (target). Testing covers the phone's level and
+      # above (ADR-15). System images come per platform version, and the image for 37 is keyed "37.0". About
+      # 4 GB, so only `.#emulator` has it.
       androidEmu = composeSdk {
-        platformVersions = [ "29" "33" "37.0" ];
+        platformVersions = [ "33" "37.0" ];
         includeEmulator = true;
         includeSystemImages = true;
         systemImageTypes = [ "google_apis" ];
