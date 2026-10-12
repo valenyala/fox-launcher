@@ -11,6 +11,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -46,13 +47,26 @@ class HomeScreenGestureTest {
     private val gestures = mutableListOf<GestureType>()
 
     @Test
-    fun aSwipeUpStillOpensTheDrawerAndIsReported() {
+    fun aSwipeUpStillOpensTheDrawerWhichTakesTheGesture() {
         setHome()
 
         composeRule.onRoot().performTouchInput { swipeUp() }
 
         composeRule.onNodeWithText("drawer").assertIsDisplayed()
-        assertEquals(listOf(GestureType.SWIPE_UP), gestures)
+        // Until 3.7 the drawer follows the finger itself; once it shows, the arena is off, so the swipe
+        // is not reported as well (3.4 would otherwise open the drawer a second time).
+        assertTrue(gestures.isEmpty())
+    }
+
+    @Test
+    fun aSwipeDownIsReportedAndLeavesTheDrawerClosed() {
+        setHome()
+
+        composeRule.onRoot().performTouchInput { swipeDown() }
+        composeRule.waitForIdle()
+
+        assertEquals(listOf(GestureType.SWIPE_DOWN), gestures)
+        composeRule.onNodeWithTag(HomeTestTags.DRAWER).assertDoesNotExist()
     }
 
     @Test
