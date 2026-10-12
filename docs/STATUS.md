@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 3 — Gesture engine (user, 2026-10-12: Phase 3 now, 2.8 later; Phase 2 still owes 2.8 and its device checklist; phases 0 and 1 owe their device checklists)
-**Next task:** 3.3 GestureArena composable (2.8 deferred by the user)
+**Next task:** 3.4 FoxAccessibilityService + ActionExecutor (2.8 deferred by the user)
 
 ## Environment facts (verified 2026-09-17)
 
@@ -62,7 +62,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 ## Phase 3 — Gesture engine
 - [x] 3.1 Gesture and action model + defaults
 - [x] 3.2 GestureClassifier + tests
-- [ ] 3.3 GestureArena composable — emulators (API 33 tests + by hand, API 37 by hand) pass; POCO device checklist pending
+- [x] 3.3 GestureArena composable (device checklist passed 2026-10-12, POCO F3; emulators API 33/37)
 - [ ] 3.4 FoxAccessibilityService + ActionExecutor
 - [ ] 3.5 Gesture settings UI
 - [ ] 3.6 System gesture coexistence, predictive back, home intent
@@ -160,6 +160,11 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-12 — **3.3 done.** User on the POCO F3: paging, drawer follow and close, icon popup and drag, folders all
+  normal; a two-finger swipe left does not page. The phone's log showed every gesture tried: SWIPE_LEFT/RIGHT only on
+  the edge pages, SWIPE_LEFT_2F, SWIPE_RIGHT_2F, DOUBLE_TAP, LONG_PRESS_EMPTY, SWIPE_UP_2F, SWIPE_DOWN, PINCH_OUT and
+  PINCH_IN, each with its mapped action; no crash.
 
 - 2026-10-12 — 3.3 on **fox-api33** (the user launched it; fox-api37 was not running): 69 instrumented tests, one
   failure in a test written this session, `aSwipeUpStillOpensTheDrawerAndIsReported`. Its expectation was wrong for
