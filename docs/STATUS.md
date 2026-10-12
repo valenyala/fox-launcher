@@ -63,8 +63,8 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] 3.1 Gesture and action model + defaults
 - [x] 3.2 GestureClassifier + tests
 - [x] 3.3 GestureArena composable (device checklist passed 2026-10-12, POCO F3; emulators API 33/37)
-- [ ] 3.4 FoxAccessibilityService + ActionExecutor — POCO F3 2026-10-12: disclosure, enable without restart, notifications, quick settings, lock ✓; recents/power menu/screenshot to check once 3.5 can remap
-- [ ] 3.5 Gesture settings UI
+- [ ] 3.4 FoxAccessibilityService + ActionExecutor — POCO F3: disclosure, enable without restart, notifications, quick settings, lock ✓; recents/power menu/screenshot ✓ on fox-api33/37 (via 3.5), POCO check pending
+- [ ] 3.5 Gesture settings UI — emulators (API 33 tests + by hand, API 37 by hand) pass; POCO check pending
 - [ ] 3.6 System gesture coexistence, predictive back, home intent
 - [ ] 3.7 Drag-follow drawer opening
 - [ ] Device checklist passed on: —
@@ -160,6 +160,23 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-12 — 3.5 checkpoint. `feature/settings/`: `HomeSettingsScreen` (root: Gestures, Hidden apps; opened by the
+  "Home settings" action, i.e. long press on empty space, and by a new drawer-menu entry), `GesturesScreen` /
+  `GesturesContent` (every gesture but `HOME_KEY`, which joins in 3.6, with its action; action picker; app chooser
+  with search; shortcut list of the chosen app; shield on accessibility actions and a status banner with Turn on →
+  disclosure; Reset to defaults → `FoxSettings.resetGestures`), `GesturesViewModel`, `GestureLabels`. Navigation is a
+  saved `SettingsRoute` stack over the home (ADR-17). `OpenShortcut` gained an optional `label` (old JSON reads with
+  ""). **Search focus is back** for the "Search apps" action: `DrawerScope.isSearchRequested` →
+  `DrawerScreen/DrawerContent(autoFocusSearch)` (ADR-16's promised path). **Until 3.7** the drawer detector follows a
+  swipe up only while that swipe (pages or dock, by where it starts) still maps to Open drawer; otherwise the arena
+  runs the remapped action (`HomeUiState.gestureMap`). **Bug found and fixed:** the Home key left a settings screen
+  open (Hidden apps had the same flaw); Home now clears the settings stack. Tests: `GesturesContentTest` 7 (incl. the
+  plan's LockScreen-for-DOUBLE_TAP), `HomeScreenGestureTest` +2 (remapped swipe up, open search), JSON +1; fox-api33
+  81/81 after fixing my own remap test (Compose's `swipeUp()` starts on the dock, i.e. DOCK_SWIPE_UP). By hand on
+  fox-api33 and fox-api37 through the UI: double tap → recents, power menu, screenshot each worked (finishing 3.4 on
+  emulators), swipe up → notifications, reset restores the drawer. **Slip:** one `./gradlew :app:installDebug` ran
+  without `ANDROID_SERIAL` and installed on the POCO too (data kept) before the emulator run; memory now forbids it.
 
 - 2026-10-12 — 3.4 on the **POCO F3** (user): swipe down with the service off → `NEEDS_ACCESSIBILITY` and the
   disclosure; after enabling "Fox gestures" in MIUI's settings the service connected in the same process (no restart)

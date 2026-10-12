@@ -81,6 +81,12 @@ class FoxSettings @Inject constructor(
         Unit
     }
 
+    /** Every gesture back to its default action. */
+    suspend fun resetGestures() = withContext(io) {
+        dataStore.edit { it.remove(Keys.GESTURE_MAP) }
+        Unit
+    }
+
     private object Keys {
         val IS_FIRST_RUN = booleanPreferencesKey("is_first_run")
         val ICON_SHAPE = stringPreferencesKey("icon_shape")

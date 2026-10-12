@@ -56,6 +56,8 @@ data class HomeUiState(
     val showLabels: Boolean = FoxSettings.DEFAULT_SHOW_HOME_LABELS,
     /** Icons of the shortcut items, keyed by `HomeItem.Shortcut.shortcutKey`; missing ones show their app's icon. */
     val shortcutIcons: ImmutableMap<String, ImageBitmap> = persistentMapOf(),
+    /** What each gesture does (task 3.1); the drawer's swipe-up detector reads it until task 3.7. */
+    val gestureMap: ImmutableMap<GestureType, GestureAction> = DEFAULT_GESTURE_MAP.toImmutableMap(),
 )
 
 @HiltViewModel
@@ -68,6 +70,8 @@ class HomeViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val appsByKey = appRepository.apps.map { apps -> apps.associateBy { it.key }.toImmutableMap() }
+
+    private val gestureMap = settings.gestureMap.stateIn(viewModelScope, SharingStarted.Eagerly, DEFAULT_GESTURE_MAP)
 
     private val gridSpec = settings.homeGrid.map { (cols, rows, dock) -> GridSpec(cols, rows, dock) }
 
@@ -94,17 +98,16 @@ class HomeViewModel @Inject constructor(
         settings.isFirstRun,
         homeRepository.layout,
         appsByKey,
-        look,
+        combine(look, gestureMap, ::Pair),
         shortcutIcons,
-    ) { isFirstRun, layout, apps, (spec, iconSizeDp, showLabels), icons ->
-        HomeUiState(isFirstRun, layout, apps, spec, iconSizeDp, showLabels, icons)
+    ) { isFirstRun, layout, apps, (look, gestures), icons ->
+        val (spec, iconSizeDp, showLabels) = look
+        HomeUiState(isFirstRun, layout, apps, spec, iconSizeDp, showLabels, icons, gestures.toImmutableMap())
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
         initialValue = HomeUiState(),
     )
-
-    private val gestureMap = settings.gestureMap.stateIn(viewModelScope, SharingStarted.Eagerly, DEFAULT_GESTURE_MAP)
 
     private val _accessibilityPrompt = MutableStateFlow(false)
 

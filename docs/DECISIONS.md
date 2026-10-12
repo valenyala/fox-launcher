@@ -122,6 +122,14 @@ went too (`DrawerContent(autoFocusSearch)`, the home's `openedBySearch`). Phase 
 it back with a real trigger; the removed code is in the commit that introduced this ADR. Supersedes the pill in
 phase 1.4 and the "drawer pill in the middle dock slot" of 2.7, whose free middle slot stays.
 
+## ADR-17 Settings screens stack over the home instead of a NavHost
+Task 3.5 brought the second settings screen (gestures) and a root ("Home settings"). A `NavHost` composes only its
+current destination, so the home, its kept drawer and their state would leave composition whenever settings open and
+be rebuilt on return, the costliest work in the app (see the perf notes). `HomeActivity` instead keeps a saved list of
+`SettingsRoute`s and draws the top one over the home, which stays composed and covered (Material surfaces block
+touches). Each screen's back pops one route; the Home key clears them all. The navigation-compose dependency stays
+unused until a destination needs real navigation (deep links, arguments).
+
 ## Dependency log
 (append `- <lib> <version> — reason` when adding a dependency)
 - AGP (com.android.application) 9.4.0 — build system; built-in Kotlin, see ADR-11.

@@ -15,6 +15,8 @@ import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import dev.foxlauncher.core.model.DEFAULT_GESTURE_MAP
+import dev.foxlauncher.core.model.GestureAction
 import dev.foxlauncher.core.model.GestureType
 import dev.foxlauncher.core.model.HomeContainer
 import dev.foxlauncher.core.model.HomeItem
@@ -26,6 +28,7 @@ import dev.foxlauncher.feature.home.grid.GridSpec
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableMap
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -45,6 +48,8 @@ class HomeScreenGestureTest {
         userSerial = 0,
     )
     private val gestures = mutableListOf<GestureType>()
+    private var controls: HomeControls? = null
+    private var gestureMap = DEFAULT_GESTURE_MAP
 
     @Test
     fun aSwipeUpStillOpensTheDrawerWhichTakesTheGesture() {
@@ -52,10 +57,38 @@ class HomeScreenGestureTest {
 
         composeRule.onRoot().performTouchInput { swipeUp() }
 
-        composeRule.onNodeWithText("drawer").assertIsDisplayed()
+        composeRule.onNodeWithText("drawer search=false").assertIsDisplayed()
         // Until 3.7 the drawer follows the finger itself; once it shows, the arena is off, so the swipe
         // is not reported as well (3.4 would otherwise open the drawer a second time).
         assertTrue(gestures.isEmpty())
+    }
+
+    @Test
+    fun aSwipeUpRemappedAwayFromTheDrawerIsReportedAndTheDrawerStaysClosed() {
+        gestureMap = DEFAULT_GESTURE_MAP + (GestureType.SWIPE_UP to GestureAction.Notifications)
+        setHome()
+
+        // From the pages: a swipe from the very bottom starts on the dock, and DOCK_SWIPE_UP still opens the drawer.
+        composeRule.onRoot().performTouchInput { swipeUp(startY = height * 0.7f, endY = height * 0.2f, durationMillis = 150) }
+        composeRule.waitForIdle()
+
+        assertEquals(listOf(GestureType.SWIPE_UP), gestures)
+        composeRule.onNodeWithTag(HomeTestTags.DRAWER).assertDoesNotExist()
+    }
+
+    @Test
+    fun openSearchOpensTheDrawerAskingForSearchAndClosingClearsIt() {
+        setHome()
+        composeRule.onRoot().performTouchInput { swipeDown() }
+        val home = checkNotNull(controls)
+
+        composeRule.runOnUiThread { home.openSearch() }
+        composeRule.onNodeWithText("drawer search=true").assertIsDisplayed()
+        composeRule.onRoot().performTouchInput { swipeDown() }
+        composeRule.waitForIdle()
+        composeRule.runOnUiThread { home.openDrawer() }
+
+        composeRule.onNodeWithText("drawer search=false").assertIsDisplayed()
     }
 
     @Test
@@ -129,9 +162,12 @@ class HomeScreenGestureTest {
                 HomeScreen(
                     homeKeyPresses = 0,
                     onDrawerClosed = {},
-                    state = HomeUiState(layout = layout, gridSpec = spec),
-                    onGesture = { type, _ -> gestures += type },
-                ) { Text("drawer") }
+                    state = HomeUiState(layout = layout, gridSpec = spec, gestureMap = gestureMap.toImmutableMap()),
+                    onGesture = { type, home ->
+                        gestures += type
+                        controls = home
+                    },
+                ) { Text("drawer search=$isSearchRequested") }
             }
         }
     }

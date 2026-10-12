@@ -1,0 +1,55 @@
+package dev.foxlauncher.feature.settings
+
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import dev.foxlauncher.R
+
+/** Where settings screens live while Fox has no NavHost (the home must stay composed under them). */
+enum class SettingsRoute { HOME, GESTURES, HIDDEN_APPS }
+
+/** The settings root (task 3.5): the "Home settings" gesture action and the drawer menu open it. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HomeSettingsScreen(
+    onBack: () -> Unit,
+    onOpen: (SettingsRoute) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    BackHandler(onBack = onBack)
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.settings_title)) },
+                navigationIcon = { BackButton(onBack) },
+            )
+        },
+        modifier = modifier.fillMaxSize(),
+    ) { padding ->
+        LazyColumn(contentPadding = padding) {
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.settings_gestures)) },
+                    supportingContent = { Text(stringResource(R.string.settings_gestures_summary)) },
+                    modifier = Modifier.clickable { onOpen(SettingsRoute.GESTURES) },
+                )
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.hidden_apps_title)) },
+                    supportingContent = { Text(stringResource(R.string.settings_hidden_apps_summary)) },
+                    modifier = Modifier.clickable { onOpen(SettingsRoute.HIDDEN_APPS) },
+                )
+            }
+        }
+    }
+}

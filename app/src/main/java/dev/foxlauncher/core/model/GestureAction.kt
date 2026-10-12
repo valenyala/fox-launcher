@@ -74,7 +74,15 @@ sealed interface GestureAction {
     @Serializable @SerialName("open_app")
     data class OpenApp(val component: String, val userSerial: Long) : GestureAction
 
-    /** Starts the pinned or published shortcut [shortcutId] of [packageName] in the profile [userSerial]. */
+    /**
+     * Starts the pinned or published shortcut [shortcutId] of [packageName] in the profile
+     * [userSerial]. [label] is the shortcut's name when it was chosen, for the settings screen.
+     */
     @Serializable @SerialName("open_shortcut")
-    data class OpenShortcut(val packageName: String, val shortcutId: String, val userSerial: Long) : GestureAction
+    data class OpenShortcut(
+        val packageName: String,
+        val shortcutId: String,
+        val userSerial: Long,
+        val label: String = "",
+    ) : GestureAction
 }

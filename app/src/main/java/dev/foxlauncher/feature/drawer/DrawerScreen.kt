@@ -50,6 +50,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -91,15 +93,18 @@ object DrawerTestTags {
 
 /**
  * The drawer wired to its ViewModel. [onAppLongPress] hears every long press, alongside the popup
- * it opens. [isShown] is false while the drawer is closed but kept composed.
+ * it opens. [isShown] is false while the drawer is closed but kept composed. [autoFocusSearch] is
+ * true when it was opened to search (the "Search apps" gesture action).
  */
 @Composable
 fun DrawerScreen(
     viewModel: DrawerViewModel,
     onOpenHiddenApps: () -> Unit,
     modifier: Modifier = Modifier,
+    onOpenSettings: () -> Unit = {},
     onAppLongPress: (AppEntry) -> Unit = {},
     isShown: Boolean = true,
+    autoFocusSearch: Boolean = false,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val view = LocalView.current
@@ -120,10 +125,12 @@ fun DrawerScreen(
         onUninstall = viewModel::onUninstall,
         onHide = viewModel::onHide,
         onOpenHiddenApps = onOpenHiddenApps,
+        onOpenSettings = onOpenSettings,
         onTabSelected = viewModel::onTabSelected,
         onWorkPausedChange = viewModel::onWorkPausedChange,
         modifier = modifier,
         isShown = isShown,
+        autoFocusSearch = autoFocusSearch,
     )
 }
 
@@ -143,15 +150,21 @@ fun DrawerContent(
     modifier: Modifier = Modifier,
     onHide: (AppEntry) -> Unit = {},
     onOpenHiddenApps: () -> Unit = {},
+    onOpenSettings: () -> Unit = {},
     onTabSelected: (DrawerTab) -> Unit = {},
     onWorkPausedChange: (Boolean) -> Unit = {},
     iconContent: @Composable (AppEntry) -> Unit = { AppIcon(it, state.iconSizeDp.dp) },
     isShown: Boolean = true,
+    autoFocusSearch: Boolean = false,
 ) {
     val gridState = rememberLazyGridState()
+    val focusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
 
+    LaunchedEffect(autoFocusSearch) {
+        if (autoFocusSearch) focusRequester.requestFocus()
+    }
     LaunchedEffect(gridState) {
         snapshotFlow { gridState.isScrollInProgress }.filter { it }.collect {
             keyboard?.hide()
@@ -173,12 +186,13 @@ fun DrawerContent(
             OutlinedTextField(
                 state = searchState,
                 placeholder = { Text(stringResource(R.string.drawer_search_hint)) },
-                trailingIcon = { DrawerOverflowMenu(onOpenHiddenApps) },
+                trailingIcon = { DrawerOverflowMenu(onOpenHiddenApps, onOpenSettings) },
                 lineLimits = TextFieldLineLimits.SingleLine,
                 shape = MaterialTheme.shapes.extraLarge,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .focusRequester(focusRequester)
                     .testTag(DrawerTestTags.SEARCH),
             )
             val work = state.work
@@ -212,7 +226,7 @@ fun DrawerContent(
 }
 
 @Composable
-private fun DrawerOverflowMenu(onOpenHiddenApps: () -> Unit) {
+private fun DrawerOverflowMenu(onOpenHiddenApps: () -> Unit, onOpenSettings: () -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { expanded = true }, modifier = Modifier.testTag(DrawerTestTags.OVERFLOW)) {
@@ -224,6 +238,13 @@ private fun DrawerOverflowMenu(onOpenHiddenApps: () -> Unit) {
                 onClick = {
                     expanded = false
                     onOpenHiddenApps()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.drawer_settings)) },
+                onClick = {
+                    expanded = false
+                    onOpenSettings()
                 },
             )
         }

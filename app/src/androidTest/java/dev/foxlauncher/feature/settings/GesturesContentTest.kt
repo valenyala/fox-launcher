@@ -1,0 +1,149 @@
+package dev.foxlauncher.feature.settings
+
+import androidx.activity.ComponentActivity
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.unit.dp
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import dev.foxlauncher.R
+import dev.foxlauncher.core.model.AppEntry
+import dev.foxlauncher.core.model.AppShortcut
+import dev.foxlauncher.core.model.GestureAction
+import dev.foxlauncher.core.model.GestureType
+import dev.foxlauncher.core.ui.theme.FoxTheme
+import kotlin.test.assertEquals
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+
+/** The gesture settings screen (task 3.5) against a fake settings store. */
+@RunWith(AndroidJUnit4::class)
+class GesturesContentTest {
+
+    @get:Rule
+    val composeRule = createAndroidComposeRule<ComponentActivity>()
+
+    private val camera = app("Camera", "com.android.camera/.Camera")
+    private val chrome = app("Chrome", "com.android.chrome/com.google.android.apps.chrome.Main")
+    private val incognito = AppShortcut("com.android.chrome", "incognito", 0, "Incognito", "New Incognito tab")
+
+    /** The fake settings store: what each gesture is set to. */
+    private val store = mutableMapOf(
+        GestureType.DOUBLE_TAP to GestureAction.None,
+        GestureType.PINCH_OUT to GestureAction.None,
+        GestureType.SWIPE_DOWN to GestureAction.Notifications,
+    )
+    private var resets = 0
+    private var settingsOpened = 0
+
+    @Test
+    fun choosingLockScreenForDoubleTapWritesIt() {
+        setContent()
+
+        composeRule.onNodeWithText(string(R.string.gesture_double_tap)).performClick()
+        composeRule.onNodeWithText(string(R.string.action_lock_screen)).performScrollTo().performClick()
+
+        assertEquals(GestureAction.LockScreen, store[GestureType.DOUBLE_TAP])
+        composeRule.onNodeWithTag(GesturesTestTags.ACTION_PICKER).assertDoesNotExist()
+    }
+
+    @Test
+    fun anAppIsChosenFromTheAppList() {
+        setContent()
+
+        composeRule.onNodeWithText(string(R.string.gesture_pinch_out)).performClick()
+        composeRule.onNodeWithText(string(R.string.action_open_app_pick)).performScrollTo().performClick()
+        composeRule.onNodeWithText("Camera").performClick()
+
+        assertEquals(GestureAction.OpenApp(camera.component, 0), store[GestureType.PINCH_OUT])
+        composeRule.onNodeWithTag(GesturesTestTags.APP_CHOOSER).assertDoesNotExist()
+    }
+
+    @Test
+    fun aShortcutIsChosenFromItsAppsShortcuts() {
+        setContent()
+
+        composeRule.onNodeWithText(string(R.string.gesture_pinch_out)).performClick()
+        composeRule.onNodeWithText(string(R.string.action_open_shortcut_pick)).performScrollTo().performClick()
+        composeRule.onNodeWithText("Chrome").performClick()
+        composeRule.onNodeWithText("New Incognito tab").performClick()
+
+        assertEquals(GestureAction.OpenShortcut("com.android.chrome", "incognito", 0, "Incognito"), store[GestureType.PINCH_OUT])
+    }
+
+    @Test
+    fun rowsNameTheirActions() {
+        store[GestureType.PINCH_OUT] = GestureAction.OpenApp(camera.component, 0)
+        setContent()
+
+        composeRule.onNodeWithText(string(R.string.action_notifications)).assertIsDisplayed()
+        composeRule.onNodeWithText(composeRule.activity.getString(R.string.action_open_app, "Camera")).assertIsDisplayed()
+    }
+
+    @Test
+    fun resetAsksTheStoreToReset() {
+        setContent()
+
+        composeRule.onNodeWithText(string(R.string.gestures_reset)).performClick()
+
+        assertEquals(1, resets)
+    }
+
+    @Test
+    fun withTheServiceOffTurnOnShowsTheDisclosureFirst() {
+        setContent(accessibilityOn = false)
+
+        composeRule.onNodeWithText(string(R.string.gestures_turn_on)).performClick()
+        composeRule.onNodeWithText(string(R.string.accessibility_disclosure)).assertIsDisplayed()
+        composeRule.onNodeWithText(string(R.string.accessibility_open_settings)).performClick()
+
+        assertEquals(1, settingsOpened)
+    }
+
+    @Test
+    fun withTheServiceOnThereIsNothingToTurnOn() {
+        setContent(accessibilityOn = true)
+
+        composeRule.onNodeWithText(string(R.string.gestures_turn_on)).assertDoesNotExist()
+    }
+
+    private fun setContent(accessibilityOn: Boolean = true) {
+        composeRule.setContent {
+            FoxTheme {
+                // The store as it is when the screen opens; tests check the store, not a recomposed list.
+                val rows = store.map { (type, action) -> GestureRow(type, action) }.toImmutableList()
+                GesturesContent(
+                    state = GesturesUiState(rows = rows, apps = persistentListOf(camera, chrome), accessibilityOn = accessibilityOn),
+                    onSetGesture = { type, action -> store[type] = action },
+                    onReset = { resets++ },
+                    loadShortcuts = { entry -> if (entry == chrome) listOf(incognito) else emptyList() },
+                    onOpenAccessibilitySettings = { settingsOpened++ },
+                    onBack = {},
+                    iconContent = { Box(Modifier.size(40.dp)) },
+                )
+            }
+        }
+    }
+
+    private fun string(id: Int) = composeRule.activity.getString(id)
+
+    private fun app(label: String, component: String) = AppEntry(
+        component = component,
+        userSerial = 0,
+        label = label,
+        packageName = component.substringBefore('/'),
+        isWorkProfile = false,
+        isSuspended = false,
+        isAvailable = true,
+        versionCode = 1,
+    )
+}

@@ -74,6 +74,7 @@ import androidx.compose.ui.unit.dp
 import dev.foxlauncher.R
 import dev.foxlauncher.core.common.FoxLog
 import dev.foxlauncher.core.model.AppEntry
+import dev.foxlauncher.core.model.GestureAction
 import dev.foxlauncher.core.model.GestureType
 import dev.foxlauncher.core.model.HomeItem
 import dev.foxlauncher.feature.gestures.gestureArena
@@ -150,6 +151,9 @@ interface DrawerScope {
      */
     val isShown: Boolean
 
+    /** True when the drawer was opened to search (the "Search apps" action): it focuses its search field. */
+    val isSearchRequested: Boolean
+
     /**
      * A long press on [entry] in the drawer. If the finger then moves, the drawer gets out of the
      * way and the app is dragged onto the home screen (task 2.4).
@@ -161,7 +165,7 @@ interface DrawerScope {
 interface HomeControls {
     fun openDrawer()
 
-    /** TODO(3.5): also focus the drawer's search once the action picker can choose this (ADR-16). */
+    /** Opens the drawer with its search field focused. */
     fun openSearch()
 
     fun scrollToDefaultPage()
@@ -253,12 +257,14 @@ fun HomeScreen(
     // 0 = closed, 1 = fully open. The settled state is saved separately, since Animatable is not.
     val progress = remember { Animatable(0f) }
     var isOpen by rememberSaveable { mutableStateOf(false) }
+    var openedForSearch by rememberSaveable { mutableStateOf(false) }
     var heightPx by remember { mutableFloatStateOf(1f) }
     val isDrawerShown by remember { derivedStateOf { progress.value > 0f } }
 
     val currentOnDrawerClosed by rememberUpdatedState(onDrawerClosed)
     val currentOnGesture by rememberUpdatedState(onGesture)
     val isRtl by rememberUpdatedState(LocalLayoutDirection.current == LayoutDirection.Rtl)
+    val gestureMap by rememberUpdatedState(state.gestureMap)
     val focusManager = LocalFocusManager.current
 
     /** A drag leaving the drawer: drop it at once so the home screen is the drop surface. */
@@ -266,12 +272,14 @@ fun HomeScreen(
         if (isOpen) currentOnDrawerClosed()
         // The drawer stays composed: drop its search focus (and the keyboard).
         focusManager.clearFocus()
+        openedForSearch = false
         isOpen = false
         scope.launch { progress.snapTo(0f) }
     }
 
     val drawerScope = object : DrawerScope {
         override val isShown: Boolean get() = isDrawerShown
+        override val isSearchRequested: Boolean get() = openedForSearch
         override fun onAppLongPress(entry: AppEntry) = dragState.arm(newAppItem(entry), onDragStart = ::closeDrawerNow)
     }
     // Building the drawer is the costliest frame in the app (about 60 ms on the POCO F3), so it is
@@ -284,7 +292,10 @@ fun HomeScreen(
 
     fun settle(open: Boolean, velocity: Float = 0f) {
         if (isOpen && !open) currentOnDrawerClosed()
-        if (!open) focusManager.clearFocus()
+        if (!open) {
+            focusManager.clearFocus()
+            openedForSearch = false
+        }
         isOpen = open
         scope.launch {
             progress.animateTo(
@@ -297,7 +308,10 @@ fun HomeScreen(
 
     val homeControls = object : HomeControls {
         override fun openDrawer() = settle(open = true)
-        override fun openSearch() = settle(open = true)
+        override fun openSearch() {
+            openedForSearch = true
+            settle(open = true)
+        }
         override fun scrollToDefaultPage() {
             scope.launch { pagerState.animateScrollToPage(DEFAULT_PAGE) }
         }
@@ -367,12 +381,18 @@ fun HomeScreen(
                 // Kept in step with each drag event. progress.value lags behind while snapTo calls are
                 // still queued, and the last move and the up often arrive in the same frame.
                 var dragProgress = 0f
+                var following = true
                 detectVerticalDragGestures(
-                    onDragStart = {
+                    onDragStart = { start ->
                         tracker.resetTracking()
                         dragProgress = progress.value
+                        openedForSearch = false
+                        // A swipe up remapped away from the drawer is the arena's (task 3.5).
+                        val swipe = if (start.y >= dragState.dockTop()) GestureType.DOCK_SWIPE_UP else GestureType.SWIPE_UP
+                        following = isOpen || gestureMap[swipe] == GestureAction.OpenDrawer
                     },
                     onVerticalDrag = { change, dragAmount ->
+                        if (!following) return@detectVerticalDragGestures
                         // Takes the batched historical samples too: a fast flick can be one or two events.
                         tracker.addPointerInputChange(change)
                         change.consume()
@@ -381,6 +401,7 @@ fun HomeScreen(
                         scope.launch { progress.snapTo(target) }
                     },
                     onDragEnd = {
+                        if (!following) return@detectVerticalDragGestures
                         val velocityY = tracker.calculateVelocity().y
                         val fling = FLING_VELOCITY.toPx()
                         val open = when {
@@ -390,7 +411,7 @@ fun HomeScreen(
                         }
                         settle(open, velocity = -velocityY / heightPx)
                     },
-                    onDragCancel = { settle(dragProgress > OPEN_THRESHOLD) },
+                    onDragCancel = { if (following) settle(dragProgress > OPEN_THRESHOLD) },
                 )
             },
     ) {

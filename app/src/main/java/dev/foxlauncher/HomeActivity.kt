@@ -11,6 +11,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -38,7 +39,10 @@ import dev.foxlauncher.feature.home.HomeScreen
 import dev.foxlauncher.feature.home.HomeViewModel
 import dev.foxlauncher.feature.home.isDefaultLauncher
 import dev.foxlauncher.feature.home.requestDefaultLauncherRole
+import dev.foxlauncher.feature.settings.GesturesScreen
 import dev.foxlauncher.feature.settings.HiddenAppsScreen
+import dev.foxlauncher.feature.settings.HomeSettingsScreen
+import dev.foxlauncher.feature.settings.SettingsRoute
 import javax.inject.Inject
 
 /**
@@ -67,9 +71,10 @@ class HomeActivity : ComponentActivity() {
                 val homeState by viewModel.uiState.collectAsStateWithLifecycle()
                 val view = LocalView.current
                 val drawerViewModel: DrawerViewModel = hiltViewModel()
-                // A single settings screen does not justify a NavHost yet; this becomes a route
-                // once settings grow (Phase 3 gesture settings).
-                var showHiddenApps by rememberSaveable { mutableStateOf(false) }
+                // Settings screens stack over the home, which stays composed under them (see SettingsRoute).
+                var settings by rememberSaveable { mutableStateOf(listOf<SettingsRoute>()) }
+                // Home goes home: it closes any settings screen, as it closes the drawer.
+                LaunchedEffect(homeKeyPresses) { if (homeKeyPresses > 0) settings = emptyList() }
 
                 var isDefault by remember { mutableStateOf(isDefaultLauncher()) }
 
@@ -114,17 +119,18 @@ class HomeActivity : ComponentActivity() {
                                         openSearch = home::openSearch,
                                         scrollToDefaultPage = home::scrollToDefaultPage,
                                         openPageOverview = home::openPageOverview,
-                                        // TODO(3.5): the settings screen; there is no home settings screen yet.
-                                        openHomeSettings = { FoxLog.d("No home settings screen yet") },
+                                        openHomeSettings = { settings = listOf(SettingsRoute.HOME) },
                                     ),
                                 )
                             },
                         ) {
                             DrawerScreen(
                                 viewModel = drawerViewModel,
-                                onOpenHiddenApps = { showHiddenApps = true },
+                                onOpenHiddenApps = { settings = listOf(SettingsRoute.HIDDEN_APPS) },
+                                onOpenSettings = { settings = listOf(SettingsRoute.HOME) },
                                 onAppLongPress = ::onAppLongPress,
                                 isShown = isShown,
+                                autoFocusSearch = isSearchRequested,
                             )
                         }
                         val accessibilityPrompt by viewModel.accessibilityPrompt.collectAsStateWithLifecycle()
@@ -137,8 +143,16 @@ class HomeActivity : ComponentActivity() {
                                 onDismiss = viewModel::dismissAccessibilityPrompt,
                             )
                         }
-                        if (showHiddenApps) {
-                            HiddenAppsScreen(hiltViewModel(), onBack = { showHiddenApps = false })
+                        val closeSettings = { settings = settings.dropLast(1) }
+                        when (settings.lastOrNull()) {
+                            SettingsRoute.HOME -> HomeSettingsScreen(onBack = closeSettings, onOpen = { settings = settings + it })
+                            SettingsRoute.GESTURES -> GesturesScreen(
+                                viewModel = hiltViewModel(),
+                                onBack = closeSettings,
+                                onOpenAccessibilitySettings = ::openAccessibilitySettings,
+                            )
+                            SettingsRoute.HIDDEN_APPS -> HiddenAppsScreen(hiltViewModel(), onBack = closeSettings)
+                            null -> Unit
                         }
                     }
                 }

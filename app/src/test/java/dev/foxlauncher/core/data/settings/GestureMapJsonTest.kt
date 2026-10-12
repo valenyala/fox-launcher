@@ -24,7 +24,7 @@ class GestureMapJsonTest {
             GestureAction.Screenshot, GestureAction.NextWallpaper, GestureAction.PreviousWallpaper,
             GestureAction.HomeSettings, GestureAction.PageOverview, GestureAction.ScrollToDefaultPage,
             GestureAction.OpenApp("com.android.camera/.Camera", 0),
-            GestureAction.OpenShortcut("com.android.chrome", "new_incognito_tab", 10),
+            GestureAction.OpenShortcut("com.android.chrome", "new_incognito_tab", 10, label = "New Incognito tab"),
         )
         // One gesture per action; there are more gestures than actions.
         val changes = GestureType.entries.zip(actions).toMap()
@@ -68,6 +68,13 @@ class GestureMapJsonTest {
         val stored = """{"DOUBLE_TAP":{"type":"open_app","component":"a/.B","userSerial":0,"addedIn":"v9"}}"""
 
         assertEquals(GestureAction.OpenApp("a/.B", 0), GestureMapJson.decode(stored)[GestureType.DOUBLE_TAP])
+    }
+
+    @Test
+    fun aShortcutStoredBeforeItHadALabelStillReads() {
+        val stored = """{"PINCH_OUT":{"type":"open_shortcut","packageName":"a","shortcutId":"s","userSerial":0}}"""
+
+        assertEquals(GestureAction.OpenShortcut("a", "s", 0, label = ""), GestureMapJson.decode(stored)[GestureType.PINCH_OUT])
     }
 
     @Test
