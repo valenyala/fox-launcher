@@ -5,7 +5,7 @@ import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import dev.foxlauncher.feature.gestures.system.AccessibilitySystemActions
-import dev.foxlauncher.feature.wallpaper.NoOpWallpaperAdvancer
+import dev.foxlauncher.feature.wallpaper.RotationScheduler
 import dev.foxlauncher.feature.wallpaper.WallpaperAdvancer
 
 /** The Android side of [ActionExecutor]'s ports (task 3.4). */
@@ -19,7 +19,6 @@ abstract class GesturesModule {
     @Binds
     abstract fun bindAppLauncher(impl: RepositoryAppLauncher): AppLauncher
 
-    /** TODO(phase4): bind `RotationScheduler`. */
     @Binds
-    abstract fun bindWallpaperAdvancer(impl: NoOpWallpaperAdvancer): WallpaperAdvancer
+    abstract fun bindWallpaperAdvancer(impl: RotationScheduler): WallpaperAdvancer
 }

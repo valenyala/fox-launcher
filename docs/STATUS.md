@@ -72,7 +72,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 ## Phase 4 — Wallpaper rotation
 - [x] 4.1 Sources and entries data layer (built-in images are generated placeholders until the user supplies some)
 - [x] 4.2 WallpaperPlaylist + tests
-- [ ] 4.3 FoxWallpaperService crossfade engine
+- [ ] 4.3 FoxWallpaperService crossfade engine — emulators pass; POCO check pending
 - [ ] 4.4 RotationScheduler and triggers
 - [ ] 4.5 Static fallback
 - [ ] 4.6 Lock screen handling
@@ -160,6 +160,22 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-12 — 4.3 checkpoint. `feature/wallpaper/engine/`: pure `WallpaperGeometry` (sample size that never drops
+  under the target, cover scale, centre crop, eased crossfade alpha, parallax shift; 13 tests), `WallpaperLoader`
+  (`ImageDecoder`, software allocator so `WallpaperColors` can read it, EXIF applied, sampled then cropped into a bitmap
+  of exactly 1.2 × surface width × surface height), `FoxWallpaperService` (`@AndroidEntryPoint`; engine on its own
+  main-thread scope; shows `activeWallpaperEntryId` or the first enabled entry; `Choreographer` crossfade, 800 ms
+  (`FoxSettings.crossfadeMs`); at most two bitmaps, the old one recycled; hidden → fade ends at once; first image after
+  (re)creation without a fade; offsets → parallax; `onComputeColors` + `notifyColorsChanged` after each change; a
+  failed decode → `markFailed`). Manifest service with BIND_WALLPAPER, `xml/wallpaper.xml`, thumbnail. **Pulled forward
+  from 4.4:** `RotationScheduler.advanceNow(forward)` (playlist → `savePlaylist` + `activeWallpaperEntryId` +
+  `markShown`, skips entries failed 3×) now backs the Next/Previous wallpaper actions instead of the plan's temporary
+  button; 4.4 adds only the triggers. Bug found on the emulator and fixed: the first "next" re-picked the image already
+  showing (empty history); an empty history now starts from what is on screen. On fox-api33 and fox-api37: applied via
+  the system preview (`CHANGE_LIVE_WALLPAPER`), double tap → Next wallpaper crossfaded Dawn→Dusk→Forest→Dawn (mid-fade
+  frames captured, no black frame); the image stayed after an app visit and after killing Fox's process (stand-in for
+  a reboot). fox-api33: 102/102 instrumented.
 
 - 2026-10-12 — **4.2 done.** Pure `feature/wallpaper/WallpaperPlaylist` (immutable; `next()`/`previous()` return the id
   and the playlist to keep). Shuffle walks a permutation drawn from the seed; at the end of a pass a new seed (fixed

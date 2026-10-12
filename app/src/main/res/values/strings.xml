@@ -33,6 +33,8 @@
     <string name="accessibility_stopped">Android stopped the \"Fox gestures\" service, which happens when recent apps are cleared. In the accessibility settings, turn \"Fox gestures\" off and on again.</string>
     <string name="accessibility_open_settings">Open settings</string>
     <string name="accessibility_not_now">Not now</string>
+    <string name="wallpaper_label">Fox wallpapers</string>
+    <string name="wallpaper_description">Rotates your wallpapers with a smooth crossfade.</string>
     <string name="settings_title">Home settings</string>
     <string name="settings_gestures">Gestures</string>
     <string name="settings_gestures_summary">What each swipe, tap and pinch does</string>

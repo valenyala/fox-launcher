@@ -90,6 +90,20 @@ class FoxSettings @Inject constructor(
         Unit
     }
 
+    /**
+     * The wallpaper entry the live wallpaper shows (task 4.3); null until the rotation first picks
+     * one. Everything that changes the wallpaper writes this, and only the engine draws it.
+     */
+    val activeWallpaperEntryId: Flow<Long?> = dataStore.data.map { it[Keys.ACTIVE_WALLPAPER] }
+
+    suspend fun setActiveWallpaperEntryId(id: Long) = withContext(io) {
+        dataStore.edit { it[Keys.ACTIVE_WALLPAPER] = id }
+        Unit
+    }
+
+    /** How long a wallpaper crossfade lasts, in ms (task 4.3; the setting arrives in 4.7). */
+    val crossfadeMs: Flow<Int> = dataStore.data.map { it[Keys.CROSSFADE_MS] ?: DEFAULT_CROSSFADE_MS }
+
     /** The wallpaper rotation's mode, shuffle seed and history (task 4.2). */
     val playlistState: Flow<PlaylistState> = dataStore.data.map {
         PlaylistState(
@@ -125,6 +139,8 @@ class FoxSettings @Inject constructor(
         val DOCK_SLOTS = intPreferencesKey("dock_slots")
         val SHOW_HOME_LABELS = booleanPreferencesKey("show_home_labels")
         val GESTURE_MAP = stringPreferencesKey("gesture_map")
+        val ACTIVE_WALLPAPER = longPreferencesKey("wallpaper_active_entry")
+        val CROSSFADE_MS = intPreferencesKey("wallpaper_crossfade_ms")
         val PLAYLIST_MODE = stringPreferencesKey("wallpaper_playlist_mode")
         val PLAYLIST_SEED = longPreferencesKey("wallpaper_playlist_seed")
         val PLAYLIST_HISTORY = stringPreferencesKey("wallpaper_playlist_history")
@@ -138,5 +154,6 @@ class FoxSettings @Inject constructor(
         const val DEFAULT_HOME_ROWS: Int = 6
         const val DEFAULT_DOCK_SLOTS: Int = 5
         const val DEFAULT_SHOW_HOME_LABELS: Boolean = true
+        const val DEFAULT_CROSSFADE_MS: Int = 800
     }
 }
