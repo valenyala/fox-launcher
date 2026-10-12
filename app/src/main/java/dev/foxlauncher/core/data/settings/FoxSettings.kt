@@ -14,11 +14,13 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import dev.foxlauncher.core.common.IoDispatcher
+import dev.foxlauncher.core.model.GestureAction
+import dev.foxlauncher.core.model.GestureType
 
 /**
  * Typed access to the Preferences DataStore. Reads are cold [Flow]s, writes are `suspend` and land
- * on IO. Structured settings (gesture map, widget config) arrive in later phases as single
- * JSON-serialized keys.
+ * on IO. Structured settings are single JSON-serialized keys: the gesture map ([GestureMapJson])
+ * now, widget config in later phases.
  */
 @Singleton
 class FoxSettings @Inject constructor(
@@ -67,6 +69,18 @@ class FoxSettings @Inject constructor(
         Unit
     }
 
+    /** What each gesture does: the defaults with the user's changes on top (task 3.1). */
+    val gestureMap: Flow<Map<GestureType, GestureAction>> =
+        dataStore.data.map { GestureMapJson.decode(it[Keys.GESTURE_MAP]) }
+
+    suspend fun setGesture(type: GestureType, action: GestureAction) = withContext(io) {
+        dataStore.edit {
+            val changes = GestureMapJson.decodeChanges(it[Keys.GESTURE_MAP]) + (type to action)
+            it[Keys.GESTURE_MAP] = GestureMapJson.encodeChanges(changes)
+        }
+        Unit
+    }
+
     private object Keys {
         val IS_FIRST_RUN = booleanPreferencesKey("is_first_run")
         val ICON_SHAPE = stringPreferencesKey("icon_shape")
@@ -77,6 +91,7 @@ class FoxSettings @Inject constructor(
         val HOME_ROWS = intPreferencesKey("home_rows")
         val DOCK_SLOTS = intPreferencesKey("dock_slots")
         val SHOW_HOME_LABELS = booleanPreferencesKey("show_home_labels")
+        val GESTURE_MAP = stringPreferencesKey("gesture_map")
     }
 
     companion object {
