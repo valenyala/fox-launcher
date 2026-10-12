@@ -2,8 +2,8 @@
 
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
-**Current phase:** 3 — Gesture engine (user, 2026-10-12: Phase 3 now, 2.8 later; Phase 2 still owes 2.8 and its device checklist; phases 0 and 1 owe their device checklists)
-**Next task:** 3.7 Drag-follow drawer opening (2.8 deferred by the user)
+**Current phase:** 4 — Wallpaper rotation (Phase 3 done 2026-10-12; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists)
+**Next task:** 4.1 Sources and entries data layer (2.8 still deferred)
 
 ## Environment facts (verified 2026-09-17)
 
@@ -66,8 +66,8 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] 3.4 FoxAccessibilityService + ActionExecutor (POCO F3 2026-10-12: all six system actions, disclosure, stopped state, automatic restart)
 - [x] 3.5 Gesture settings UI (POCO F3 2026-10-12: remapping to recents, an app, notifications; reset; Home closes settings)
 - [x] 3.6 System gesture coexistence, predictive back, home intent (gesture navigation: fox-api33/37; three-button: POCO F3, 2026-10-12)
-- [ ] 3.7 Drag-follow drawer opening — emulators pass; POCO check pending
-- [ ] Device checklist passed on: —
+- [x] 3.7 Drag-follow drawer opening (POCO F3 2026-10-12)
+- [x] Device checklist passed on: POCO F3 (three-button) + fox-api33/37 (gesture navigation), 2026-10-12 — items covered across 3.3–3.7; item 3 done as pinch out → Open app: Camera
 
 ## Phase 4 — Wallpaper rotation
 - [ ] 4.1 Sources and entries data layer
