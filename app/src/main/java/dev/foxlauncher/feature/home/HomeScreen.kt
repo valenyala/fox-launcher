@@ -512,7 +512,8 @@ fun HomeScreen(
             isShown = { isDrawerShown },
             progress = { progress.value },
             pull = drawerPull,
-            surfaceDrag = Modifier.draggable(
+            // The open drawer's surface outside its list closes it by dragging.
+            modifier = Modifier.draggable(
                 state = drawerSurfaceDrag,
                 orientation = Orientation.Vertical,
                 enabled = isOpen,
@@ -607,7 +608,7 @@ private fun DrawerLayer(
     isShown: () -> Boolean,
     progress: () -> Float,
     pull: NestedScrollConnection,
-    surfaceDrag: Modifier,
+    modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
     val shown = isShown()
@@ -630,7 +631,7 @@ private fun DrawerLayer(
                 },
             )
             // After the layer's translation, so it moves with the drawer.
-            .then(surfaceDrag),
+            .then(modifier),
     ) {
         Box(Modifier.fillMaxSize().graphicsLayer()) {
             content()

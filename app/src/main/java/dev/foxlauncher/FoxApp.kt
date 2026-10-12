@@ -3,6 +3,7 @@ package dev.foxlauncher
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import androidx.work.WorkManager
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
@@ -14,6 +15,8 @@ import dagger.hilt.android.HiltAndroidApp
 import dev.foxlauncher.core.common.ApplicationScope
 import dev.foxlauncher.core.common.FoxLog
 import dev.foxlauncher.feature.gestures.system.AccessibilityRepair
+import dev.foxlauncher.feature.wallpaper.source.SourceScanner
+import dev.foxlauncher.feature.wallpaper.source.WallpaperSources
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
@@ -34,6 +37,8 @@ class FoxApp : Application(), Configuration.Provider, SingletonImageLoader.Facto
 
     @Inject @ApplicationScope lateinit var scope: CoroutineScope
 
+    @Inject lateinit var wallpaperSources: WallpaperSources
+
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
             .setWorkerFactory(workerFactory)
@@ -48,6 +53,11 @@ class FoxApp : Application(), Configuration.Provider, SingletonImageLoader.Facto
         scope.launch {
             delay(ACCESSIBILITY_REPAIR_DELAY_MS)
             accessibilityRepair.repairIfStopped()
+        }
+        // Wallpaper rotation works out of the box (task 4.1): the built-ins exist, folders rescan daily.
+        scope.launch {
+            wallpaperSources.ensureBuiltIn()
+            SourceScanner.scheduleDaily(WorkManager.getInstance(this@FoxApp))
         }
     }
 

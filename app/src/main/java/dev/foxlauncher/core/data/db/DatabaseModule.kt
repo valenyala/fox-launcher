@@ -20,4 +20,7 @@ object DatabaseModule {
 
     @Provides
     fun provideHomeDao(database: FoxDatabase): HomeDao = database.homeDao()
+
+    @Provides
+    fun provideWallpaperDao(database: FoxDatabase): WallpaperDao = database.wallpaperDao()
 }

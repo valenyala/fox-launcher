@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 4 — Wallpaper rotation (Phase 3 done 2026-10-12; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists)
-**Next task:** 4.1 Sources and entries data layer (2.8 still deferred)
+**Next task:** 4.2 WallpaperPlaylist + tests (2.8 still deferred)
 
 ## Environment facts (verified 2026-09-17)
 
@@ -70,7 +70,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] Device checklist passed on: POCO F3 (three-button) + fox-api33/37 (gesture navigation), 2026-10-12 — items covered across 3.3–3.7; item 3 done as pinch out → Open app: Camera
 
 ## Phase 4 — Wallpaper rotation
-- [ ] 4.1 Sources and entries data layer
+- [x] 4.1 Sources and entries data layer (built-in images are generated placeholders until the user supplies some)
 - [ ] 4.2 WallpaperPlaylist + tests
 - [ ] 4.3 FoxWallpaperService crossfade engine
 - [ ] 4.4 RotationScheduler and triggers
@@ -160,6 +160,20 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-12 — **4.1 done.** Room v3 (auto-migration 2→3, `3.json` committed): `WallpaperSourceEntity` (FOLDER_TREE /
+  PICKED_IMAGES / BUILT_IN, `needsReauth`) and `WallpaperEntryEntity` (cascade on source delete, unique `sourceId+uri`,
+  `lastShownAt`, `failedCount`); `WallpaperDao` (enabled entries flow, `applyScan` transaction, `markShown` resets
+  failures, `markFailed`). Pure `diffScan` (by URI; a changed file keeps id and history, failures reset). `SourceScanner`
+  (`@HiltWorker`) lists a folder's own images with one `DocumentsContract` child query; `SecurityException` /
+  `FileNotFoundException` → `needsReauth`; `scanNow(sourceId)` and a daily unique periodic scan (scheduled from `FoxApp`).
+  `WallpaperSources.ensureBuiltIn()` (from `FoxApp`) keeps a BUILT_IN source listing the shipped `res/raw` images by
+  name-form `android.resource://…/raw/<name>` URIs (stable across builds). The three images are generated gradient
+  placeholders (~40 KB each); the user offered real ones, to be swapped in (only images fine to publish: public repo).
+  Tests: `ScanDiffTest` 8, `WallpaperDaoTest` 6. On fox-api33/37: DB v3, built-ins present, home items kept (pull with
+  the `-wal` file, or fresh rows look missing). On the POCO, before/after the update: dock 5, pages 9, folder items 2,
+  folders 1 — unchanged — plus 3 wallpapers. Lint caught a 3.7 leftover (`DrawerLayer`'s Modifier param not named
+  `modifier`); fixed.
 
 - 2026-10-12 — 3.7 checkpoint. The classifier follows a single-finger vertical drag when
   `GestureConfig.followsVerticalDrag(fromDock, upward)` says so (asked at slop): `DragStarted(dy)`, `DragUpdate(dy)`,

@@ -11,21 +11,27 @@ import androidx.room.migration.AutoMigrationSpec
  * exported JSON under `app/schemas/`.
  */
 @Database(
-    entities = [HomeItemEntity::class, FolderEntity::class],
+    entities = [HomeItemEntity::class, FolderEntity::class, WallpaperSourceEntity::class, WallpaperEntryEntity::class],
     version = FoxDatabase.VERSION,
     exportSchema = true,
-    autoMigrations = [AutoMigration(from = 1, to = 2, spec = FoxDatabase.DropKeyValue::class)],
+    autoMigrations = [
+        AutoMigration(from = 1, to = 2, spec = FoxDatabase.DropKeyValue::class),
+        // v2 → v3: wallpaper sources and entries (task 4.1), new tables only.
+        AutoMigration(from = 2, to = 3),
+    ],
 )
 abstract class FoxDatabase : RoomDatabase() {
 
     abstract fun homeDao(): HomeDao
+
+    abstract fun wallpaperDao(): WallpaperDao
 
     /** v1 → v2: the Phase 0 placeholder `key_value` table had no users; home tables are added. */
     @DeleteTable(tableName = "key_value")
     class DropKeyValue : AutoMigrationSpec
 
     companion object {
-        const val VERSION: Int = 2
+        const val VERSION: Int = 3
         const val NAME: String = "fox.db"
     }
 }
