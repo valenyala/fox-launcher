@@ -104,6 +104,12 @@ here contradicts what you remember, trust this file unless a device proves other
   without Fox, waits 500 ms (the system must see the removal; two quick writes coalesce), writes it back with
   `ACCESSIBILITY_ENABLED` = 1, and waits up to 3 s for the service to connect. On MIUI, `pm grant` of this permission
   also needs Developer options → "USB debugging (Security settings)".
+- **MIUI's "clear recent apps" ignores importance** (measured 2026-10-12): OneKeyClean killed processes at oom adj 0,
+  100 and 200 alike, including foreground services (Garmin Connect, Camera) and Fox as the home app. No foreground
+  service, separate process or other app-side trick helps. Its own lock list does: with Fox locked in Security →
+  Boost speed → Lock apps, a clear left Fox's process and its accessibility service running. Fox has no recents card
+  to lock (a launcher excludes itself from recents), so that menu is the way; the Gestures screen says so on Xiaomi
+  phones (`Build.MANUFACTURER`, which Redmi and POCO also report).
 - Haptics: `View.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS / GESTURE_START / CONFIRM)`; in Compose use
   `LocalHapticFeedback`.
 

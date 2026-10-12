@@ -52,6 +52,7 @@
     <string name="gestures_auto_restart">Restart it by itself</string>
     <string name="gestures_auto_restart_on">On: when Android stops \"Fox gestures\", Fox turns it off and on again.</string>
     <string name="gestures_auto_restart_off">Off. Android stops \"Fox gestures\" when recent apps are cleared. To let Fox restart it, grant this once from a computer:</string>
+    <string name="gestures_miui_lock_hint">On this phone, clearing recent apps closes Fox. To keep it running, lock it in Security → Boost speed → Lock apps.</string>
     <string name="gestures_auto_restart_command" translatable="false">adb shell pm grant dev.foxlauncher android.permission.WRITE_SECURE_SETTINGS</string>
     <string name="gestures_needs_accessibility">Needs the accessibility service</string>
     <string name="gesture_swipe_up">Swipe up</string>

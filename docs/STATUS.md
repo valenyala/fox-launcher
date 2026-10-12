@@ -161,6 +161,13 @@ Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out o
 
 ## Session notes
 
+- 2026-10-12 — **Surviving "clear recents" on MIUI** (user question). The phone's log: OneKeyClean killed processes at
+  adj 0–200 regardless of foreground services, so nothing inside Fox can exempt it. The user locked Fox in Security →
+  Boost speed → Lock apps; the next clear (13:52, three tasks removed) left Fox's process (same pid) and its service
+  running. Before the lock, the 13:48 clears showed the gesture path of the automatic restart on the phone (double tap
+  → stopped → restarted → screenshot `DONE` in 0.6 s). The Gestures screen now shows the lock tip on Xiaomi phones
+  (`GesturesUiState.showMiuiLockHint`, +2 `GesturesContentTest`). PLATFORM-NOTES G updated.
+
 - 2026-10-12 — **3.4 done; automatic restart works on the POCO.** I granted WRITE_SECURE_SETTINGS over the existing
   wireless adb at the user's request (the MIUI "USB debugging (Security settings)" toggle was already on). The user
   cleared recents twice: each time OneKeyClean killed Fox, Fox restarted, and 2 s later `AccessibilityRepair` brought

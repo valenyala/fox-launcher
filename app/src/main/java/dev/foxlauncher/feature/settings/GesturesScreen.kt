@@ -157,7 +157,7 @@ fun GesturesContent(
                         onFix = { if (restartsInPlace) onRestartService() else showDisclosure = true },
                     )
                 }
-                item { AutoRestartRow(state.autoRestart) }
+                item { AutoRestartRow(state.autoRestart, state.showMiuiLockHint) }
                 items(state.rows, key = { it.type }) { row ->
                     ListItem(
                         headlineContent = { Text(stringResource(row.type.labelRes())) },
@@ -256,9 +256,12 @@ private fun AccessibilityBanner(status: AccessibilityStatus, canRestart: Boolean
     }
 }
 
-/** Whether Fox restarts a stopped service by itself, and if not, the one adb command that lets it (ADR-18). */
+/**
+ * Whether Fox restarts a stopped service by itself, and if not, the one adb command that lets it
+ * (ADR-18); on Xiaomi phones also how to keep "clear recent apps" from closing Fox at all.
+ */
 @Composable
-private fun AutoRestartRow(isOn: Boolean) {
+private fun AutoRestartRow(isOn: Boolean, showMiuiLockHint: Boolean) {
     ListItem(
         headlineContent = { Text(stringResource(R.string.gestures_auto_restart)) },
         supportingContent = {
@@ -273,6 +276,9 @@ private fun AutoRestartRow(isOn: Boolean) {
                             modifier = Modifier.padding(top = 4.dp),
                         )
                     }
+                }
+                if (showMiuiLockHint) {
+                    Text(stringResource(R.string.gestures_miui_lock_hint), modifier = Modifier.padding(top = 8.dp))
                 }
             }
         },

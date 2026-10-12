@@ -165,13 +165,29 @@ class GesturesContentTest {
         composeRule.onNodeWithText(string(R.string.gestures_auto_restart_command)).assertDoesNotExist()
     }
 
-    private fun setContent(accessibility: AccessibilityStatus = AccessibilityStatus.ON, autoRestart: Boolean = false) {
+    @Test
+    fun theLockHintShowsOnlyWhereItApplies() {
+        setContent(miuiLockHint = true)
+        composeRule.onNodeWithText(string(R.string.gestures_miui_lock_hint)).assertIsDisplayed()
+    }
+
+    @Test
+    fun noLockHintElsewhere() {
+        setContent(miuiLockHint = false)
+        composeRule.onNodeWithText(string(R.string.gestures_miui_lock_hint)).assertDoesNotExist()
+    }
+
+    private fun setContent(
+        accessibility: AccessibilityStatus = AccessibilityStatus.ON,
+        autoRestart: Boolean = false,
+        miuiLockHint: Boolean = false,
+    ) {
         composeRule.setContent {
             FoxTheme {
                 // The store as it is when the screen opens; tests check the store, not a recomposed list.
                 val rows = store.map { (type, action) -> GestureRow(type, action) }.toImmutableList()
                 GesturesContent(
-                    state = GesturesUiState(rows = rows, apps = persistentListOf(camera, chrome), accessibility = accessibility, autoRestart = autoRestart),
+                    state = GesturesUiState(rows = rows, apps = persistentListOf(camera, chrome), accessibility = accessibility, autoRestart = autoRestart, showMiuiLockHint = miuiLockHint),
                     onSetGesture = { type, action -> store[type] = action },
                     onReset = { resets++ },
                     loadShortcuts = { entry -> if (entry == chrome) listOf(incognito) else emptyList() },

@@ -1,5 +1,6 @@
 package dev.foxlauncher.feature.settings
 
+import android.os.Build
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -37,6 +38,8 @@ data class GesturesUiState(
     val accessibility: AccessibilityStatus = AccessibilityStatus.ON,
     /** The user granted WRITE_SECURE_SETTINGS, so Fox restarts a stopped service by itself (ADR-18). */
     val autoRestart: Boolean = false,
+    /** A Xiaomi phone, whose "clear recent apps" closes Fox unless it is locked (PLATFORM-NOTES G). */
+    val showMiuiLockHint: Boolean = false,
 )
 
 /** Gesture settings (task 3.5): every gesture with its action, editable. */
@@ -62,6 +65,7 @@ class GesturesViewModel @Inject constructor(
             apps = apps,
             accessibility = systemActions.status,
             autoRestart = accessibilityRepair.isAvailable,
+            showMiuiLockHint = IS_XIAOMI,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), GesturesUiState())
 
@@ -90,6 +94,9 @@ class GesturesViewModel @Inject constructor(
     private companion object {
         const val STOP_TIMEOUT_MS = 5_000L
         const val MAX_SHORTCUTS = 20
+
+        /** Xiaomi, Redmi and POCO phones all report Xiaomi. */
+        val IS_XIAOMI = Build.MANUFACTURER.equals("Xiaomi", ignoreCase = true)
 
         /** TODO(3.6): HOME_KEY joins once the Home key goes through the gesture map. */
         val EDITABLE_GESTURES = GestureType.entries - GestureType.HOME_KEY
