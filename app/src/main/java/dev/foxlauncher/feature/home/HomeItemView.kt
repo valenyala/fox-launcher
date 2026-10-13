@@ -17,11 +17,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerInputScope
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -141,15 +148,13 @@ private fun NativeWidgetView(
 ) {
     val spec = LocalNativeWidgets.current[item.kind]
     val coordinates = remember { ItemCoordinates() }
+    val currentOnLongClick by rememberUpdatedState(onLongClick)
     val interaction = if (!interactive || onLongClick == null) {
         Modifier
     } else {
-        Modifier.combinedClickable(
-            interactionSource = null,
-            indication = null,
-            onLongClick = { coordinates.value?.let { onLongClick(item, it) } },
-            onClick = {},
-        )
+        Modifier.pointerInput(item.id) {
+            detectWidgetLongPress { coordinates.value?.let { currentOnLongClick?.invoke(item, it) } }
+        }
     }
     Box(
         contentAlignment = Alignment.Center,
@@ -166,6 +171,31 @@ private fun NativeWidgetView(
         } else {
             Text(stringResource(R.string.widget_missing), style = wallpaperLabelStyle(), textAlign = TextAlign.Center, modifier = Modifier.padding(8.dp))
         }
+    }
+}
+
+/**
+ * A long press anywhere on a widget, including on its own buttons (task 5.3, found with Boost on
+ * the POCO): watched in the Initial pass, before the content, which would otherwise take the press
+ * for its click. Once it fires, the rest of the gesture is consumed, so the button under the finger
+ * does not click on release (the home drag layer, above it, carries the drag). A tap or a move past
+ * touch slop first leaves the gesture to the content.
+ */
+private suspend fun PointerInputScope.detectWidgetLongPress(onLongPress: () -> Unit) {
+    awaitEachGesture {
+        val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+        val ended = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+            while (true) {
+                val change = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == down.id } ?: break
+                if (!change.pressed || (change.position - down.position).getDistance() > viewConfiguration.touchSlop) break
+            }
+        }
+        if (ended != null) return@awaitEachGesture
+        onLongPress()
+        do {
+            val event = awaitPointerEvent(PointerEventPass.Initial)
+            event.changes.forEach { it.consume() }
+        } while (event.changes.any { it.pressed })
     }
 }
 

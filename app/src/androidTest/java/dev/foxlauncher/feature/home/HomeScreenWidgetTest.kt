@@ -1,6 +1,9 @@
 package dev.foxlauncher.feature.home
 
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Button
 import androidx.compose.material3.Text
+import androidx.compose.ui.Modifier
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.assertIsDisplayed
@@ -54,6 +57,18 @@ class HomeScreenWidgetTest {
         maxSpan = Span(4, 2),
         content = { Text("widget ${it.spanX}x${it.spanY}") },
     )
+    private val buttonClicks = mutableListOf<Unit>()
+
+    /** Like Boost: the whole widget is a button. */
+    private val buttonSpec = NativeWidgetSpec(
+        kind = "button",
+        nameRes = R.string.widget_memory_boost,
+        descriptionRes = R.string.widget_memory_boost_description,
+        minSpan = Span(1, 1),
+        defaultSpan = Span(1, 1),
+        maxSpan = Span(1, 1),
+        content = { Button(onClick = { buttonClicks += Unit }, modifier = Modifier.fillMaxSize()) { Text("go") } },
+    )
     private val widget = HomeItem.NativeWidget(1, HomePosition(HomeContainer.PAGE, 0, col = 1, row = 1, spanX = 2, spanY = 1), "test")
     private val resizes = mutableListOf<Pair<HomeItem, CellRect>>()
 
@@ -104,6 +119,30 @@ class HomeScreenWidgetTest {
     }
 
     @Test
+    fun aLongPressOnAWidgetsOwnButtonStillOpensItsPopupAndDoesNotClick() {
+        setHome(HomeItem.NativeWidget(3, HomePosition(HomeContainer.PAGE, 0, col = 2, row = 3), "button"))
+
+        composeRule.onRoot().performTouchInput { down(cellCenter(2, 3)) }
+        composeRule.mainClock.advanceTimeBy(LONG_PRESS_WAIT_MS)
+        composeRule.onRoot().performTouchInput { up() }
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag(HomeTestTags.ITEM_POPUP).assertIsDisplayed()
+        assertTrue(buttonClicks.isEmpty(), "the button under the finger must not click")
+    }
+
+    @Test
+    fun aTapOnAWidgetsOwnButtonClicksIt() {
+        setHome(HomeItem.NativeWidget(3, HomePosition(HomeContainer.PAGE, 0, col = 2, row = 3), "button"))
+
+        composeRule.onRoot().performTouchInput { click(cellCenter(2, 3)) }
+        composeRule.waitForIdle()
+
+        assertEquals(1, buttonClicks.size)
+        composeRule.onNodeWithTag(HomeTestTags.ITEM_POPUP).assertDoesNotExist()
+    }
+
+    @Test
     fun aTapOutsideEndsResizing() {
         setHome(widget)
         openResize()
@@ -119,7 +158,7 @@ class HomeScreenWidgetTest {
         val layout = HomeLayout(pages = persistentListOf(HomePage(0, persistentListOf(*items))))
         composeRule.setContent {
             FoxTheme {
-                CompositionLocalProvider(LocalNativeWidgets provides NativeWidgetRegistry(setOf(testSpec))) {
+                CompositionLocalProvider(LocalNativeWidgets provides NativeWidgetRegistry(setOf(testSpec, buttonSpec))) {
                     HomeScreen(
                         homeKeyPresses = 0,
                         onDrawerClosed = {},

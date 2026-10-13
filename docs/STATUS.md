@@ -175,6 +175,10 @@ Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out o
   caption and its explanation. Fixed on the way: the gauge's "2.3 GB fr…" (now wraps), the caption cut to "Fox only
   on" (shorter text, icon under it). **POCO round 1:** gauge and details fine; Boost could not be added: in the picker
   its preview is a button and took the tap. Previews now sit under a tap layer that adds the widget (+1 picker test).
+  **Round 2:** Boost placed but could not be moved: its content is a button, which took the press, so the widget's
+  long press never fired (same for the detail widget's app rows). Widgets now watch for a long press in the Initial
+  pass, before their content, and consume the rest of that gesture so the button does not click (+2 home widget
+  tests). Boost stays 1×1 (no Resize entry), as specified.
 
 - 2026-10-13 — **5.2 done.** `feature/memory`: pure `MemInfoParser` (`Name: value kB` lines; unknown, foreign-unit
   and cut-off lines skipped; null without `MemTotal`), pure `MemorySnapshot.of` (ActivityManager's total/available
