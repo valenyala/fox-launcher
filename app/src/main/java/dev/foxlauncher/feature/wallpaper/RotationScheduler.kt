@@ -78,15 +78,15 @@ class RotationScheduler @Inject constructor(
         return true
     }
 
-    /** The playlist as stored, over the entries that can be shown. */
+    /** The playlist as stored, over the entries that can be shown, at the entry on screen. */
     private suspend fun playlist(): WallpaperPlaylist {
+        val enabled = dao.observeEnabledEntries().first()
         // Entries that failed three times in a row are skipped (task 4.9).
-        val entries = dao.observeEnabledEntries().first().filter { it.failedCount < WallpaperEntryEntity.MAX_FAILURES }.map { it.id }
+        val entries = enabled.filter { it.failedCount < WallpaperEntryEntity.MAX_FAILURES }.map { it.id }
         val state = settings.playlistState.first()
-        // Before the first change the engine shows the active entry or, with none, the first one: that is
-        // the current wallpaper, so the first "next" must move on from it.
-        val history = state.history.ifEmpty { listOfNotNull(settings.activeWallpaperEntryId.first() ?: entries.firstOrNull()) }
-        return WallpaperPlaylist(entries, state.mode, state.seed ?: Random.nextLong(), history)
+        // What the engine shows: the active entry or, before the first change or once it went away, the first one.
+        val onScreen = WallpaperPlaylist.showing(settings.activeWallpaperEntryId.first(), enabled.map { it.id })
+        return WallpaperPlaylist(entries, state.mode, state.seed ?: Random.nextLong(), state.history).onScreen(onScreen)
     }
 
     private suspend fun show(id: Long, after: WallpaperPlaylist) {

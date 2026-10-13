@@ -169,6 +169,28 @@ class WallpaperPlaylistTest {
     }
 
     @Test
+    fun whenTheCurrentEntryWentAwayTheWalkGoesOnFromTheOneOnScreen() {
+        // 9 was showing until its folder was removed; the wallpaper fell back to 1.
+        val playlist = WallpaperPlaylist(listOf(1L, 2L, 3L), history = listOf(3L, 9L)).onScreen(1L)
+
+        assertEquals(1L, playlist.current)
+        assertEquals(2L, playlist.next().first)
+    }
+
+    @Test
+    fun beforeTheFirstChangeTheOneOnScreenIsCurrent() {
+        assertEquals(2L, WallpaperPlaylist(listOf(1L, 2L, 3L)).onScreen(1L).next().first)
+    }
+
+    @Test
+    fun aPlaylistAlreadyOnTheScreensEntryIsUnchanged() {
+        val playlist = WallpaperPlaylist(listOf(1L, 2L, 3L), history = listOf(1L, 2L))
+
+        assertEquals(playlist, playlist.onScreen(2L))
+        assertEquals(playlist, playlist.onScreen(null))
+    }
+
+    @Test
     fun aJumpToSomethingNotInTheEntriesIsRefused() {
         assertNull(WallpaperPlaylist(listOf(1L, 2L)).jumpTo(9L))
     }

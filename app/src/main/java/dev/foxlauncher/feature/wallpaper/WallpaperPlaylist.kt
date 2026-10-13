@@ -14,6 +14,7 @@ import kotlin.random.Random
  *   still there, so removing the current wallpaper continues with the one after it.
  * - [previous] steps back through the history, skipping entries that are gone.
  * - [jumpTo] shows a chosen entry; the walk goes on from there.
+ * - [onScreen] brings the playlist to what is really showing when that is not its current entry.
  */
 data class WallpaperPlaylist(
     val entries: List<Long>,
@@ -52,6 +53,13 @@ data class WallpaperPlaylist(
 
     /** The playlist with entry [id] shown now (the user picked it, task 4.7); null when it is not an entry. */
     fun jumpTo(id: Long): WallpaperPlaylist? = if (id in entries) shown(id, seed) else null
+
+    /**
+     * The playlist moved to [id], the entry on screen, when that is not its current one: before the
+     * first change, or after the current entry went away and the wallpaper fell back to another one.
+     * The next change then moves on from what the user sees instead of showing it again.
+     */
+    fun onScreen(id: Long?): WallpaperPlaylist = if (id == null || id == current) this else jumpTo(id) ?: this
 
     fun withEntries(newEntries: List<Long>): WallpaperPlaylist = copy(entries = newEntries)
 
