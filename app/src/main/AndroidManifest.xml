@@ -13,6 +13,10 @@
         tools:ignore="ProtectedPermissions" />
     <!-- The static wallpaper fallback when the Fox live wallpaper is not applied (task 4.5). -->
     <uses-permission android:name="android.permission.SET_WALLPAPER" />
+    <!-- Special access the user grants in Settings: the memory detail widget's recent apps (task 5.3). -->
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
     <!-- Uninstall from the app popup. -->
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
 

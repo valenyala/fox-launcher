@@ -84,7 +84,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 ## Phase 5 — Memory widgets
 - [x] 5.1 Native widget framework (POCO F3 2026-10-13: Clock added from the picker, resized 4×1→5×2→2×1, moved, removed)
 - [x] 5.2 MemoryStats + MemInfoParser tests (no UI: JVM tests on a POCO F3 and an emulator sample, instrumented on fox-api33/37)
-- [ ] 5.3 RAM gauge, boost and detail widgets
+- [ ] 5.3 RAM gauge, boost and detail widgets — emulators pass; POCO check pending
 - [ ] 5.4 BoostStrategy per API level
 - [ ] 5.5 (stretch) AppWidgetProvider export
 - [ ] Device checklist passed on: —
@@ -160,6 +160,20 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-13 — 5.3 checkpoint. Three native widgets (`feature/memory/widgets`): **RAM gauge** (1×1..3×2, default
+  2×1: ring of memory in use, % and "x.x GB free"; warning colour from 90 %), **Boost** (1×1: rocket, lifts while
+  boosting for at least 1.2 s, then "Freed N MB" measured or "Nothing to free", 4 s; on Android 14+ a "Limited on
+  Android 14+" caption whose tap explains ADR-5), **Memory details** (2×2..4×4: used, available, cached, swap
+  used/total, sparkline of the last 60 readings; from 3 rows the 3 most recently used apps, tap → app info for Force
+  stop, or "Allow usage access" → Settings). Stateless `*Content` composables; `MemoryWidgetViewModel` (one reading
+  every 2 s shared by all widgets, `WhileSubscribed(5 s)`, history by `scan`); `MemoryBooster` measures available
+  memory before / after (+500 ms) around the work, which is only a GC until 5.4's strategies; `RecentAppsSource`
+  (`UsageStatsManager`, AppOps check; `PACKAGE_USAGE_STATS` in the manifest); pure `MemoryFormat` and
+  `BoostCapability` (5 tests). `MemoryWidgetContentTest` 13 (fox-api33). Emulators: picker previews read live memory;
+  all three placed; boost showed "Freeing…" then "Nothing to free" (true: a GC freed nothing); fox-api37 shows the
+  caption and its explanation. Fixed on the way: the gauge's "2.3 GB fr…" (now wraps), the caption cut to "Fox only
+  on" (shorter text, icon under it).
 
 - 2026-10-13 — **5.2 done.** `feature/memory`: pure `MemInfoParser` (`Name: value kB` lines; unknown, foreign-unit
   and cut-off lines skipped; null without `MemTotal`), pure `MemorySnapshot.of` (ActivityManager's total/available

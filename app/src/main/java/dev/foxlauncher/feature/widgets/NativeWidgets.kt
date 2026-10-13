@@ -10,6 +10,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import dagger.multibindings.IntoSet
 import dev.foxlauncher.feature.home.grid.Span
+import dev.foxlauncher.feature.memory.widgets.MemoryWidgets
 import dev.foxlauncher.feature.widgets.clock.ClockWidget
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -55,7 +56,7 @@ class NativeWidgetRegistry @Inject constructor(specs: Set<@JvmSuppressWildcards 
 /** The registry, for the home grid and the picker; empty unless provided (as in tests). */
 val LocalNativeWidgets = staticCompositionLocalOf { NativeWidgetRegistry(emptySet()) }
 
-/** Adding a native widget is one line here (phase 5 adds the memory widgets). */
+/** Adding a native widget is one line here. */
 @Module
 @InstallIn(SingletonComponent::class)
 object NativeWidgetModule {
@@ -63,4 +64,16 @@ object NativeWidgetModule {
     @Provides
     @IntoSet
     fun clock(): NativeWidgetSpec = ClockWidget.spec
+
+    @Provides
+    @IntoSet
+    fun memoryGauge(): NativeWidgetSpec = MemoryWidgets.gauge
+
+    @Provides
+    @IntoSet
+    fun memoryBoost(): NativeWidgetSpec = MemoryWidgets.boost
+
+    @Provides
+    @IntoSet
+    fun memoryDetail(): NativeWidgetSpec = MemoryWidgets.detail
 }
