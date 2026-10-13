@@ -17,6 +17,9 @@ abstract class WallpaperDao {
     @Query("SELECT * FROM wallpaper_sources ORDER BY id")
     abstract suspend fun getSources(): List<WallpaperSourceEntity>
 
+    @Query("SELECT * FROM wallpaper_sources WHERE id = :id")
+    abstract suspend fun getSource(id: Long): WallpaperSourceEntity?
+
     @Query("SELECT * FROM wallpaper_sources WHERE type = :type LIMIT 1")
     abstract suspend fun getSourceOfType(type: WallpaperSourceType): WallpaperSourceEntity?
 
@@ -25,6 +28,17 @@ abstract class WallpaperDao {
 
     @Query("UPDATE wallpaper_sources SET needsReauth = :needsReauth WHERE id = :sourceId")
     abstract suspend fun setNeedsReauth(sourceId: Long, needsReauth: Boolean)
+
+    @Query("UPDATE wallpaper_sources SET enabled = :enabled WHERE id = :sourceId")
+    abstract suspend fun setSourceEnabled(sourceId: Long, enabled: Boolean)
+
+    /** The folder was picked again (task 4.7): its tree, possibly a new one, and access are back. */
+    @Query("UPDATE wallpaper_sources SET uri = :uri, displayName = :displayName, needsReauth = 0 WHERE id = :sourceId")
+    abstract suspend fun reauthorizeSource(sourceId: Long, uri: String, displayName: String)
+
+    /** How many images each source has, enabled or not; a source with none is missing. */
+    @Query("SELECT sourceId, COUNT(*) AS count FROM wallpaper_entries GROUP BY sourceId")
+    abstract fun observeEntryCounts(): Flow<List<SourceEntryCount>>
 
     /** Removes the source and, by cascade, its entries. */
     @Query("DELETE FROM wallpaper_sources WHERE id = :sourceId")

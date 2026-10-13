@@ -13,7 +13,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** Wallpaper sources and entries (task 4.1), on an in-memory database. */
+/** Wallpaper sources and entries (tasks 4.1, 4.7), on an in-memory database. */
 @RunWith(AndroidJUnit4::class)
 class WallpaperDaoTest {
 
@@ -99,6 +99,42 @@ class WallpaperDaoTest {
         dao.setNeedsReauth(id, false)
 
         assertEquals(false, dao.getSources().single().needsReauth)
+    }
+
+    @Test
+    fun turningASourceOffTakesItsEntriesOutOfTheRotation() = runBlocking {
+        val id = dao.insertSource(source("Folder"))
+        dao.applyScan(id, listOf(entry("a")), emptyList(), emptyList())
+
+        dao.setSourceEnabled(id, false)
+        assertTrue(dao.observeEnabledEntries().first().isEmpty())
+        dao.setSourceEnabled(id, true)
+
+        assertEquals(listOf("a"), dao.observeEnabledEntries().first().map { it.displayName })
+    }
+
+    @Test
+    fun entriesAreCountedPerSourceEnabledOrNot() = runBlocking {
+        val on = dao.insertSource(source("On"))
+        val off = dao.insertSource(source("Off").copy(enabled = false))
+        dao.insertSource(source("Empty"))
+        dao.applyScan(on, listOf(entry("a"), entry("b")), emptyList(), emptyList())
+        dao.applyScan(off, listOf(entry("c")), emptyList(), emptyList())
+
+        assertEquals(setOf(SourceEntryCount(on, 2), SourceEntryCount(off, 1)), dao.observeEntryCounts().first().toSet())
+    }
+
+    @Test
+    fun aFolderPickedAgainGetsItsTreeAndAccessBack() = runBlocking {
+        val id = dao.insertSource(source("Old"))
+        dao.setNeedsReauth(id, true)
+
+        dao.reauthorizeSource(id, "content://tree/New", "New")
+
+        val source = dao.getSource(id)
+        assertEquals("content://tree/New", source?.uri)
+        assertEquals("New", source?.displayName)
+        assertEquals(false, source?.needsReauth)
     }
 
     private fun source(name: String) =

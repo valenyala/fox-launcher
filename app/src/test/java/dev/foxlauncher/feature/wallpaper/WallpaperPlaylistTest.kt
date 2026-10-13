@@ -160,6 +160,20 @@ class WallpaperPlaylistTest {
     }
 
     @Test
+    fun afterAJumpTheWalkGoesOnFromThere() {
+        val jumped = checkNotNull(WallpaperPlaylist(listOf(1L, 2L, 3L, 4L), history = listOf(1L)).jumpTo(3L))
+
+        assertEquals(3L, jumped.current)
+        assertEquals(listOf(4L, 1L), jumped.take(2))
+        assertEquals(1L, jumped.previous().first)
+    }
+
+    @Test
+    fun aJumpToSomethingNotInTheEntriesIsRefused() {
+        assertNull(WallpaperPlaylist(listOf(1L, 2L)).jumpTo(9L))
+    }
+
+    @Test
     fun theActiveEntryShowsWhileItIsEnabledOtherwiseTheFirst() {
         assertEquals(2L, WallpaperPlaylist.showing(activeId = 2L, enabledIds = listOf(1L, 2L)))
         assertEquals(1L, WallpaperPlaylist.showing(activeId = null, enabledIds = listOf(1L, 2L)))

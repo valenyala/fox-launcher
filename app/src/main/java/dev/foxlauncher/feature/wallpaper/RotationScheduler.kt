@@ -8,6 +8,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.foxlauncher.core.common.ApplicationScope
 import dev.foxlauncher.core.common.FoxLog
 import dev.foxlauncher.core.data.db.WallpaperDao
+import dev.foxlauncher.core.data.db.WallpaperEntryEntity
 import dev.foxlauncher.core.data.settings.FoxSettings
 import dev.foxlauncher.core.model.RotationTrigger
 import java.util.concurrent.TimeUnit
@@ -22,8 +23,8 @@ import kotlinx.coroutines.sync.withLock
 
 /**
  * The one way the wallpaper changes (CLAUDE.md, data flows): picks the next or previous entry from
- * the playlist (task 4.2) and writes the active entry, which the live wallpaper engine draws
- * (task 4.3). Gestures and "next now" ask directly; the interval, unlock and page-change triggers
+ * the playlist (task 4.2), or the one the user picked ([showNow], task 4.7), and writes the
+ * active entry, which the live wallpaper engine draws (task 4.3). Gestures and "next now" ask directly; the interval, unlock and page-change triggers
  * (task 4.4) go through [advanceIfDue], which applies [TriggerPolicy]. While Fox's live wallpaper is
  * not applied, a change is also set as a static image (task 4.5), except from a gesture ([advance]);
  * so is the lock screen's, when the user asked for it (task 4.6).
@@ -61,24 +62,41 @@ class RotationScheduler @Inject constructor(
 
     /** Moves the rotation on (or back) and returns the entry now active; null when there is none. */
     suspend fun advanceNow(forward: Boolean = true, reason: RotationTrigger = RotationTrigger.MANUAL): Long? = mutex.withLock {
+        val playlist = playlist()
+        val (id, after) = if (forward) playlist.next() else playlist.previous()
+        if (id == null) return null
+        show(id, after)
+        FoxLog.d("Wallpaper ${if (forward) "next" else "previous"} ($reason): entry $id")
+        return id
+    }
+
+    /** Shows entry [entryId], which the user picked; the rotation goes on from it. False when it cannot be shown. */
+    suspend fun showNow(entryId: Long): Boolean = mutex.withLock {
+        val after = playlist().jumpTo(entryId) ?: return false
+        show(entryId, after)
+        FoxLog.d("Wallpaper picked: entry $entryId")
+        return true
+    }
+
+    /** The playlist as stored, over the entries that can be shown. */
+    private suspend fun playlist(): WallpaperPlaylist {
         // Entries that failed three times in a row are skipped (task 4.9).
-        val entries = dao.observeEnabledEntries().first().filter { it.failedCount < MAX_FAILURES }.map { it.id }
+        val entries = dao.observeEnabledEntries().first().filter { it.failedCount < WallpaperEntryEntity.MAX_FAILURES }.map { it.id }
         val state = settings.playlistState.first()
         // Before the first change the engine shows the active entry or, with none, the first one: that is
         // the current wallpaper, so the first "next" must move on from it.
         val history = state.history.ifEmpty { listOfNotNull(settings.activeWallpaperEntryId.first() ?: entries.firstOrNull()) }
-        val playlist = WallpaperPlaylist(entries, state.mode, state.seed ?: Random.nextLong(), history)
-        val (id, after) = if (forward) playlist.next() else playlist.previous()
-        if (id == null) return null
+        return WallpaperPlaylist(entries, state.mode, state.seed ?: Random.nextLong(), history)
+    }
+
+    private suspend fun show(id: Long, after: WallpaperPlaylist) {
         val now = System.currentTimeMillis()
         settings.savePlaylist(after.seed, after.history)
         settings.setActiveWallpaper(id, changedAt = now)
         dao.markShown(id, now)
-        FoxLog.d("Wallpaper ${if (forward) "next" else "previous"} ($reason): entry $id")
         if (StaticTargets.of(LiveWallpaper.isFoxActive(context), settings.changeLockScreen.first()).isNotEmpty()) {
             StaticApplyWorker.enqueue(WorkManager.getInstance(context))
         }
-        return id
     }
 
     /** Turns "also change the lock screen" on or off; on, the lock screen gets the current image at once. */
@@ -103,7 +121,6 @@ class RotationScheduler @Inject constructor(
     }
 
     private companion object {
-        const val MAX_FAILURES = 3
         const val INTERVAL_WORK = "wallpaper_rotation_interval"
     }
 }

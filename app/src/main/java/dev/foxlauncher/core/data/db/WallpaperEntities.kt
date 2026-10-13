@@ -50,6 +50,14 @@ data class WallpaperEntryEntity(
     val sizeBytes: Long = 0,
     val lastModified: Long = 0,
     val lastShownAt: Long? = null,
-    /** Failed loads in a row; the entry is skipped after three (task 4.9). */
+    /** Failed loads in a row; the entry is skipped after [MAX_FAILURES] (task 4.9). */
     val failedCount: Int = 0,
-)
+) {
+    companion object {
+        /** Failed loads in a row after which the rotation skips an entry. */
+        const val MAX_FAILURES = 3
+    }
+}
+
+/** How many images a source has (task 4.7). */
+data class SourceEntryCount(val sourceId: Long, val count: Int)

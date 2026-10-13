@@ -49,6 +49,13 @@
             </intent-filter>
         </activity>
 
+        <!-- The live wallpaper preview's settings button (res/xml/wallpaper.xml) opens the wallpaper
+             settings through this alias; HomeActivity tells it by the component name (task 4.7). -->
+        <activity-alias
+            android:name=".WallpaperSettings"
+            android:exported="true"
+            android:targetActivity=".HomeActivity" />
+
         <!-- System actions for gestures (ADR-4, PLATFORM-NOTES G). Bound only by the system, which holds
              BIND_ACCESSIBILITY_SERVICE. -->
         <service

@@ -39,7 +39,8 @@ import kotlinx.coroutines.withContext
  * Fox's live wallpaper (ADR-3, task 4.3): the one thing that draws the wallpaper. It shows
  * `activeWallpaperEntryId` (the first enabled entry until the rotation picks one) and crossfades
  * to each new one on a [Choreographer] loop, so a change never flashes. Images are decoded off the
- * main thread at the surface size, a little wider for parallax.
+ * main thread at the surface size, a little wider for parallax unless the user turned it off
+ * (task 4.7).
  *
  * It also runs intervals under 15 minutes (task 4.4), on a timer only while the wallpaper is visible.
  */
@@ -75,6 +76,7 @@ class FoxWallpaperService : WallpaperService() {
 
         /** The entry that should be showing, and the load bringing it in. */
         private var wantedId: Long? = null
+        private var parallax = true
         private var loadJob: Job? = null
 
         /** A rotation interval under 15 minutes runs here, while visible (task 4.4). */
@@ -85,15 +87,18 @@ class FoxWallpaperService : WallpaperService() {
             super.onCreate(surfaceHolder)
             setOffsetNotificationsEnabled(true)
             scope.launch {
-                combine(settings.activeWallpaperEntryId, dao.observeEnabledEntries(), settings.crossfadeMs) { active, entries, ms ->
+                combine(settings.activeWallpaperEntryId, dao.observeEnabledEntries(), settings.crossfadeMs, settings.wallpaperParallax) { active, entries, ms, parallax ->
                     fadeMs = ms
-                    WallpaperPlaylist.showing(active, entries.map { it.id })
+                    WallpaperPlaylist.showing(active, entries.map { it.id }) to parallax
                 }
                     .distinctUntilChanged()
-                    .collect { id ->
-                        wantedId = id
+                    .collect { (id, parallax) ->
+                        // A new image crossfades in; the same one decoded at another width (parallax switched) just replaces it.
                         // The first image after (re)creation appears without a fade.
-                        load(animate = current != null)
+                        val animate = current != null && id != wantedId
+                        wantedId = id
+                        this@FoxEngine.parallax = parallax
+                        load(animate)
                     }
             }
             scope.launch {
@@ -174,7 +179,7 @@ class FoxWallpaperService : WallpaperService() {
             loadJob?.cancel()
             loadJob = scope.launch {
                 val entry = withContext(io) { dao.getEntry(id) } ?: return@launch
-                val width = (surfaceW * (1 + PARALLAX_EXTRA)).roundToInt()
+                val width = if (parallax) (surfaceW * (1 + PARALLAX_EXTRA)).roundToInt() else surfaceW
                 val bitmap = withContext(io) { loader.load(entry.uri.toUri(), width, surfaceH) }
                 if (bitmap == null) {
                     withContext(io) { dao.markFailed(id) }

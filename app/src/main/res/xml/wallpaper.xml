@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Fox's live wallpaper (task 4.3). The settings screen joins as settingsActivity in task 4.7. -->
+<!-- Fox's live wallpaper (task 4.3). settingsActivity is an alias of HomeActivity that opens the
+     wallpaper settings (task 4.7). -->
 <wallpaper xmlns:android="http://schemas.android.com/apk/res/android"
     android:description="@string/wallpaper_description"
+    android:settingsActivity="dev.foxlauncher.WallpaperSettings"
     android:showMetadataInPreview="true"
     android:thumbnail="@drawable/wallpaper_thumbnail" />

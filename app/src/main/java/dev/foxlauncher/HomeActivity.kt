@@ -70,13 +70,30 @@ class HomeActivity : ComponentActivity() {
     /** The latest Home press came while Fox was already in front, not on the way back from an app. */
     private var homeKeyWhileHome by mutableStateOf(false)
 
+    /** A settings screen asked for from outside, such as the system's live wallpaper preview (task 4.7). */
+    private var requestedSettings by mutableStateOf<SettingsRoute?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (intent?.component?.className == WALLPAPER_SETTINGS_ALIAS) {
+            // Opened through the alias while no Fox home was running: this instance sits in an ordinary task (seen on
+            // API 37). The home instance takes the request; a launcher must not run twice.
+            startActivity(
+                Intent(Intent.ACTION_MAIN)
+                    .addCategory(Intent.CATEGORY_HOME)
+                    .setPackage(packageName)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    .putExtra(EXTRA_OPEN_SETTINGS, SettingsRoute.WALLPAPER.name),
+            )
+            finish()
+            return
+        }
         enableEdgeToEdge()
         // A launcher has nowhere to go back to. Unhandled, Back on a root launcher activity makes Android 12+
         // move the home task behind the last app, which then shows (task 3.6). Added first, so the drawer's,
         // a folder's, a popup's and the settings' handlers, registered later while open, all come before it.
         onBackPressedDispatcher.addCallback(this) {}
+        if (savedInstanceState == null) requestedSettings = settingsRequestedBy(intent)
 
         setContent {
             FoxTheme {
@@ -86,6 +103,10 @@ class HomeActivity : ComponentActivity() {
                 val drawerViewModel: DrawerViewModel = hiltViewModel()
                 // Settings screens stack over the home, which stays composed under them (see SettingsRoute).
                 var settings by rememberSaveable { mutableStateOf(listOf<SettingsRoute>()) }
+                LaunchedEffect(requestedSettings) {
+                    requestedSettings?.let { settings = listOf(it) }
+                    requestedSettings = null
+                }
                 // Home goes home: it closes any settings screen and the accessibility dialog, as it closes the drawer.
                 LaunchedEffect(homeKeyPresses) {
                     if (homeKeyPresses > 0) {
@@ -209,6 +230,11 @@ class HomeActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        settingsRequestedBy(intent)?.let {
+            // Not a Home press, although the hand-over from the alias comes as a HOME intent.
+            requestedSettings = it
+            return
+        }
         if (intent.action == Intent.ACTION_MAIN) {
             // Launcher3's test: Fox has the focus and was not brought to the front from another app.
             homeKeyWhileHome = hasWindowFocus() && intent.flags and Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT == 0
@@ -242,6 +268,18 @@ class HomeActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * The wallpaper settings, when the system's live wallpaper preview opened us through its settings
+     * button: `wallpaper.xml` names the `WallpaperSettings` alias of this activity, so Fox keeps one
+     * activity. The running home instance gets the alias intent itself; otherwise the hand-over from
+     * [onCreate], which names the screen in [EXTRA_OPEN_SETTINGS].
+     */
+    private fun settingsRequestedBy(intent: Intent?): SettingsRoute? = when {
+        intent == null -> null
+        intent.component?.className == WALLPAPER_SETTINGS_ALIAS -> SettingsRoute.WALLPAPER
+        else -> intent.getStringExtra(EXTRA_OPEN_SETTINGS)?.let { name -> SettingsRoute.entries.firstOrNull { it.name == name } }
+    }
+
     private fun openAccessibilitySettings() {
         try {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
@@ -253,5 +291,11 @@ class HomeActivity : ComponentActivity() {
     override fun onPause() {
         super.onPause()
         refreshRate.releaseNow()
+    }
+
+    private companion object {
+        /** The activity-alias in the manifest, and `settingsActivity` in `res/xml/wallpaper.xml`. */
+        const val WALLPAPER_SETTINGS_ALIAS = "dev.foxlauncher.WallpaperSettings"
+        const val EXTRA_OPEN_SETTINGS = "dev.foxlauncher.extra.OPEN_SETTINGS"
     }
 }

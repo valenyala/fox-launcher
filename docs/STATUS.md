@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 4 — Wallpaper rotation (Phase 3 done 2026-10-12; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists)
-**Next task:** 4.7 Wallpaper settings UI (2.8 still deferred)
+**Next task:** 4.7 Wallpaper settings UI — POCO check pending (2.8 still deferred)
 
 ## Environment facts (verified 2026-09-17)
 
@@ -76,7 +76,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] 4.4 RotationScheduler and triggers (POCO F3 2026-10-12: interval, unlock, page change, gesture; time-of-day schedule left as a TODO, stretch)
 - [x] 4.5 Static fallback (POCO F3 2026-10-12: page change, Next now, unlock with a MIUI static wallpaper; gesture prompt)
 - [x] 4.6 Lock screen handling (POCO F3 2026-10-12: switch sets the lock image with MIUI Wallpaper Carousel off; Fox live on home and lock shows on the MIUI lock screen)
-- [ ] 4.7 Wallpaper settings UI
+- [ ] 4.7 Wallpaper settings UI — emulators pass; POCO check pending
 - [ ] 4.8 Memory and performance budget
 - [ ] 4.9 URI permission resilience
 - [ ] Device checklist passed on: —
@@ -160,6 +160,25 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-13 — 4.7 checkpoint. The wallpaper settings now hold everything: live wallpaper banner, Next now; *When it
+  changes* (interval, unlock, page change); *How it looks* (shuffle, crossfade 300–2000 ms snapped to 100 ms, parallax
+  on/off, lock screen); *Sources* (built-in / picked pictures / folders: switch, remove with confirmation and grants
+  given back, "access lost: tap to pick the folder again", Add a folder via `OpenDocumentTree`, Add pictures via
+  `PickMultipleVisualMedia`; the last enabled source cannot be turned off); *Wallpapers* (Coil thumbnail grid in chunked
+  rows, the one showing outlined, unreadable ones dimmed, tap = `RotationScheduler.showNow` → `WallpaperPlaylist.jumpTo`).
+  The screen takes a `WallpaperSettingsActions` interface (16 actions). New: DAO `setSourceEnabled`,
+  `reauthorizeSource`, `getSource`, `observeEntryCounts` (no schema change); `WallpaperSources` add/remove/reauthorize
+  with persisted grants; `FoxSettings` `setCrossfadeMs`, `wallpaperParallax` (engine decodes at screen width without
+  it); `WallpaperEntryEntity.MAX_FAILURES`. Deep link (ADR-19): `settingsActivity` = alias `.WallpaperSettings`.
+  **Found:** Coil 3 cannot load `android.resource://…/raw/<name>` (thumbnails blank) → resource ids for built-ins;
+  on API 37 with no home instance the alias opened a second HomeActivity in an ordinary task → hand-over to the home
+  instance. Tests: playlist +2 (21), DAO +3 (9, fox-api33/37), `WallpaperSettingsContentTest` 14 (fox-api33; API 37
+  Espresso blocker). fox-api33: preview "Settings…" → Fox wallpaper settings; photo picker added 2 (grants persisted),
+  folder `Pictures/FoxTest` scanned +3, tap on a thumbnail showed it live, remove gave the grants back, parallax off
+  drew at screen width. fox-api37: deep link (one HomeActivity, home task), photo picker. **Follow-up:** while Fox is
+  not the default launcher, HomeRoot's gate covers everything, settings included, so the preview's button shows the
+  gate.
 
 - 2026-10-12 — **4.6 done.** POCO: Fox live applied with *Home screen and lock screen*, switch off → the MIUI lock screen
   shows the live wallpaper and follows each change (keyguard layer at alpha 0, no separate lock image). With the switch

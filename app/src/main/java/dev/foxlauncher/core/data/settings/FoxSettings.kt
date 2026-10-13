@@ -141,8 +141,21 @@ class FoxSettings @Inject constructor(
         Unit
     }
 
-    /** How long a wallpaper crossfade lasts, in ms (task 4.3; the setting arrives in 4.7). */
+    /** How long a wallpaper crossfade lasts, in ms (task 4.3; set in the wallpaper settings, task 4.7). */
     val crossfadeMs: Flow<Int> = dataStore.data.map { it[Keys.CROSSFADE_MS] ?: DEFAULT_CROSSFADE_MS }
+
+    suspend fun setCrossfadeMs(ms: Int) = withContext(io) {
+        dataStore.edit { it[Keys.CROSSFADE_MS] = ms.coerceIn(MIN_CROSSFADE_MS, MAX_CROSSFADE_MS) }
+        Unit
+    }
+
+    /** Whether the wallpaper shifts a little as the home pages scroll (task 4.7). */
+    val wallpaperParallax: Flow<Boolean> = dataStore.data.map { it[Keys.WALLPAPER_PARALLAX] ?: true }
+
+    suspend fun setWallpaperParallax(enabled: Boolean) = withContext(io) {
+        dataStore.edit { it[Keys.WALLPAPER_PARALLAX] = enabled }
+        Unit
+    }
 
     /** The wallpaper rotation's mode, shuffle seed and history (task 4.2). */
     val playlistState: Flow<PlaylistState> = dataStore.data.map {
@@ -186,6 +199,7 @@ class FoxSettings @Inject constructor(
         val ROTATE_ON_UNLOCK = booleanPreferencesKey("wallpaper_rotate_on_unlock")
         val ROTATE_ON_PAGE_CHANGE = booleanPreferencesKey("wallpaper_rotate_on_page_change")
         val CHANGE_LOCK_SCREEN = booleanPreferencesKey("wallpaper_change_lock_screen")
+        val WALLPAPER_PARALLAX = booleanPreferencesKey("wallpaper_parallax")
         val PLAYLIST_MODE = stringPreferencesKey("wallpaper_playlist_mode")
         val PLAYLIST_SEED = longPreferencesKey("wallpaper_playlist_seed")
         val PLAYLIST_HISTORY = stringPreferencesKey("wallpaper_playlist_history")
@@ -200,5 +214,7 @@ class FoxSettings @Inject constructor(
         const val DEFAULT_DOCK_SLOTS: Int = 5
         const val DEFAULT_SHOW_HOME_LABELS: Boolean = true
         const val DEFAULT_CROSSFADE_MS: Int = 800
+        const val MIN_CROSSFADE_MS: Int = 300
+        const val MAX_CROSSFADE_MS: Int = 2000
     }
 }

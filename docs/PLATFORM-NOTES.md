@@ -163,6 +163,18 @@ here contradicts what you remember, trust this file unless a device proves other
   Persisted permissions can be revoked; handle `SecurityException` by marking the source as needs-reauth.
   Individual images: `ActivityResultContracts.PickMultipleVisualMedia`. `READ_MEDIA_IMAGES` is only needed if we scan
   MediaStore directly; prefer SAF/photo picker and do not request the media permission.
+- Measured (task 4.7, 2026-10-13). Photo picker URIs (`content://media/picker/...`) accept
+  `takePersistableUriPermission` on API 33 and 37 (`persisted=0x1` in `dumpsys activity permissions`);
+  `releasePersistableUriPermission` drops it to `persisted=0x0` (the activity's temporary grant stays until it goes).
+  API 33's picker confirms with "Add (n)", API 37's with "Done". `OpenDocumentTree` refuses the storage root and
+  `Download` ("Can't use this folder"); `Pictures/<sub>` works, with an "Allow … to access files" confirmation.
+  Persisted grants are capped per app (128 before API 30, 512 since), and every picked picture takes one: prefer
+  folders for large sets.
+- Coil 3 reads `android.resource` URIs by resource **id** only (`ResourceUriFetcher` requires an int last segment;
+  `.../raw/<name>` throws). Fox stores the built-ins by name (stable across builds) for the engine's
+  `ContentResolver`, and hands Coil the resource id for thumbnails (`WallpaperSources.thumbnailModel`).
+- The live wallpaper preview shows a "Settings…" button once `wallpaper.xml` has `settingsActivity`; it starts that
+  component by name, with no action (ADR-19 for how Fox routes it).
 - WorkManager `PeriodicWorkRequest` minimum interval is 15 minutes. For shorter intervals, the engine runs its own
   timer while visible (it is a long-lived process as long as the wallpaper is set). `ACTION_USER_PRESENT` is not
   exempt from implicit-broadcast limits, so register it at runtime. Fox registers it in `FoxApp` (task 4.5): the

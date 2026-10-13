@@ -143,6 +143,16 @@ of PLATFORM-NOTES G stays the only way in); nothing else may use the permission 
 Fox behaves exactly as before, telling the user to turn the service off and on. It is public API
 (`Settings.Secure.putString`), not hidden-API reflection.
 
+## ADR-19 The live wallpaper's settings button opens an alias of HomeActivity
+Task 4.7 makes the wallpaper settings the `settingsActivity` of `wallpaper.xml`, which the system preview starts by
+component name. A second activity would break "HomeActivity is the one activity" and draw the settings away from the
+home they belong to. Instead the manifest has an exported `activity-alias` `.WallpaperSettings` targeting
+`HomeActivity`: the running home instance receives it in `onNewIntent` and opens `SettingsRoute.WALLPAPER` (ADR-17).
+With no home instance running (Fox not the default launcher, or not started yet) the alias creates an instance in an
+ordinary task (seen on API 37); that instance hands the request to the home instance with a HOME intent carrying
+`EXTRA_OPEN_SETTINGS` and finishes before composing anything, so a launcher never runs twice. The hand-over is not
+counted as a Home press. Back from these settings goes home, not back to the preview.
+
 ## Dependency log
 (append `- <lib> <version> — reason` when adding a dependency)
 - AGP (com.android.application) 9.4.0 — build system; built-in Kotlin, see ADR-11.
