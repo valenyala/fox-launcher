@@ -146,6 +146,23 @@ class WallpaperSettingsContentTest {
     }
 
     @Test
+    fun aFolderThatLostItsAccessIsAnnouncedAtTheTop() {
+        setContent(WallpaperSettingsUiState(sources = listOf(builtIn, folder.copy(needsReauth = true))))
+
+        composeRule.onNodeWithText(string(R.string.wallpaper_reauth_banner, "Holidays")).assertIsDisplayed()
+        composeRule.onNodeWithText(string(R.string.wallpaper_reauth_pick)).performClick()
+
+        assertEquals(listOf("reauthorize 5"), calls)
+    }
+
+    @Test
+    fun withEveryFolderReadableThereIsNoAccessBanner() {
+        setContent(WallpaperSettingsUiState(sources = listOf(builtIn, folder)))
+
+        composeRule.onNodeWithText(string(R.string.wallpaper_reauth_pick)).assertDoesNotExist()
+    }
+
+    @Test
     fun aFolderThatLostItsAccessIsPickedAgain() {
         setContent(WallpaperSettingsUiState(sources = listOf(builtIn, folder.copy(needsReauth = true))))
 

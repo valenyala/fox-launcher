@@ -44,12 +44,19 @@ abstract class WallpaperDao {
     @Query("DELETE FROM wallpaper_sources WHERE id = :sourceId")
     abstract suspend fun deleteSource(sourceId: Long)
 
-    /** Every entry of every enabled source, in a stable order. */
+    /**
+     * The entries the rotation walks, in a stable order: those of enabled sources that can still be
+     * read (a folder that lost its access is left out, task 4.9). When that leaves nothing, the
+     * built-in pictures step in even if turned off, so the wallpaper never goes blank.
+     */
     @Query(
         "SELECT e.* FROM wallpaper_entries e JOIN wallpaper_sources s ON s.id = e.sourceId " +
-            "WHERE s.enabled = 1 ORDER BY e.sourceId, e.displayName, e.id",
+            "WHERE (s.enabled = 1 AND s.needsReauth = 0) " +
+            "OR (s.type = 'BUILT_IN' AND NOT EXISTS (SELECT 1 FROM wallpaper_entries e2 " +
+            "JOIN wallpaper_sources s2 ON s2.id = e2.sourceId WHERE s2.enabled = 1 AND s2.needsReauth = 0)) " +
+            "ORDER BY e.sourceId, e.displayName, e.id",
     )
-    abstract fun observeEnabledEntries(): Flow<List<WallpaperEntryEntity>>
+    abstract fun observeRotationEntries(): Flow<List<WallpaperEntryEntity>>
 
     @Query("SELECT * FROM wallpaper_entries WHERE sourceId = :sourceId")
     abstract suspend fun getEntries(sourceId: Long): List<WallpaperEntryEntity>
@@ -74,6 +81,10 @@ abstract class WallpaperDao {
 
     @Query("UPDATE wallpaper_entries SET failedCount = failedCount + 1 WHERE id = :id")
     abstract suspend fun markFailed(id: Long)
+
+    /** Entries that cannot be read at all (their access is gone): skipped like three failures (task 4.9). */
+    @Query("UPDATE wallpaper_entries SET failedCount = :failures WHERE id IN (:ids)")
+    abstract suspend fun markUnreadable(ids: List<Long>, failures: Int = WallpaperEntryEntity.MAX_FAILURES)
 
     /** Applies one scan of [sourceId] atomically: new images in, changed ones updated, vanished ones out. */
     @Transaction

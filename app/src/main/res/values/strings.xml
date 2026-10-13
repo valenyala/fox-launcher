@@ -80,6 +80,8 @@
         <item quantity="other">%d pictures</item>
     </plurals>
     <string name="wallpaper_source_reauth">Access lost: tap to pick the folder again</string>
+    <string name="wallpaper_reauth_banner">Fox can no longer read “%1$s”. Its pictures are skipped until you pick the folder again.</string>
+    <string name="wallpaper_reauth_pick">Pick again</string>
     <string name="wallpaper_source_remove">Remove %1$s</string>
     <string name="wallpaper_remove_title">Remove %1$s?</string>
     <string name="wallpaper_remove_text">Its pictures stay on your phone; Fox stops showing them.</string>

@@ -11,6 +11,7 @@ import dev.foxlauncher.core.data.db.WallpaperEntryEntity
 import dev.foxlauncher.core.data.db.WallpaperSourceEntity
 import dev.foxlauncher.core.data.db.WallpaperSourceType
 import dev.foxlauncher.feature.wallpaper.engine.WallpaperLoader
+import dev.foxlauncher.feature.wallpaper.source.WallpaperSources
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
@@ -39,7 +40,13 @@ class StaticWallpaperApplierTest {
     fun setUp() {
         assumeTrue("replaces the wallpaper: emulators only", Build.MODEL.startsWith("sdk_gphone") || Build.FINGERPRINT.contains("generic"))
         db = Room.inMemoryDatabaseBuilder(context, FoxDatabase::class.java).build()
-        applier = StaticWallpaperApplier(context, db.wallpaperDao(), WallpaperLoader(context), Dispatchers.IO)
+        applier = StaticWallpaperApplier(
+            context,
+            db.wallpaperDao(),
+            WallpaperLoader(context),
+            WallpaperSources(context, db.wallpaperDao(), Dispatchers.IO),
+            Dispatchers.IO,
+        )
     }
 
     @After

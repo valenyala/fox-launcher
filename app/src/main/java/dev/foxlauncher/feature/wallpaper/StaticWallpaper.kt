@@ -24,6 +24,7 @@ import dev.foxlauncher.core.common.IoDispatcher
 import dev.foxlauncher.core.data.db.WallpaperDao
 import dev.foxlauncher.core.data.settings.FoxSettings
 import dev.foxlauncher.feature.wallpaper.engine.WallpaperLoader
+import dev.foxlauncher.feature.wallpaper.source.WallpaperSources
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.IOException
@@ -42,6 +43,7 @@ class StaticWallpaperApplier @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val dao: WallpaperDao,
     private val loader: WallpaperLoader,
+    private val sources: WallpaperSources,
     @param:IoDispatcher private val io: CoroutineDispatcher,
 ) {
     /** Sets entry [entryId] as the static wallpaper of [targets], in one write; true when it was set. */
@@ -51,7 +53,7 @@ class StaticWallpaperApplier @Inject constructor(
         val (width, height) = screenSize()
         val bitmap = loader.load(entry.uri.toUri(), width, height)
         if (bitmap == null) {
-            dao.markFailed(entryId)
+            sources.reportUnreadable(entryId)
             return@withContext false
         }
         val jpeg = ByteArrayOutputStream().use { out ->
@@ -115,7 +117,7 @@ class StaticApplyWorker @AssistedInject constructor(
         )
         if (targets.isEmpty()) return Result.success()
         // The same entry the live wallpaper shows, so the lock screen matches the home screen.
-        val entryId = WallpaperPlaylist.showing(settings.activeWallpaperEntryId.first(), dao.observeEnabledEntries().first().map { it.id })
+        val entryId = WallpaperPlaylist.showing(settings.activeWallpaperEntryId.first(), dao.observeRotationEntries().first().map { it.id })
         if (entryId != null) applier.apply(entryId, targets)
         return Result.success()
     }

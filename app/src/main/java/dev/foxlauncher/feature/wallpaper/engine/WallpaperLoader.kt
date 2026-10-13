@@ -18,7 +18,11 @@ import javax.inject.Inject
  */
 class WallpaperLoader @Inject constructor(@param:ApplicationContext private val context: Context) {
 
-    /** The image at [uri] filling [width]×[height], or null when it cannot be read. */
+    /**
+     * The image at [uri] filling [width]×[height], or null when it cannot be read: missing,
+     * unreadable, access revoked, or refused by its provider (the runtime exceptions a provider can
+     * send back across processes are caught too, task 4.9).
+     */
     fun load(uri: Uri, width: Int, height: Int): Bitmap? {
         if (width <= 0 || height <= 0) return null
         return try {
@@ -33,6 +37,16 @@ class WallpaperLoader @Inject constructor(@param:ApplicationContext private val 
             null
         } catch (e: SecurityException) {
             FoxLog.w("Wallpaper $uri is no longer readable", e)
+            null
+        } catch (e: IllegalArgumentException) {
+            // What a documents provider throws for a document whose folder is gone (task 4.9, seen on fox-api33).
+            FoxLog.w("Wallpaper $uri is gone", e)
+            null
+        } catch (e: IllegalStateException) {
+            FoxLog.w("Wallpaper $uri could not be opened", e)
+            null
+        } catch (e: UnsupportedOperationException) {
+            FoxLog.w("Wallpaper $uri could not be opened", e)
             null
         }
     }

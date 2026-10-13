@@ -78,7 +78,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] 4.6 Lock screen handling (POCO F3 2026-10-12: switch sets the lock image with MIUI Wallpaper Carousel off; Fox live on home and lock shows on the MIUI lock screen)
 - [x] 4.7 Wallpaper settings UI (POCO F3 2026-10-13: folder, picked pictures, thumbnail tap, shuffle, crossfade, parallax, remove, preview "Settings…"; engine renderer fix)
 - [x] 4.8 Memory and performance budget (POCO F3 2026-10-13: no memory growth over 20 changes; frame work avg 1.1–1.8 ms, worst 8.7 ms accepted by the user, 0 late)
-- [ ] 4.9 URI permission resilience
+- [ ] 4.9 URI permission resilience — emulators pass; POCO check pending
 - [ ] Device checklist passed on: —
 
 ## Phase 5 — Memory widgets
@@ -160,6 +160,20 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-13 — 4.9 checkpoint. Already there: loader catches, three failures skip an entry, scanner flags
+  `needsReauth`, grants taken on add. New: `persistedUriPermissions` checked at scan time and at start
+  (`WallpaperSources.checkAccess`: folders without a grant need picking again, picked pictures without one are skipped
+  via `markUnreadable`); a failed load reports through `WallpaperSources.reportUnreadable` (folder grant checked at
+  once, else rescanned); `observeRotationEntries` (renamed from `observeEnabledEntries`) leaves out sources needing
+  re-authorization and falls back to the built-ins when nothing else is left; banner "Fox can no longer read “X”…
+  Pick again" at the top of the wallpaper settings. **Found on fox-api33 (fixed):** a moved folder made the provider
+  throw `IllegalArgumentException`, uncaught in the engine → **the launcher crashed**; and its listing came back
+  empty → entries silently dropped. Now caught, the folder is looked up before listing, and the engine scope logs
+  instead of crashing (PLATFORM-NOTES W). fox-api33: grant revoked by clearing External Storage → next load denied,
+  folder flagged, built-ins stepped in (turned off), banner, Pick again restored it; folder renamed → flagged as
+  gone with its entries kept, renamed back + Pick again → its entries rotate again. Tests: DAO +3 (12),
+  `WallpaperSourcesAccessTest` 4, content +2 (16), applier 4 (fox-api33/37).
 
 - 2026-10-13 — 4.8 measured. **Bitmaps:** the loader decodes straight to the surface size (`ImageDecoder`
   `setTargetSize` + `setCrop` from pure `WallpaperGeometry.coverDecode`), so a photo never exists at full size (a

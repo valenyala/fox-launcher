@@ -19,9 +19,11 @@ import dev.foxlauncher.core.model.RotationTrigger
 import dev.foxlauncher.feature.wallpaper.RotationScheduler
 import dev.foxlauncher.feature.wallpaper.TriggerPolicy
 import dev.foxlauncher.feature.wallpaper.WallpaperPlaylist
+import dev.foxlauncher.feature.wallpaper.source.WallpaperSources
 import javax.inject.Inject
 import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -61,6 +63,8 @@ class FoxWallpaperService : WallpaperService() {
 
     @Inject lateinit var rotation: RotationScheduler
 
+    @Inject lateinit var sources: WallpaperSources
+
     /** The live engines: the system's and, while the picker shows one, a preview. */
     private val engines = mutableSetOf<FoxEngine>()
 
@@ -87,7 +91,13 @@ class FoxWallpaperService : WallpaperService() {
 
         /** Whether the last frame reached the screen; a change is logged once, not every frame. */
         private var framesShown = true
-        private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+        /**
+         * The engine shares the launcher's process: an unexpected failure loading one image is logged,
+         * never allowed to take the home screen down with it (task 4.9).
+         */
+        private val scope = CoroutineScope(
+            SupervisorJob() + Dispatchers.Main.immediate + CoroutineExceptionHandler { _, e -> FoxLog.e("$name failed", e) },
+        )
         private val paint = Paint(Paint.FILTER_BITMAP_FLAG)
         private var surfaceW = 0
         private var surfaceH = 0
@@ -115,7 +125,7 @@ class FoxWallpaperService : WallpaperService() {
             FoxLog.d("$name created${if (isPreview) " (preview)" else ""}")
             setOffsetNotificationsEnabled(true)
             scope.launch {
-                combine(settings.activeWallpaperEntryId, dao.observeEnabledEntries(), settings.crossfadeMs, settings.wallpaperParallax) { active, entries, ms, parallax ->
+                combine(settings.activeWallpaperEntryId, dao.observeRotationEntries(), settings.crossfadeMs, settings.wallpaperParallax) { active, entries, ms, parallax ->
                     fadeMs = ms
                     WallpaperPlaylist.showing(active, entries.map { it.id }) to parallax
                 }
@@ -243,7 +253,7 @@ class FoxWallpaperService : WallpaperService() {
                 val width = if (parallax) (surfaceW * (1 + PARALLAX_EXTRA)).roundToInt() else surfaceW
                 val bitmap = withContext(io) { loader.load(entry.uri.toUri(), width, surfaceH) }
                 if (bitmap == null) {
-                    withContext(io) { dao.markFailed(id) }
+                    sources.reportUnreadable(id)
                     return@launch
                 }
                 FoxLog.d("$name: showing entry $id (${bitmap.width}x${bitmap.height}, ${if (animate && visible && current != null) "crossfade" else "at once"})")

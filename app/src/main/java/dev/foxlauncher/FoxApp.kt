@@ -80,6 +80,7 @@ class FoxApp : Application(), Configuration.Provider, SingletonImageLoader.Facto
         // Wallpaper rotation works out of the box (task 4.1): the built-ins exist, folders rescan daily.
         scope.launch {
             wallpaperSources.ensureBuiltIn()
+            wallpaperSources.checkAccess()
             SourceScanner.scheduleDaily(WorkManager.getInstance(this@FoxApp))
             rotation.syncSchedule()
         }

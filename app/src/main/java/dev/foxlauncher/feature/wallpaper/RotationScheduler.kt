@@ -80,7 +80,7 @@ class RotationScheduler @Inject constructor(
 
     /** The playlist as stored, over the entries that can be shown, at the entry on screen. */
     private suspend fun playlist(): WallpaperPlaylist {
-        val enabled = dao.observeEnabledEntries().first()
+        val enabled = dao.observeRotationEntries().first()
         // Entries that failed three times in a row are skipped (task 4.9).
         val entries = enabled.filter { it.failedCount < WallpaperEntryEntity.MAX_FAILURES }.map { it.id }
         val state = settings.playlistState.first()

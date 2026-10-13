@@ -40,8 +40,8 @@ class WallpaperSources @Inject constructor(
 
     val entryCounts: Flow<List<SourceEntryCount>> = dao.observeEntryCounts()
 
-    /** The images the rotation walks: every entry of every enabled source. */
-    val enabledEntries: Flow<List<WallpaperEntryEntity>> = dao.observeEnabledEntries()
+    /** The images the rotation walks (see [WallpaperDao.observeRotationEntries]). */
+    val rotationEntries: Flow<List<WallpaperEntryEntity>> = dao.observeRotationEntries()
 
     /**
      * Makes sure the built-in source exists and lists exactly the wallpapers this version ships, so
@@ -96,6 +96,46 @@ class WallpaperSources @Inject constructor(
         added.size
     }
 
+    /**
+     * Flags what lost its access since it was added (task 4.9): a folder whose lasting grant is gone
+     * must be picked again; picked pictures whose grant is gone are skipped. Nothing is read, so it is
+     * cheap: run at start, and the scanner checks folders too.
+     */
+    suspend fun checkAccess() = withContext(io) {
+        val granted = grantedUris()
+        dao.getSources().forEach { source ->
+            when (source.type) {
+                WallpaperSourceType.FOLDER_TREE -> if (!source.needsReauth && source.uri !in granted) {
+                    FoxLog.w("Wallpaper folder ${source.displayName} lost its access")
+                    dao.setNeedsReauth(source.id, true)
+                }
+                WallpaperSourceType.PICKED_IMAGES -> dao.getEntries(source.id)
+                    .filter { it.uri !in granted && it.failedCount < WallpaperEntryEntity.MAX_FAILURES }
+                    .map { it.id }
+                    .takeIf { it.isNotEmpty() }
+                    ?.let { dao.markUnreadable(it) }
+                WallpaperSourceType.BUILT_IN -> Unit
+            }
+        }
+    }
+
+    /**
+     * Entry [entryId] could not be read (task 4.9): it counts a failure, and its folder is checked
+     * at once rather than at the next daily scan. Without its grant the folder needs picking again;
+     * with it, a rescan finds out whether the file or the folder itself is gone.
+     */
+    suspend fun reportUnreadable(entryId: Long) = withContext(io) {
+        dao.markFailed(entryId)
+        val source = dao.getEntry(entryId)?.let { dao.getSource(it.sourceId) } ?: return@withContext
+        if (source.type != WallpaperSourceType.FOLDER_TREE) return@withContext
+        if (source.uri in grantedUris()) {
+            SourceScanner.scanNow(WorkManager.getInstance(context), source.id)
+        } else {
+            FoxLog.w("Wallpaper folder ${source.displayName} lost its access")
+            dao.setNeedsReauth(source.id, true)
+        }
+    }
+
     suspend fun setEnabled(sourceId: Long, enabled: Boolean) = withContext(io) {
         dao.setSourceEnabled(sourceId, enabled)
     }
@@ -130,6 +170,10 @@ class WallpaperSources @Inject constructor(
         FoxLog.w("No lasting access to $uri", e)
         false
     }
+
+    /** The URIs Fox holds lasting read access to. */
+    private fun grantedUris(): Set<String> =
+        resolver.persistedUriPermissions.filter { it.isReadPermission }.mapTo(HashSet()) { it.uri.toString() }
 
     private fun giveBack(uri: Uri) {
         try {

@@ -190,7 +190,25 @@ fun WallpaperSettingsContent(
             val columns = ((maxWidth - GRID_PADDING * 2 + GRID_GAP) / (THUMB_MIN_WIDTH + GRID_GAP)).toInt().coerceAtLeast(MIN_COLUMNS)
             val enabledSources = state.sources.count { it.enabled }
             LazyColumn(contentPadding = padding, modifier = Modifier.testTag(WallpaperSettingsTestTags.LIST)) {
-                item { LiveWallpaperBanner(state.liveWallpaperActive, actions::applyLiveWallpaper) }
+                item {
+                    Banner(
+                        text = stringResource(if (state.liveWallpaperActive) R.string.wallpaper_live_active else R.string.wallpaper_live_inactive),
+                        warning = !state.liveWallpaperActive,
+                        action = if (state.liveWallpaperActive) null else stringResource(R.string.wallpaper_apply),
+                        onAction = actions::applyLiveWallpaper,
+                    )
+                }
+                // A folder that lost its access is skipped by the rotation until it is picked again (task 4.9).
+                state.sources.firstOrNull { it.needsReauth }?.let { lost ->
+                    item(key = "reauth ${lost.id}") {
+                        Banner(
+                            text = stringResource(R.string.wallpaper_reauth_banner, sourceName(lost)),
+                            warning = true,
+                            action = stringResource(R.string.wallpaper_reauth_pick),
+                            onAction = { actions.reauthorize(lost.id) },
+                        )
+                    }
+                }
                 item {
                     ListItem(
                         headlineContent = { Text(stringResource(R.string.wallpaper_next_now)) },
@@ -278,22 +296,19 @@ fun WallpaperSettingsContent(
     }
 }
 
+/** A note at the top of the settings; a [warning] stands out, with its fix as [action]. */
 @Composable
-private fun LiveWallpaperBanner(active: Boolean, onApply: () -> Unit) {
+private fun Banner(text: String, warning: Boolean, action: String?, onAction: () -> Unit) {
     Surface(
-        color = if (active) MaterialTheme.colorScheme.surfaceContainer else MaterialTheme.colorScheme.errorContainer,
+        color = if (warning) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceContainer,
         shape = MaterialTheme.shapes.medium,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-            Text(
-                text = stringResource(if (active) R.string.wallpaper_live_active else R.string.wallpaper_live_inactive),
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.weight(1f),
-            )
-            if (!active) TextButton(onClick = onApply) { Text(stringResource(R.string.wallpaper_apply)) }
+            Text(text = text, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+            if (action != null) TextButton(onClick = onAction) { Text(action) }
         }
     }
 }

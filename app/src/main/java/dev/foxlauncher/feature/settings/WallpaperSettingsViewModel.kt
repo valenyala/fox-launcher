@@ -99,7 +99,7 @@ class WallpaperSettingsViewModel @Inject constructor(
             val countOf = counts.associate { it.sourceId to it.count }
             list.map { WallpaperSourceUi(it.id, it.type, it.displayName, it.enabled, it.needsReauth, countOf[it.id] ?: 0) }
         },
-        sources.enabledEntries,
+        sources.rotationEntries,
         settings.activeWallpaperEntryId,
     ) { base, parallax, sourceList, entries, active ->
         base.copy(

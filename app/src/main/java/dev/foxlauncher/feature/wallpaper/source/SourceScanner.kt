@@ -44,6 +44,12 @@ class SourceScanner @AssistedInject constructor(
 
     private suspend fun scan(source: WallpaperSourceEntity) {
         val tree = source.uri?.toUri() ?: return
+        // Checked first (task 4.9): without a lasting grant the folder must be picked again, whatever listing it might still allow.
+        if (applicationContext.contentResolver.persistedUriPermissions.none { it.isReadPermission && it.uri == tree }) {
+            FoxLog.w("Wallpaper folder ${source.displayName} is no longer granted")
+            dao.setNeedsReauth(source.id, true)
+            return
+        }
         val found = try {
             listImages(tree)
         } catch (e: SecurityException) {
@@ -51,6 +57,11 @@ class SourceScanner @AssistedInject constructor(
             dao.setNeedsReauth(source.id, true)
             return
         } catch (e: FileNotFoundException) {
+            FoxLog.w("Wallpaper folder ${source.displayName} is gone", e)
+            dao.setNeedsReauth(source.id, true)
+            return
+        } catch (e: IllegalArgumentException) {
+            // A documents provider's answer for a tree whose folder was moved or deleted (task 4.9).
             FoxLog.w("Wallpaper folder ${source.displayName} is gone", e)
             dao.setNeedsReauth(source.id, true)
             return
@@ -62,10 +73,19 @@ class SourceScanner @AssistedInject constructor(
         FoxLog.i("Wallpaper folder ${source.displayName}: +${diff.added.size} ~${diff.changed.size} -${diff.removedIds.size}")
     }
 
-    /** The folder's own images (not its subfolders'), through one child-documents query. */
+    /**
+     * The folder's own images (not its subfolders'), through one child-documents query. The folder
+     * itself is looked up first: a moved or deleted folder lists as empty, which would silently drop
+     * all its entries, so it throws [FileNotFoundException] instead (task 4.9, seen on fox-api33).
+     */
     private fun listImages(tree: Uri): List<FoundImage> {
-        val children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, DocumentsContract.getTreeDocumentId(tree))
-        val cursor = applicationContext.contentResolver.query(children, PROJECTION, null, null, null) ?: return emptyList()
+        val folderId = DocumentsContract.getTreeDocumentId(tree)
+        val resolver = applicationContext.contentResolver
+        val exists = resolver.query(DocumentsContract.buildDocumentUriUsingTree(tree, folderId), arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID), null, null, null)
+            ?.use { it.moveToFirst() } ?: false
+        if (!exists) throw FileNotFoundException("$tree is gone")
+        val children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, folderId)
+        val cursor = resolver.query(children, PROJECTION, null, null, null) ?: return emptyList()
         return cursor.use { c ->
             buildList {
                 while (c.moveToNext()) {

@@ -177,6 +177,17 @@ here contradicts what you remember, trust this file unless a device proves other
   `Download` ("Can't use this folder"); `Pictures/<sub>` works, with an "Allow … to access files" confirmation.
   Persisted grants are capped per app (128 before API 30, 512 since), and every picked picture takes one: prefer
   folders for large sets.
+- Lost access, measured (task 4.9, fox-api33, 2026-10-13). Revoking: there is no per-grant switch in Settings; clearing
+  the providing app's storage (`pm clear com.android.externalstorage`, Settings → Apps → External Storage) drops every
+  grant it ever issued, **to every app**, so never do it on a personal phone. A revoked grant: opening a document
+  throws `SecurityException` ("Permission Denial: opening provider …"). A folder moved or deleted under a live grant:
+  opening one of its documents throws **`IllegalArgumentException`** ("Failed to determine if … is child of …:
+  FileNotFoundException"), not `FileNotFoundException`, and an uncaught one in the engine took the launcher down
+  (shared process); listing its children returns an **empty cursor**, not an error, which silently emptied the source.
+  Fox now catches the runtime exceptions a provider can send back (`IllegalArgumentException`,
+  `IllegalStateException`, `UnsupportedOperationException`) when decoding, looks the folder itself up before
+  listing it, guards the engine's coroutines with a logging handler, and leaves a folder that needs picking again
+  out of the rotation (built-ins step in when nothing else is left) with a banner in the wallpaper settings.
 - Coil 3 reads `android.resource` URIs by resource **id** only (`ResourceUriFetcher` requires an int last segment;
   `.../raw/<name>` throws). Fox stores the built-ins by name (stable across builds) for the engine's
   `ContentResolver`, and hands Coil the resource id for thumbnails (`WallpaperSources.thumbnailModel`).

@@ -13,7 +13,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** Wallpaper sources and entries (tasks 4.1, 4.7), on an in-memory database. */
+/** Wallpaper sources and entries (tasks 4.1, 4.7, 4.9), on an in-memory database. */
 @RunWith(AndroidJUnit4::class)
 class WallpaperDaoTest {
 
@@ -38,7 +38,7 @@ class WallpaperDaoTest {
         dao.applyScan(on, listOf(entry("a")), emptyList(), emptyList())
         dao.applyScan(off, listOf(entry("b")), emptyList(), emptyList())
 
-        assertEquals(listOf("a"), dao.observeEnabledEntries().first().map { it.displayName })
+        assertEquals(listOf("a"), dao.observeRotationEntries().first().map { it.displayName })
     }
 
     @Test
@@ -107,10 +107,47 @@ class WallpaperDaoTest {
         dao.applyScan(id, listOf(entry("a")), emptyList(), emptyList())
 
         dao.setSourceEnabled(id, false)
-        assertTrue(dao.observeEnabledEntries().first().isEmpty())
+        assertTrue(dao.observeRotationEntries().first().isEmpty())
         dao.setSourceEnabled(id, true)
 
-        assertEquals(listOf("a"), dao.observeEnabledEntries().first().map { it.displayName })
+        assertEquals(listOf("a"), dao.observeRotationEntries().first().map { it.displayName })
+    }
+
+    @Test
+    fun aFolderThatLostItsAccessLeavesTheRotation() = runBlocking {
+        val readable = dao.insertSource(source("Readable"))
+        val lost = dao.insertSource(source("Lost"))
+        dao.applyScan(readable, listOf(entry("a")), emptyList(), emptyList())
+        dao.applyScan(lost, listOf(entry("b")), emptyList(), emptyList())
+
+        dao.setNeedsReauth(lost, true)
+
+        assertEquals(listOf("a"), dao.observeRotationEntries().first().map { it.displayName })
+    }
+
+    @Test
+    fun withNothingElseToShowTheBuiltInPicturesStepIn() = runBlocking {
+        val builtIn = dao.insertSource(WallpaperSourceEntity(type = WallpaperSourceType.BUILT_IN, displayName = "Fox", enabled = false))
+        val lost = dao.insertSource(source("Lost"))
+        dao.applyScan(builtIn, listOf(entry("fox")), emptyList(), emptyList())
+        dao.applyScan(lost, listOf(entry("b")), emptyList(), emptyList())
+        assertEquals(listOf("b"), dao.observeRotationEntries().first().map { it.displayName })
+
+        dao.setNeedsReauth(lost, true)
+
+        assertEquals(listOf("fox"), dao.observeRotationEntries().first().map { it.displayName }, "turned off, but nothing else is left")
+    }
+
+    @Test
+    fun unreadableEntriesCountAsFailedThreeTimes() = runBlocking {
+        val id = dao.insertSource(source("Folder"))
+        dao.applyScan(id, listOf(entry("a"), entry("b")), emptyList(), emptyList())
+        val (a, b) = dao.getEntries(id).sortedBy { it.displayName }
+
+        dao.markUnreadable(listOf(a.id))
+
+        assertEquals(WallpaperEntryEntity.MAX_FAILURES, dao.getEntry(a.id)?.failedCount)
+        assertEquals(0, dao.getEntry(b.id)?.failedCount)
     }
 
     @Test
