@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 4 — Wallpaper rotation (Phase 3 done 2026-10-12; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists)
-**Next task:** 4.6 Lock screen handling (2.8 still deferred)
+**Next task:** 4.7 Wallpaper settings UI (2.8 still deferred)
 
 ## Environment facts (verified 2026-09-17)
 
@@ -75,7 +75,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] 4.3 FoxWallpaperService crossfade engine (POCO F3 2026-10-12)
 - [x] 4.4 RotationScheduler and triggers (POCO F3 2026-10-12: interval, unlock, page change, gesture; time-of-day schedule left as a TODO, stretch)
 - [x] 4.5 Static fallback (POCO F3 2026-10-12: page change, Next now, unlock with a MIUI static wallpaper; gesture prompt)
-- [ ] 4.6 Lock screen handling — emulators pass; POCO: switch works with Carousel off; live-on-lock check pending
+- [x] 4.6 Lock screen handling (POCO F3 2026-10-12: switch sets the lock image with MIUI Wallpaper Carousel off; Fox live on home and lock shows on the MIUI lock screen)
 - [ ] 4.7 Wallpaper settings UI
 - [ ] 4.8 Memory and performance budget
 - [ ] 4.9 URI permission resilience
@@ -160,6 +160,10 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-12 — **4.6 done.** POCO: Fox live applied with *Home screen and lock screen*, switch off → the MIUI lock screen
+  shows the live wallpaper and follows each change (keyguard layer at alpha 0, no separate lock image). With the switch
+  on, each change sets a still lock image once Wallpaper Carousel is off. Both in PLATFORM-NOTES W.
 
 - 2026-10-12 — 4.6 checkpoint. "Also change the lock screen" (default off, `wallpaper_change_lock_screen`): pure
   `StaticTargets` (home while Fox live is not the system's, lock when asked; 4 tests) decides at run time what

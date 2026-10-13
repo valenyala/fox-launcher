@@ -155,6 +155,9 @@ here contradicts what you remember, trust this file unless a device proves other
   `com.miui.miwallpaper`). Wallpaper Carousel (`com.miui.android.fashiongallery`) sets the lock wallpaper itself
   (`MiuiWallpaperManagerService setWallpaper which=2 type=gallery`) on screen-on and unlock, overwriting Fox's; with
   Carousel turned off, Fox's `FLAG_LOCK` image shows. Nothing public detects Carousel; the user must turn it off.
+  MIUI uses the AOSP live picker (`com.android.wallpaper.livepicker`): *Home screen and lock screen* clears the lock
+  image, the keyguard window goes transparent (`no needShowLockWallpaper, change alpha 0`) and Fox's live wallpaper
+  shows on the lock screen and follows each change — so live on lock works on MIUI too, with Carousel off.
 - User folders: `ACTION_OPEN_DOCUMENT_TREE` + `contentResolver.takePersistableUriPermission(uri, FLAG_GRANT_READ_URI_PERMISSION)`.
   List with `DocumentsContract.buildChildDocumentsUriUsingTree` + query (much faster than `DocumentFile.listFiles()`).
   Persisted permissions can be revoked; handle `SecurityException` by marking the source as needs-reauth.
