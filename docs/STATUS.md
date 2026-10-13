@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 5 — Memory widgets (Phase 4 done 2026-10-13 apart from three checklist items, deferred by the user; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists)
-**Next task:** 5.2 MemoryStats + MemInfoParser tests (2.8 still deferred)
+**Next task:** 5.3 RAM gauge, boost and detail widgets (2.8 still deferred)
 
 ## Environment facts (verified 2026-09-17)
 
@@ -83,7 +83,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 
 ## Phase 5 — Memory widgets
 - [x] 5.1 Native widget framework (POCO F3 2026-10-13: Clock added from the picker, resized 4×1→5×2→2×1, moved, removed)
-- [ ] 5.2 MemoryStats + MemInfoParser tests
+- [x] 5.2 MemoryStats + MemInfoParser tests (no UI: JVM tests on a POCO F3 and an emulator sample, instrumented on fox-api33/37)
 - [ ] 5.3 RAM gauge, boost and detail widgets
 - [ ] 5.4 BoostStrategy per API level
 - [ ] 5.5 (stretch) AppWidgetProvider export
@@ -160,6 +160,16 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-13 — **5.2 done.** `feature/memory`: pure `MemInfoParser` (`Name: value kB` lines; unknown, foreign-unit
+  and cut-off lines skipped; null without `MemTotal`), pure `MemorySnapshot.of` (ActivityManager's total/available
+  lead, as Settings shows them; `/proc/meminfo` gives cached, buffers, swap and stands in when ActivityManager reports
+  nothing, estimating available as free + cached + buffers on kernels without `MemAvailable`; never negative, never
+  above total), `MemoryStats` (`snapshot()`, `observe(intervalMs)` reading only while collected, `flowOn(IO)`,
+  `distinctUntilChanged`). Tests: parser 5 (real samples from the POCO F3 and fox-api37 in
+  `app/src/test/resources/meminfo`, truncated, garbage), snapshot 6, instrumented `MemoryStatsTest` 3
+  (fox-api33/37: sane, Android's total = the kernel's, keeps reading). Not run on the phone: an instrumented run
+  uninstalls Fox afterwards, which would wipe its data there.
 
 - 2026-10-13 — 5.1 checkpoint. `feature/widgets`: `NativeWidgetSpec` (kind, name, description, min/default/max
   `Span`, content with a `NativeWidgetScope`), `NativeWidgetRegistry` (Hilt `Set` multibinding, `NativeWidgetModule`),
