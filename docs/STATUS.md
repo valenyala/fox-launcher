@@ -173,10 +173,11 @@ Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out o
   Recents (fox-api33/37); strips gone on Fox's home, on screen off and on the lock screen, back after unlock
   (fox-api33); with gesture navigation the system takes the swipes and Fox fires nothing (fox-api33). **Found and
   fixed:** the home pauses and resumes around `onNewIntent`, and the hide that followed the show by 5 ms skipped
-  strips not yet "attached", leaving them over the home (fox-api37). `GesturesContentTest` +3 (the switch) compiled
-  but **not run**: fox-api33 then hung (SurfaceFlinger stuck in the emulator's GL pipe after a nav-mode switch,
-  PLATFORM-NOTES G) and needs a restart, and Compose tests do not run on API 37. fox-api37 is back on gesture
-  navigation; fox-api33 was last set to three-button. Not handled: immersive apps and games keep the strips.
+  strips not yet "attached", leaving them over the home (fox-api37). fox-api33 then hung (SurfaceFlinger stuck in the
+  emulator's GL pipe after a nav-mode switch, PLATFORM-NOTES G); after the user restarted it, `GesturesContentTest`
+  passed 16/16 there (+3 for the switch). Both emulators are back on gesture navigation; the test run uninstalled Fox
+  from fox-api33, so it was reinstalled and set as home (its data and service setting are fresh). Not handled:
+  immersive apps and games keep the strips.
 
 - 2026-10-13 — README (not a phase task). `README.md` for users: features, defaults, Boost limits per Android
   version, build and setup, MIUI notes, permissions, development pointers. Media in `docs/media/` (≈4.4 MB),
