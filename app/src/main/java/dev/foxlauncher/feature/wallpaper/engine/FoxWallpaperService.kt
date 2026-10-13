@@ -61,6 +61,8 @@ class FoxWallpaperService : WallpaperService() {
 
     private inner class FoxEngine : Engine(), Choreographer.FrameCallback {
 
+        /** Tells engines apart in the log: the system may run a preview engine beside the real one. */
+        private val name = "Wallpaper engine ${Integer.toHexString(System.identityHashCode(this))}"
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
         private val paint = Paint(Paint.FILTER_BITMAP_FLAG)
         private var surfaceW = 0
@@ -85,6 +87,7 @@ class FoxWallpaperService : WallpaperService() {
 
         override fun onCreate(surfaceHolder: SurfaceHolder) {
             super.onCreate(surfaceHolder)
+            FoxLog.d("$name created${if (isPreview) " (preview)" else ""}")
             setOffsetNotificationsEnabled(true)
             scope.launch {
                 combine(settings.activeWallpaperEntryId, dao.observeEnabledEntries(), settings.crossfadeMs, settings.wallpaperParallax) { active, entries, ms, parallax ->
@@ -109,8 +112,14 @@ class FoxWallpaperService : WallpaperService() {
             }
         }
 
+        override fun onSurfaceCreated(holder: SurfaceHolder) {
+            super.onSurfaceCreated(holder)
+            FoxLog.d("$name: surface created")
+        }
+
         override fun onSurfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
             super.onSurfaceChanged(holder, format, width, height)
+            FoxLog.d("$name: surface ${width}x$height")
             if (width == surfaceW && height == surfaceH) return
             surfaceW = width
             surfaceH = height
@@ -123,7 +132,25 @@ class FoxWallpaperService : WallpaperService() {
             draw()
         }
 
+        /**
+         * The surface is gone; a new one may follow at the same size. Forgetting the size makes that one
+         * load and draw again instead of being skipped as unchanged.
+         */
+        override fun onSurfaceDestroyed(holder: SurfaceHolder) {
+            FoxLog.d("$name: surface destroyed")
+            Choreographer.getInstance().removeFrameCallback(this)
+            incoming?.let { next ->
+                current?.recycle()
+                current = next
+                incoming = null
+            }
+            surfaceW = 0
+            surfaceH = 0
+            super.onSurfaceDestroyed(holder)
+        }
+
         override fun onVisibilityChanged(visible: Boolean) {
+            FoxLog.d("$name: ${if (visible) "visible" else "hidden"}")
             this.visible = visible
             restartTimer()
             if (visible) {
@@ -143,6 +170,7 @@ class FoxWallpaperService : WallpaperService() {
         override fun onComputeColors(): WallpaperColors? = current?.takeUnless { it.isRecycled }?.let(WallpaperColors::fromBitmap)
 
         override fun onDestroy() {
+            FoxLog.d("$name destroyed")
             scope.cancel()
             Choreographer.getInstance().removeFrameCallback(this)
             current?.recycle()
@@ -185,6 +213,7 @@ class FoxWallpaperService : WallpaperService() {
                     withContext(io) { dao.markFailed(id) }
                     return@launch
                 }
+                FoxLog.d("$name: showing entry $id (${bitmap.width}x${bitmap.height}, ${if (animate && visible && current != null) "crossfade" else "at once"})")
                 if (animate && visible && current != null) {
                     finishFade()
                     incoming = bitmap
@@ -225,6 +254,10 @@ class FoxWallpaperService : WallpaperService() {
         private fun draw(incomingAlpha: Int = 0) {
             if (surfaceW == 0) return
             val holder = surfaceHolder
+            if (!holder.surface.isValid) {
+                FoxLog.w("$name: surface not valid, frame skipped")
+                return
+            }
             val canvas = try {
                 holder.lockHardwareCanvas()
             } catch (e: IllegalStateException) {

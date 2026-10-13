@@ -161,6 +161,15 @@ Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out o
 
 ## Session notes
 
+- 2026-10-13 — 4.7 POCO round 1: folder (+24), picked picture, thumbnail taps and shuffle all reached the engine, but
+  **the wallpaper never changed on screen**: every crossfade frame logged MIUI HWUI's `The surface had destroyed before
+  draw` (≈99 per 800 ms fade) while SurfaceFlinger kept the engine's first frame. Not reproduced after reinstalling: a
+  fresh engine survived lock/unlock and the folder picker round trip, with no dead-surface line. Suspected: a race with
+  MIUI swapping the wallpaper surface right after the package update rebinds the service. The engine now handles
+  `onSurfaceDestroyed` (stops the fade, forgets the size so a same-size new surface reloads and redraws; before, it was
+  skipped as unchanged), skips frames on an invalid surface, and logs its lifecycle (debug only: created/preview,
+  surface created/size/destroyed, visible/hidden, showing entry …, destroyed). If it freezes again, those lines say why.
+
 - 2026-10-13 — 4.7 checkpoint. The wallpaper settings now hold everything: live wallpaper banner, Next now; *When it
   changes* (interval, unlock, page change); *How it looks* (shuffle, crossfade 300–2000 ms snapped to 100 ms, parallax
   on/off, lock screen); *Sources* (built-in / picked pictures / folders: switch, remove with confirmation and grants
