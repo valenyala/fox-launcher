@@ -2,8 +2,7 @@ package dev.foxlauncher.feature.memory
 
 import java.util.Locale
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
+import kotlin.test.assertNull
 import org.junit.Test
 
 class MemoryFormatTest {
@@ -39,9 +38,15 @@ class MemoryFormatTest {
 
     @Test
     fun onlyUpToAndroid13CanABoostCloseOtherApps() {
-        assertTrue(BoostCapability.canCloseOtherApps(29))
-        assertTrue(BoostCapability.canCloseOtherApps(33))
-        assertFalse(BoostCapability.canCloseOtherApps(34))
-        assertFalse(BoostCapability.canCloseOtherApps(37))
+        assertNull(BoostCapability.limit(29, "Google"))
+        assertNull(BoostCapability.limit(33, "samsung"))
+        assertEquals(BoostLimit.ANDROID_14, BoostCapability.limit(34, "Google"))
+        assertEquals(BoostLimit.ANDROID_14, BoostCapability.limit(37, "Xiaomi"), "Android 14 is the stronger reason")
+    }
+
+    @Test
+    fun onMiuiABoostCannotCloseOtherApps() {
+        assertEquals(BoostLimit.MIUI, BoostCapability.limit(33, "Xiaomi"))
+        assertEquals(BoostLimit.MIUI, BoostCapability.limit(30, "xiaomi"))
     }
 }

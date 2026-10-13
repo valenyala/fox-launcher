@@ -51,7 +51,7 @@ class MemoryWidgetViewModel @Inject constructor(
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_MS), null)
 
-    val canCloseOtherApps: Boolean get() = booster.canCloseOtherApps
+    val boostLimit: BoostLimit? get() = booster.limit
 
     suspend fun boost(): BoostResult = booster.boost()
 

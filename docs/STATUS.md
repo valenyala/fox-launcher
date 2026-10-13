@@ -161,6 +161,14 @@ Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out o
 
 ## Session notes
 
+- 2026-10-13 — 5.4 POCO round 1: Boost asked 65 apps to close and nothing closed ("Nothing to free", apps still
+  running). **MIUI silently ignores `killBackgroundProcesses` from apps**: proven with `run-as` (Fox's uid: nothing)
+  against the shell (`am kill`: killed at once); Fox does hold the permission (PLATFORM-NOTES M). With the user's
+  choice: `BoostCapability.limit(sdk, manufacturer)` → `BoostLimit.ANDROID_14` / `MIUI` / none; with a limit only the
+  self trim runs and the widget shows "Limited on Android 14+" or "Limited on MIUI", each with its own explanation.
+  A real boost on MIUI waits for Shizuku (Phase 9). Tests: format +1 (limit), targets (forLimit), content +1 (MIUI
+  caption), 14 (fox-api33).
+
 - 2026-10-13 — 5.4 checkpoint. `BoostStrategy` (name, `boost()` → apps asked to close). `SelfTrimStrategy` (always:
   `IconCache.clearMemory`, Coil memory cache, GC). `LegacyKillStrategy` (API ≤ 33: `killBackgroundProcesses` for
   launchable non-system apps minus `ProtectedApps`: Fox, the app in front from usage events when allowed, the keyboard

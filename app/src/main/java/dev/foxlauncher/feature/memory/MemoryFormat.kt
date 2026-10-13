@@ -25,11 +25,29 @@ object MemoryFormat {
     private fun Double.roundToLong(): Long = kotlin.math.round(this).toLong()
 }
 
-/** What a boost can do on this Android version (ADR-5). Pure, so it is unit tested. */
+/** Why a boost cannot close other apps on this phone (ADR-5): the widget says which. */
+enum class BoostLimit {
+    /** Android 14 (API 34) took away closing other apps' background processes. */
+    ANDROID_14,
+
+    /**
+     * MIUI accepts the call from an app and silently ignores it, while the same call from the shell
+     * works (POCO F3, MIUI 14 / Android 13, 2026-10-13; PLATFORM-NOTES M).
+     */
+    MIUI,
+}
+
+/** What a boost can do on this phone (ADR-5). Pure, so it is unit tested. */
 object BoostCapability {
 
-    /** Android 14 (API 34) took away closing other apps' background processes. */
     const val LAST_API_THAT_KILLS_OTHERS = 33
 
-    fun canCloseOtherApps(sdkInt: Int): Boolean = sdkInt <= LAST_API_THAT_KILLS_OTHERS
+    /** Why a boost cannot close other apps here, or null when it can. Xiaomi phones (also POCO, Redmi) run MIUI. */
+    fun limit(sdkInt: Int, manufacturer: String): BoostLimit? = when {
+        sdkInt > LAST_API_THAT_KILLS_OTHERS -> BoostLimit.ANDROID_14
+        manufacturer.equals(XIAOMI, ignoreCase = true) -> BoostLimit.MIUI
+        else -> null
+    }
+
+    private const val XIAOMI = "Xiaomi"
 }

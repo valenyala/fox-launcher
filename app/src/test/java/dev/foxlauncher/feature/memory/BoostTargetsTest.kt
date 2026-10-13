@@ -52,10 +52,9 @@ class BoostTargetsTest {
     }
 
     @Test
-    fun upToAndroid13BothStrategiesRunAndFromAndroid14OnlyTheSelfTrim() {
-        assertEquals(listOf("self", "others"), BoostStrategies.forSdk(29, "self", "others"))
-        assertEquals(listOf("self", "others"), BoostStrategies.forSdk(33, "self", "others"))
-        assertEquals(listOf("self"), BoostStrategies.forSdk(34, "self", "others"))
-        assertEquals(listOf("self"), BoostStrategies.forSdk(37, "self", "others"))
+    fun withoutALimitBothStrategiesRunAndWithOneOnlyTheSelfTrim() {
+        assertEquals(listOf("self", "others"), BoostStrategies.forLimit(null, "self", "others"))
+        assertEquals(listOf("self"), BoostStrategies.forLimit(BoostLimit.ANDROID_14, "self", "others"))
+        assertEquals(listOf("self"), BoostStrategies.forLimit(BoostLimit.MIUI, "self", "others"))
     }
 }

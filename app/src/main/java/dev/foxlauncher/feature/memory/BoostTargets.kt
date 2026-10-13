@@ -34,10 +34,10 @@ object BoostTargets {
         setting.orEmpty().split(':').mapNotNull(::packageOfComponent).toSet()
 }
 
-/** What a boost runs on this Android version (task 5.4). Pure, so the choice is unit tested. */
+/** What a boost runs on this phone (task 5.4). Pure, so the choice is unit tested. */
 object BoostStrategies {
 
-    /** Trimming Fox's own memory always; closing other apps only where Android still allows it (≤ 13). */
-    fun <S> forSdk(sdkInt: Int, selfTrim: S, closeOthers: S): List<S> =
-        if (BoostCapability.canCloseOtherApps(sdkInt)) listOf(selfTrim, closeOthers) else listOf(selfTrim)
+    /** Trimming Fox's own memory always; closing other apps only where nothing [limit]s it. */
+    fun <S> forLimit(limit: BoostLimit?, selfTrim: S, closeOthers: S): List<S> =
+        if (limit == null) listOf(selfTrim, closeOthers) else listOf(selfTrim)
 }

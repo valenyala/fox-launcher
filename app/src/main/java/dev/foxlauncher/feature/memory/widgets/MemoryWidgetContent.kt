@@ -52,6 +52,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import dev.foxlauncher.R
 import dev.foxlauncher.core.model.AppEntry
 import dev.foxlauncher.core.ui.AppIcon
+import dev.foxlauncher.feature.memory.BoostLimit
 import dev.foxlauncher.feature.memory.BoostResult
 import dev.foxlauncher.feature.memory.MemoryFormat
 import dev.foxlauncher.feature.memory.MemorySnapshot
@@ -135,13 +136,14 @@ private fun Ring(fraction: Float, size: Dp, center: @Composable () -> Unit) {
 
 /**
  * The boost button (task 5.3): a rocket to tap, which lifts while the boost runs, then the freed
- * amount as measured, or that there was nothing to free. Where Android no longer lets apps close
- * others (14+), a caption says so, and tapping it calls [onInfo] for the explanation (ADR-5).
+ * amount as measured, or that there was nothing to free. Where the phone does not let apps close
+ * others ([limit]: Android 14+, MIUI), a caption says so, and tapping it calls [onInfo] for the
+ * explanation (ADR-5).
  */
 @Composable
 fun MemoryBoostContent(
     state: BoostUiState,
-    canCloseOtherApps: Boolean,
+    limit: BoostLimit?,
     onBoost: () -> Unit,
     onInfo: () -> Unit,
     modifier: Modifier = Modifier,
@@ -180,7 +182,7 @@ fun MemoryBoostContent(
         }
         if (caption != null) {
             Text(caption, style = MaterialTheme.typography.labelSmall.onWallpaper(), textAlign = TextAlign.Center, maxLines = 2)
-        } else if (!canCloseOtherApps) {
+        } else if (limit != null) {
             val info = stringResource(R.string.memory_own_only_info)
             // The icon under the caption, not beside it: a one-cell widget is too narrow for both on a line.
             Column(
@@ -190,7 +192,7 @@ fun MemoryBoostContent(
                     .semantics { contentDescription = info },
             ) {
                 Text(
-                    stringResource(R.string.memory_own_only),
+                    stringResource(if (limit == BoostLimit.MIUI) R.string.memory_limited_miui else R.string.memory_own_only),
                     style = MaterialTheme.typography.labelSmall.onWallpaper(),
                     textAlign = TextAlign.Center,
                     maxLines = 3,

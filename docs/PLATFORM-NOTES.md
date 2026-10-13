@@ -214,6 +214,12 @@ here contradicts what you remember, trust this file unless a device proves other
 - Which apps to target on ≤33: iterate our own `AppRepository` packages (launchable, non-system-critical), skip the
   foreground app (from `UsageStatsManager.queryEvents` last `ACTIVITY_RESUMED` if `PACKAGE_USAGE_STATS` granted, otherwise
   skip only ourselves), skip the allowlist in ADR-5, call `killBackgroundProcesses` for each on IO, then re-measure.
+- **MIUI ignores `killBackgroundProcesses` from apps** (POCO F3, MIUI 14 / Android 13, 2026-10-13): Fox holds
+  `KILL_BACKGROUND_PROCESSES` (`granted=true`), the call returns without error, and nothing is killed, no log either;
+  the same call from the shell (`am kill --user 0 <pkg>`) kills the cached process at once ("kill background from
+  process"), and `run-as dev.foxlauncher am kill --user 0 <pkg>` (Fox's own uid) does nothing again. So the API ≤ 33
+  boost is useless on Xiaomi phones: Fox treats them like Android 14+ (`BoostLimit.MIUI`, "Limited on MIUI").
+  Shizuku (Phase 9, ADR-9) runs as the shell and can do it.
 - `PACKAGE_USAGE_STATS` is a special permission: check `AppOpsManager.unsafeCheckOpNoThrow(OPSTR_GET_USAGE_STATS, uid, pkg)`,
   request via `Settings.ACTION_USAGE_ACCESS_SETTINGS`.
 - `ComponentCallbacks2.onTrimMemory` on the app + clearing `IconCache` memory layer is the "self trim" strategy.

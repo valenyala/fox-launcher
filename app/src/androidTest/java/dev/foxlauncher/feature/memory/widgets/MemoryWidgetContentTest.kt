@@ -16,6 +16,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import dev.foxlauncher.R
 import dev.foxlauncher.core.model.AppEntry
 import dev.foxlauncher.core.ui.theme.FoxTheme
+import dev.foxlauncher.feature.memory.BoostLimit
 import dev.foxlauncher.feature.memory.BoostResult
 import dev.foxlauncher.feature.memory.MemorySnapshot
 import dev.foxlauncher.feature.memory.RecentApps
@@ -79,7 +80,7 @@ class MemoryWidgetContentTest {
 
     @Test
     fun tappingTheRocketBoosts() {
-        setContent { MemoryBoostContent(BoostUiState.Idle, canCloseOtherApps = true, onBoost = { calls += "boost" }, onInfo = {}) }
+        setContent { MemoryBoostContent(BoostUiState.Idle, limit = null, onBoost = { calls += "boost" }, onInfo = {}) }
 
         composeRule.onNodeWithContentDescription(context.getString(R.string.memory_boost_action)).performClick()
 
@@ -88,7 +89,7 @@ class MemoryWidgetContentTest {
 
     @Test
     fun aRunningBoostSaysSoAndCannotBeTappedAgain() {
-        setContent { MemoryBoostContent(BoostUiState.Boosting, canCloseOtherApps = true, onBoost = { calls += "boost" }, onInfo = {}) }
+        setContent { MemoryBoostContent(BoostUiState.Boosting, limit = null, onBoost = { calls += "boost" }, onInfo = {}) }
 
         composeRule.onNodeWithText(context.getString(R.string.memory_boosting)).assertIsDisplayed()
         composeRule.onNodeWithText(context.getString(R.string.memory_boosting)).assertIsNotEnabled()
@@ -96,21 +97,21 @@ class MemoryWidgetContentTest {
 
     @Test
     fun theMeasuredAmountIsShownAfterwards() {
-        setContent { MemoryBoostContent(BoostUiState.Done(BoostResult(freedBytes = 123 * mb)), true, {}, {}) }
+        setContent { MemoryBoostContent(BoostUiState.Done(BoostResult(freedBytes = 123 * mb)), null, {}, {}) }
 
         composeRule.onNodeWithText(context.getString(R.string.memory_freed, "123")).assertIsDisplayed()
     }
 
     @Test
     fun nothingFreedSaysSoRatherThanZero() {
-        setContent { MemoryBoostContent(BoostUiState.Done(BoostResult(freedBytes = 100 * 1024)), true, {}, {}) }
+        setContent { MemoryBoostContent(BoostUiState.Done(BoostResult(freedBytes = 100 * 1024)), null, {}, {}) }
 
         composeRule.onNodeWithText(context.getString(R.string.memory_nothing_freed)).assertIsDisplayed()
     }
 
     @Test
     fun onAndroid14AndLaterACaptionExplainsTheLimit() {
-        setContent { MemoryBoostContent(BoostUiState.Idle, canCloseOtherApps = false, onBoost = {}, onInfo = { calls += "info" }) }
+        setContent { MemoryBoostContent(BoostUiState.Idle, limit = BoostLimit.ANDROID_14, onBoost = {}, onInfo = { calls += "info" }) }
 
         composeRule.onNodeWithText(context.getString(R.string.memory_own_only)).assertIsDisplayed()
         composeRule.onNodeWithContentDescription(context.getString(R.string.memory_own_only_info)).performClick()
@@ -119,10 +120,21 @@ class MemoryWidgetContentTest {
     }
 
     @Test
-    fun upToAndroid13ThereIsNoCaption() {
-        setContent { MemoryBoostContent(BoostUiState.Idle, canCloseOtherApps = true, onBoost = {}, onInfo = {}) }
+    fun onMiuiItsOwnCaptionExplainsTheLimit() {
+        setContent { MemoryBoostContent(BoostUiState.Idle, limit = BoostLimit.MIUI, onBoost = {}, onInfo = { calls += "info" }) }
+
+        composeRule.onNodeWithText(context.getString(R.string.memory_limited_miui)).assertIsDisplayed()
+        composeRule.onNodeWithContentDescription(context.getString(R.string.memory_own_only_info)).performClick()
+
+        assertEquals(listOf("info"), calls)
+    }
+
+    @Test
+    fun withoutALimitThereIsNoCaption() {
+        setContent { MemoryBoostContent(BoostUiState.Idle, limit = null, onBoost = {}, onInfo = {}) }
 
         composeRule.onNodeWithText(context.getString(R.string.memory_own_only)).assertDoesNotExist()
+        composeRule.onNodeWithText(context.getString(R.string.memory_limited_miui)).assertDoesNotExist()
     }
 
     // --- detail ---

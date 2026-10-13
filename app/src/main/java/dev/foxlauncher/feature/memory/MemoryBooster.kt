@@ -11,8 +11,8 @@ data class BoostResult(val freedBytes: Long, val closedApps: Int = 0)
 
 /**
  * Runs a boost and measures it (tasks 5.3, 5.4, ADR-5): available memory before, every strategy
- * this Android allows ([BoostStrategies.forSdk]: Fox's own caches always, other apps' background
- * processes up to Android 13), a pause for the system to settle, available memory after. The
+ * this phone allows ([BoostStrategies.forLimit]: Fox's own caches always, other apps' background
+ * processes up to Android 13 except on MIUI), a pause for the system to settle, available memory after. The
  * widget shows that delta and nothing else; less than before counts as nothing freed.
  */
 @Singleton
@@ -21,10 +21,10 @@ class MemoryBooster @Inject constructor(
     selfTrim: SelfTrimStrategy,
     closeOthers: LegacyKillStrategy,
 ) {
-    private val strategies: List<BoostStrategy> = BoostStrategies.forSdk(Build.VERSION.SDK_INT, selfTrim, closeOthers)
+    /** Why a boost cannot close other apps here, or null when it can. */
+    val limit: BoostLimit? = BoostCapability.limit(Build.VERSION.SDK_INT, Build.MANUFACTURER)
 
-    /** Whether this Android lets a boost close other apps' background processes. */
-    val canCloseOtherApps: Boolean get() = BoostCapability.canCloseOtherApps(Build.VERSION.SDK_INT)
+    private val strategies: List<BoostStrategy> = BoostStrategies.forLimit(limit, selfTrim, closeOthers)
 
     suspend fun boost(): BoostResult {
         val before = stats.snapshot().availableBytes

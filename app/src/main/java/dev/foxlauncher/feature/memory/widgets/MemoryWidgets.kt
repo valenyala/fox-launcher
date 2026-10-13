@@ -14,6 +14,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.foxlauncher.R
 import dev.foxlauncher.feature.home.grid.Span
+import dev.foxlauncher.feature.memory.BoostLimit
 import dev.foxlauncher.feature.memory.MemoryWidgetViewModel
 import dev.foxlauncher.feature.widgets.NativeWidgetScope
 import dev.foxlauncher.feature.widgets.NativeWidgetSpec
@@ -73,7 +74,7 @@ private fun MemoryBoost(scope: NativeWidgetScope) {
     var explaining by remember { mutableStateOf(false) }
     MemoryBoostContent(
         state = state,
-        canCloseOtherApps = viewModel.canCloseOtherApps,
+        limit = viewModel.boostLimit,
         onBoost = {
             // In the picker the whole preview is the button that adds the widget.
             if (scope.isPreview) return@MemoryBoostContent
@@ -89,11 +90,14 @@ private fun MemoryBoost(scope: NativeWidgetScope) {
         },
         onInfo = { if (!scope.isPreview) explaining = true },
     )
-    if (explaining) {
+    val limit = viewModel.boostLimit
+    if (explaining && limit != null) {
         AlertDialog(
             onDismissRequest = { explaining = false },
-            title = { Text(stringResource(R.string.memory_boost_limits_title)) },
-            text = { Text(stringResource(R.string.memory_boost_limits)) },
+            title = {
+                Text(stringResource(if (limit == BoostLimit.MIUI) R.string.memory_boost_limits_miui_title else R.string.memory_boost_limits_title))
+            },
+            text = { Text(stringResource(if (limit == BoostLimit.MIUI) R.string.memory_boost_limits_miui else R.string.memory_boost_limits)) },
             confirmButton = { TextButton(onClick = { explaining = false }) { Text(stringResource(android.R.string.ok)) } },
         )
     }

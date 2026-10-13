@@ -54,6 +54,9 @@
     <string name="memory_nothing_freed">Nothing to free</string>
     <string name="memory_own_only">Limited on Android 14+</string>
     <string name="memory_own_only_info">What Boost can do</string>
+    <string name="memory_limited_miui">Limited on MIUI</string>
+    <string name="memory_boost_limits_miui_title">Boost on MIUI</string>
+    <string name="memory_boost_limits_miui">MIUI ignores an app\'s request to close other apps in the background, so Boost frees what Fox itself holds and shows how much memory that really freed: never an estimate. To close another app, open its app info and use Force stop.</string>
     <string name="memory_boost_limits_title">Boost on Android 14 and later</string>
     <string name="memory_boost_limits">Since Android 14, an app can no longer close other apps in the background. Boost frees what Fox itself holds and shows how much memory that really freed: never an estimate. To close another app, open its app info and use Force stop.</string>
     <string name="memory_recent_apps">Recent apps</string>
