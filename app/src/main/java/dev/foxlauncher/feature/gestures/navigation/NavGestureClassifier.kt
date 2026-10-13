@@ -47,7 +47,8 @@ sealed interface NavResult {
  *   [NavGestureConfig.holdMs]; the overlay drives [onTimer] at [holdDeadline]. It fires while the
  *   finger is still down, and the lift that follows does nothing.
  *
- * One finger: a second one going down drops the gesture.
+ * One finger: a second one going down drops the gesture. [progress] and [isArmed] describe the
+ * gesture as it runs, for the overlay's visual feedback.
  */
 class NavGestureClassifier(private val edge: NavEdge, private val config: NavGestureConfig) {
 
@@ -61,6 +62,8 @@ class NavGestureClassifier(private val edge: NavEdge, private val config: NavGes
     private var armed = false
     private var startX = 0f
     private var startY = 0f
+    private var lastX = 0f
+    private var lastY = 0f
 
     /** Where and when the finger last moved past slop while armed: the hold is measured from here. */
     private var anchorX = 0f
@@ -99,6 +102,20 @@ class NavGestureClassifier(private val edge: NavEdge, private val config: NavGes
     fun holdDeadline(): Long? =
         if (pointerId != null && !finished && armed && edge == NavEdge.BOTTOM) anchorMs + config.holdMs else null
 
+    /**
+     * How far the running swipe has gone towards its action: 0 at the edge or off its axis, 1 at the
+     * distance that arms it, more beyond. Null when no gesture runs, or it was dropped or already fired.
+     */
+    fun progress(): Float? {
+        if (pointerId == null || finished) return null
+        if (!isOnAxis(lastX, lastY)) return 0f
+        return (travel(lastX, lastY) / distance()).coerceAtLeast(0f)
+    }
+
+    /** The running swipe is far enough that lifting performs it. */
+    val isArmed: Boolean
+        get() = pointerId != null && !finished && armed
+
     fun onTimer(nowMs: Long): NavResult {
         val deadline = holdDeadline() ?: return NavResult.None
         if (nowMs < deadline) return NavResult.None
@@ -112,15 +129,19 @@ class NavGestureClassifier(private val edge: NavEdge, private val config: NavGes
         armed = false
         startX = sample.x
         startY = sample.y
+        lastX = sample.x
+        lastY = sample.y
         velocity.clear()
         velocity.add(sample.timeMs, sample.x, sample.y)
     }
 
     private fun move(sample: PointerSample): NavResult {
         velocity.add(sample.timeMs, sample.x, sample.y)
+        lastX = sample.x
+        lastY = sample.y
         if (finished) return NavResult.None
         val wasArmed = armed
-        armed = travel(sample) >= distance() && isOnAxis(sample)
+        armed = travel(sample.x, sample.y) >= distance() && isOnAxis(sample.x, sample.y)
         return when {
             armed && !wasArmed -> {
                 anchor(sample)
@@ -137,8 +158,8 @@ class NavGestureClassifier(private val edge: NavEdge, private val config: NavGes
     private fun lift(sample: PointerSample): NavResult {
         velocity.add(sample.timeMs, sample.x, sample.y)
         pointerId = null
-        if (finished || !isOnAxis(sample)) return NavResult.None
-        val travel = travel(sample)
+        if (finished || !isOnAxis(sample.x, sample.y)) return NavResult.None
+        val travel = travel(sample.x, sample.y)
         val fast = travel > config.touchSlopPx && inwardVelocity() >= config.flingVelocityPxPerS
         if (travel < distance() && !fast) return NavResult.None
         return NavResult.Recognized(if (edge == NavEdge.BOTTOM) NavAction.HOME else NavAction.BACK)
@@ -152,17 +173,17 @@ class NavGestureClassifier(private val edge: NavEdge, private val config: NavGes
 
     private fun distance() = if (edge == NavEdge.BOTTOM) config.homeDistancePx else config.backDistancePx
 
-    /** How far the finger went away from its edge, into the screen. */
-    private fun travel(sample: PointerSample): Float = when (edge) {
-        NavEdge.LEFT -> sample.x - startX
-        NavEdge.RIGHT -> startX - sample.x
-        NavEdge.BOTTOM -> startY - sample.y
+    /** How far the finger at ([x], [y]) went away from its edge, into the screen. */
+    private fun travel(x: Float, y: Float): Float = when (edge) {
+        NavEdge.LEFT -> x - startX
+        NavEdge.RIGHT -> startX - x
+        NavEdge.BOTTOM -> startY - y
     }
 
     /** Back: more sideways than vertical. Home: within 45° of straight up. */
-    private fun isOnAxis(sample: PointerSample): Boolean {
-        val dx = abs(sample.x - startX)
-        val dy = abs(sample.y - startY)
+    private fun isOnAxis(x: Float, y: Float): Boolean {
+        val dx = abs(x - startX)
+        val dy = abs(y - startY)
         return if (edge == NavEdge.BOTTOM) dy >= dx else dx > dy
     }
 

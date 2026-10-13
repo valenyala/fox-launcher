@@ -6,6 +6,7 @@ import dev.foxlauncher.feature.gestures.navigation.NavResult.Armed
 import dev.foxlauncher.feature.gestures.navigation.NavResult.None
 import dev.foxlauncher.feature.gestures.navigation.NavResult.Recognized
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -255,6 +256,84 @@ class NavGestureClassifierTest {
         assertNull(classifier.holdDeadline())
         clock += 1000
         assertEquals(None, classifier.onTimer(clock))
+    }
+
+    // --- progress, for the visual feedback ---
+
+    @Test
+    fun noProgressWithoutAGesture() {
+        on(NavEdge.LEFT)
+
+        assertNull(classifier.progress())
+        assertFalse(classifier.isArmed)
+    }
+
+    @Test
+    fun progressFollowsTheSwipeAndArmsAtOne() {
+        on(NavEdge.LEFT)
+        down(0, 5f, 500f)
+
+        move(0, 55f, 500f)
+        assertEquals(0.5f, classifier.progress())
+        assertFalse(classifier.isArmed)
+
+        move(0, 155f, 500f)
+        assertEquals(1.5f, classifier.progress())
+        assertTrue(classifier.isArmed)
+    }
+
+    @Test
+    fun progressCountsUpwardsFromTheBottom() {
+        on(NavEdge.BOTTOM)
+        down(0, 500f, 30f)
+
+        move(0, 500f, -30f)
+
+        assertEquals(0.5f, classifier.progress())
+    }
+
+    @Test
+    fun progressIsZeroOffTheAxisOrOutwards() {
+        on(NavEdge.RIGHT)
+        down(0, 35f, 500f)
+
+        move(0, 5f, 700f)
+        assertEquals(0f, classifier.progress())
+
+        move(0, 60f, 500f)
+        assertEquals(0f, classifier.progress())
+    }
+
+    @Test
+    fun progressEndsWithTheLift() {
+        on(NavEdge.LEFT)
+        swipe(dx = 150f, dy = 0f)
+
+        assertNull(classifier.progress())
+        assertFalse(classifier.isArmed)
+    }
+
+    @Test
+    fun progressEndsWhenRecentsFires() {
+        on(NavEdge.BOTTOM)
+        down(0, 500f, 30f)
+        moveTo(0, 500f, -200f, durationMs = 150)
+        clock += HOLD_MS
+        classifier.onTimer(clock)
+
+        assertNull(classifier.progress())
+        assertFalse(classifier.isArmed)
+    }
+
+    @Test
+    fun progressEndsWhenASecondFingerComes() {
+        on(NavEdge.LEFT)
+        down(0, 5f, 500f)
+        move(0, 155f, 500f)
+
+        down(1, 5f, 800f)
+
+        assertNull(classifier.progress())
     }
 
     // --- fingers and cancel ---

@@ -128,6 +128,10 @@ here contradicts what you remember, trust this file unless a device proves other
   after a show (the home pauses and resumes around each `onNewIntent`) then skipped the removal and left the strips up
   over the home. Test `view.parent != null` (set inside `addView`), and only put the strips up once the home has stayed
   away for 150 ms.
+- The feedback window is a full-screen `TYPE_ACCESSIBILITY_OVERLAY` with `FLAG_NOT_TOUCHABLE`, whose root view goes
+  `INVISIBLE` between gestures; an invisible root hides the window, so it costs no composition. Raw `MotionEvent`
+  coordinates are its own (it starts at the display corner, `fitInsetsTypes = 0`). A finger held still sends no
+  events, so the Recents hold ring redraws itself (`postInvalidateOnAnimation`) until the hold fires.
 - Emulator trap (fox-api33, 2026-10-13): switching the navigation mode with `cmd overlay enable-exclusive` froze the
   display for a rotation-style screenshot, and SurfaceFlinger's RenderEngine never came back from the QEMU GL pipe
   (`rcCreateSyncKHR`); system_server then looped on watchdog restarts and had not recovered after six minutes. The

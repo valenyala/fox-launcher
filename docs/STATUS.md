@@ -165,7 +165,7 @@ Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out o
 - 2026-10-13 — 3.8 checkpoint (user request: full-screen navigation in other apps). Swipe in from the left or right
   edge = Back, up from the bottom = Home, up and hold = Recents, through three invisible `TYPE_ACCESSIBILITY_OVERLAY`
   strips that `FoxAccessibilityService` adds (ADR-20, PLATFORM-NOTES G): 12 dp sides from 96 dp down, 14 dp bottom
-  over the navigation bar. Pure `NavGestureClassifier` (30 tests; Back 40 dp or a fast flick, Home 64 dp, Recents
+  over the navigation bar. Pure `NavGestureClassifier` (37 tests; Back 40 dp or a fast flick, Home 64 dp, Recents
   after a 250 ms hold past it, haptics on Back armed and on Recents). `NavigationGestures` keeps the strips up only
   while the switch is on (Gestures settings, default off), Fox's home is not resumed (`HomeVisibility`, counted
   from `HomeActivity.onResume/onPause`) and the screen is on and unlocked. Service description and disclosure now
@@ -178,6 +178,12 @@ Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out o
   passed 16/16 there (+3 for the switch). Both emulators are back on gesture navigation; the test run uninstalled Fox
   from fox-api33, so it was reinstalled and set as home (its data and service setting are fresh). Not handled:
   immersive apps and games keep the strips.
+  Visual feedback, asked for after the first build reached the POCO: `NavFeedbackView` in a fourth overlay window
+  (full-screen, takes no touches, hidden between gestures). A bubble slides in from the edge at the finger with an
+  arrow (Back) or circle (Home), turns accent once lifting would act, a ring fills during the Recents hold and the
+  glyph becomes a square when Recents opens; fired, it swells and fades, let go short, it slides out. Dark mode and
+  the system accent (API 31+, Fox orange before); a soft shadow for light backgrounds. Screenshots on fox-api37
+  (three-button, then back to gesture navigation): partial and armed Back, rising Home, hold ring.
 
 - 2026-10-13 — README (not a phase task). `README.md` for users: features, defaults, Boost limits per Android
   version, build and setup, MIUI notes, permissions, development pointers. Media in `docs/media/` (≈4.4 MB),

@@ -112,10 +112,12 @@ Read `PLATFORM-NOTES.md` section G before starting. `DECISIONS.md` ADR-4 and ADR
     by `HomeActivity.onResume/onPause`) and the screen is on and unlocked.
   - Switch "Navigation gestures in apps" in the Gestures settings (default off); service description and disclosure
     mention the strips.
+  - Visual feedback (user request, same day): `NavFeedbackView` in a fourth, non-touchable overlay window; the
+    classifier's `progress()`/`isArmed` drive it.
 - **Verify:** `NavGestureClassifierTest`; `GesturesContentTest` (switch); three-button emulator: Back from both
   sides, Home, swipe-and-hold Recents, strips gone on home and on the lock screen; gesture navigation: no double Back.
-- **Device checklist:** on the POCO F3 (three-button): Back from both edges, Home, Recents in several apps; edge taps
-  and the keyboard still usable; nothing on the home screen or the lock screen.
+- **Device checklist:** on the POCO F3 (three-button): Back from both edges, Home, Recents in several apps, each with
+  its bubble; edge taps and the keyboard still usable; nothing on the home screen or the lock screen.
 - **Done when:** the device checklist passes.
 
 ## Phase device checklist

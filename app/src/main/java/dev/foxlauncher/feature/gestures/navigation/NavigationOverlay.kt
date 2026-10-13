@@ -23,7 +23,8 @@ import dev.foxlauncher.feature.gestures.classifier.PointerSample
  * [NavGestureClassifier] and hands what it recognizes to [perform].
  *
  * A touch that starts on a strip never reaches the app below, so the strips are thin, and the side
- * ones start below the status bar and app bar. They draw nothing.
+ * ones start below the status bar and app bar. They draw nothing; a fourth, full-screen window that
+ * takes no touches shows each gesture as it runs ([NavFeedbackView]).
  */
 class NavigationOverlay(private val context: Context, private val perform: (NavAction) -> Unit) {
 
@@ -38,19 +39,21 @@ class NavigationOverlay(private val context: Context, private val perform: (NavA
         holdMs = HOLD_MS,
     )
 
+    private val feedback = NavFeedbackView(context, HOLD_MS).also { it.layoutParams = feedbackParams() }
+
     // The bottom strip goes last, so it is on top where the side strips reach down to it.
     private val strips = listOf(NavEdge.LEFT, NavEdge.RIGHT, NavEdge.BOTTOM).map { edge ->
-        EdgeStrip(context, edge, NavGestureClassifier(edge, config), ::onResult).also { it.layoutParams = params(edge) }
+        EdgeStrip(context, edge, NavGestureClassifier(edge, config), ::onResult, ::onTouched).also { it.layoutParams = params(edge) }
     }
 
     // A strip's parent is its window's ViewRootImpl from addView to removeView. isAttachedToWindow
     // only turns true at the first traversal, too late for a hide that follows a show at once.
 
     fun show() {
-        for (strip in strips) {
-            if (strip.parent != null) continue
+        for (view in listOf(feedback) + strips) {
+            if (view.parent != null) continue
             try {
-                windowManager.addView(strip, strip.layoutParams)
+                windowManager.addView(view, view.layoutParams)
             } catch (e: WindowManager.BadTokenException) {
                 // The service is being unbound: the system takes its windows with it.
                 FoxLog.w("Navigation strip not added", e)
@@ -60,8 +63,9 @@ class NavigationOverlay(private val context: Context, private val perform: (NavA
     }
 
     fun hide() {
-        for (strip in strips) {
-            if (strip.parent != null) windowManager.removeViewImmediate(strip)
+        feedback.reset()
+        for (view in strips + feedback) {
+            if (view.parent != null) windowManager.removeViewImmediate(view)
         }
     }
 
@@ -73,9 +77,42 @@ class NavigationOverlay(private val context: Context, private val perform: (NavA
             is NavResult.Recognized -> {
                 if (result.action == NavAction.RECENTS) strip.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                 FoxLog.d("Navigation gesture: ${result.action}")
+                feedback.end(result.action)
                 perform(result.action)
             }
         }
+    }
+
+    /** After each touch event on [strip], its classifier fed: the bubble follows, or goes. */
+    private fun onTouched(strip: EdgeStrip, event: MotionEvent) {
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) feedback.begin(strip.edge)
+        val classifier = strip.classifier
+        val progress = classifier.progress()
+        if (progress == null) {
+            feedback.end(null)
+        } else {
+            // The feedback window covers the screen from its corner, so raw coordinates are its own.
+            feedback.update(event.rawX, event.rawY, progress, classifier.isArmed, classifier.holdDeadline())
+        }
+    }
+
+    private fun feedbackParams() = WindowManager.LayoutParams(
+        WindowManager.LayoutParams.MATCH_PARENT,
+        WindowManager.LayoutParams.MATCH_PARENT,
+        WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+        WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+        PixelFormat.TRANSLUCENT,
+    ).apply {
+        gravity = Gravity.TOP or Gravity.LEFT
+        layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            fitInsetsTypes = 0
+            layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+        }
+        title = "Fox navigation feedback"
     }
 
     private fun params(edge: NavEdge): WindowManager.LayoutParams {
@@ -123,15 +160,17 @@ class NavigationOverlay(private val context: Context, private val perform: (NavA
 }
 
 /**
- * One strip: every touch on it goes to [classifier], with a timer for the hold that makes Recents.
- * It is a touch zone only, so it has nothing to click and nothing for accessibility to focus.
+ * One strip: every touch on it goes to [classifier], with a timer for the hold that makes Recents;
+ * [onResult] hears what the classifier says, [onTouched] each event once it has been fed. It is a
+ * touch zone only, so it has nothing to click and nothing for accessibility to focus.
  */
 @SuppressLint("ViewConstructor")
 private class EdgeStrip(
     context: Context,
     val edge: NavEdge,
-    private val classifier: NavGestureClassifier,
+    val classifier: NavGestureClassifier,
     private val onResult: (EdgeStrip, NavResult) -> Unit,
+    private val onTouched: (EdgeStrip, MotionEvent) -> Unit,
 ) : View(context) {
 
     private val holdCheck = Runnable { onResult(this, classifier.onTimer(SystemClock.uptimeMillis())) }
@@ -144,6 +183,7 @@ private class EdgeStrip(
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
         event.forEachSample { onResult(this, classifier.feed(it)) }
+        onTouched(this, event)
         removeCallbacks(holdCheck)
         // MotionEvent times are uptime, the clock the timer runs on.
         classifier.holdDeadline()?.let { postDelayed(holdCheck, (it - SystemClock.uptimeMillis()).coerceAtLeast(0)) }
