@@ -13,6 +13,8 @@
         tools:ignore="ProtectedPermissions" />
     <!-- The static wallpaper fallback when the Fox live wallpaper is not applied (task 4.5). -->
     <uses-permission android:name="android.permission.SET_WALLPAPER" />
+    <!-- Boost on Android 13 and lower: close other apps' background processes (task 5.4, ADR-5). Normal permission. -->
+    <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
     <!-- Special access the user grants in Settings: the memory detail widget's recent apps (task 5.3). -->
     <uses-permission
         android:name="android.permission.PACKAGE_USAGE_STATS"

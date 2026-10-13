@@ -85,7 +85,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] 5.1 Native widget framework (POCO F3 2026-10-13: Clock added from the picker, resized 4×1→5×2→2×1, moved, removed)
 - [x] 5.2 MemoryStats + MemInfoParser tests (no UI: JVM tests on a POCO F3 and an emulator sample, instrumented on fox-api33/37)
 - [x] 5.3 RAM gauge, boost and detail widgets (POCO F3 2026-10-13: gauge and details read right, Boost placed, moved and tapped; recent apps verified on emulators only, usage access not granted on the phone)
-- [ ] 5.4 BoostStrategy per API level
+- [ ] 5.4 BoostStrategy per API level — emulators pass; POCO check pending
 - [ ] 5.5 (stretch) AppWidgetProvider export
 - [ ] Device checklist passed on: —
 
@@ -160,6 +160,16 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-13 — 5.4 checkpoint. `BoostStrategy` (name, `boost()` → apps asked to close). `SelfTrimStrategy` (always:
+  `IconCache.clearMemory`, Coil memory cache, GC). `LegacyKillStrategy` (API ≤ 33: `killBackgroundProcesses` for
+  launchable non-system apps minus `ProtectedApps`: Fox, the app in front from usage events when allowed, the keyboard
+  from `DEFAULT_INPUT_METHOD`, default dialer and SMS, `ENABLED_ACCESSIBILITY_SERVICES`, the live wallpaper; music
+  with a foreground service is out of this API's reach anyway). `MemoryBooster` is the composite: strategies from
+  `BoostStrategies.forSdk`, available memory before / after (+500 ms), clamped at 0. `KILL_BACKGROUND_PROCESSES`
+  (normal) in the manifest. Pure `BoostTargets` (choose, component and accessibility-setting parsers) and
+  `BoostStrategies` with 5 tests. fox-api33 (no third-party apps): both strategies ran, 0 apps, −3 MB measured →
+  "Nothing to free"; fox-api37: self trim only.
 
 - 2026-10-13 — 5.3 checkpoint. Three native widgets (`feature/memory/widgets`): **RAM gauge** (1×1..3×2, default
   2×1: ring of memory in use, % and "x.x GB free"; warning colour from 90 %), **Boost** (1×1: rocket, lifts while
