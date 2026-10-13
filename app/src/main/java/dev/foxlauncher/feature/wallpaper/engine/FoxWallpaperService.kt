@@ -40,7 +40,7 @@ import kotlinx.coroutines.withContext
  * `activeWallpaperEntryId` (the first enabled entry until the rotation picks one) and crossfades
  * to each new one on a [Choreographer] loop, so a change never flashes. Images are decoded off the
  * main thread at the surface size, a little wider for parallax unless the user turned it off
- * (task 4.7).
+ * (task 4.7). Frames go through Fox's own [WallpaperRenderer], which survives MIUI swapping the surface.
  *
  * It also runs intervals under 15 minutes (task 4.4), on a timer only while the wallpaper is visible.
  */
@@ -63,6 +63,10 @@ class FoxWallpaperService : WallpaperService() {
 
         /** Tells engines apart in the log: the system may run a preview engine beside the real one. */
         private val name = "Wallpaper engine ${Integer.toHexString(System.identityHashCode(this))}"
+        private val renderer = WallpaperRenderer(name)
+
+        /** Whether the last frame reached the screen; a change is logged once, not every frame. */
+        private var framesShown = true
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
         private val paint = Paint(Paint.FILTER_BITMAP_FLAG)
         private var surfaceW = 0
@@ -115,11 +119,13 @@ class FoxWallpaperService : WallpaperService() {
         override fun onSurfaceCreated(holder: SurfaceHolder) {
             super.onSurfaceCreated(holder)
             FoxLog.d("$name: surface created")
+            renderer.setSurface(holder.surface)
         }
 
         override fun onSurfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
             super.onSurfaceChanged(holder, format, width, height)
             FoxLog.d("$name: surface ${width}x$height")
+            renderer.setSurface(holder.surface)
             if (width == surfaceW && height == surfaceH) return
             surfaceW = width
             surfaceH = height
@@ -129,6 +135,7 @@ class FoxWallpaperService : WallpaperService() {
 
         override fun onSurfaceRedrawNeeded(holder: SurfaceHolder) {
             super.onSurfaceRedrawNeeded(holder)
+            renderer.setSurface(holder.surface)
             draw()
         }
 
@@ -146,6 +153,7 @@ class FoxWallpaperService : WallpaperService() {
             }
             surfaceW = 0
             surfaceH = 0
+            renderer.setSurface(null)
             super.onSurfaceDestroyed(holder)
         }
 
@@ -177,6 +185,7 @@ class FoxWallpaperService : WallpaperService() {
             incoming?.recycle()
             current = null
             incoming = null
+            renderer.destroy()
             super.onDestroy()
         }
 
@@ -237,7 +246,7 @@ class FoxWallpaperService : WallpaperService() {
                 finishFade()
                 notifyColorsChanged()
             } else {
-                draw(WallpaperGeometry.crossfadeAlpha(elapsedMs, fadeMs))
+                draw(WallpaperGeometry.crossfadeAlpha(elapsedMs, fadeMs), frameTimeNanos)
                 Choreographer.getInstance().postFrameCallback(this)
             }
         }
@@ -251,25 +260,16 @@ class FoxWallpaperService : WallpaperService() {
             draw()
         }
 
-        private fun draw(incomingAlpha: Int = 0) {
+        private fun draw(incomingAlpha: Int = 0, vsyncNanos: Long = System.nanoTime()) {
             if (surfaceW == 0) return
-            val holder = surfaceHolder
-            if (!holder.surface.isValid) {
-                FoxLog.w("$name: surface not valid, frame skipped")
-                return
-            }
-            val canvas = try {
-                holder.lockHardwareCanvas()
-            } catch (e: IllegalStateException) {
-                FoxLog.w("Wallpaper surface not ready", e)
-                return
-            } ?: return
-            try {
+            val shown = renderer.draw(surfaceW, surfaceH, vsyncNanos) { canvas ->
                 canvas.drawColor(Color.BLACK)
                 current?.let { drawImage(canvas, it, OPAQUE) }
                 incoming?.let { if (incomingAlpha > 0) drawImage(canvas, it, incomingAlpha) }
-            } finally {
-                holder.unlockCanvasAndPost(canvas)
+            }
+            if (shown != framesShown) {
+                framesShown = shown
+                if (shown) FoxLog.d("$name: frames reach the screen again") else FoxLog.w("$name: frames are not reaching the screen")
             }
         }
 

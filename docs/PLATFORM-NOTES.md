@@ -122,8 +122,15 @@ here contradicts what you remember, trust this file unless a device proves other
 
 ## W. Wallpaper
 
-- Live wallpaper: subclass `WallpaperService`, return an `Engine` from `onCreateEngine()`. Draw with
-  `surfaceHolder.lockHardwareCanvas()` (API 26+) / `unlockCanvasAndPost`. Register in manifest with
+- Live wallpaper: subclass `WallpaperService`, return an `Engine` from `onCreateEngine()`. Do **not** draw with
+  `surfaceHolder.lockHardwareCanvas()` on MIUI (POCO F3, 2026-10-13): right after the system (re)binds the service
+  it swaps the wallpaper's surface (`WallpaperService: Wallpaper has updated the surface`), and on some starts the
+  canvas lock's hidden renderer is left with no surface. Every later frame is dropped (`OpenGLRenderer: The surface
+  had destroyed before draw`, one per frame) while `Surface.isValid()` stays true and SurfaceFlinger keeps the first
+  frame: the wallpaper freezes. Fox draws through its own `HardwareRenderer` + `RenderNode` (public since API 29):
+  it binds `holder.surface` again on every surface callback, and when `syncAndDraw()` reports
+  `SYNC_LOST_SURFACE_REWARD_IF_FOUND` it binds again and redraws the frame (`WallpaperRenderer`).
+  (`Surface.getGenerationId()` would detect the swap but is hidden API.) Register in manifest with
   `android.service.wallpaper.WallpaperService` action, `BIND_WALLPAPER` permission, and `res/xml/wallpaper.xml`
   (`<wallpaper android:settingsActivity=... android:thumbnail=... android:showMetadataInPreview="true"/>`).
 - Apply from the app: `Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER).putExtra(EXTRA_LIVE_WALLPAPER_COMPONENT, ComponentName(...))`

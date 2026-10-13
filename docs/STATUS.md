@@ -161,6 +161,17 @@ Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out o
 
 ## Session notes
 
+- 2026-10-13 — 4.7 POCO round 2: **the freeze came back** with the same build, on a fresh start before any touch
+  (first frame at 00:49:31, dead-surface lines right after): a race on MIUI's surface swap at bind time, not an
+  action. `lockHardwareCanvas` keeps a hidden renderer Fox cannot see or fix, so the engine now draws through its own
+  `WallpaperRenderer` (`HardwareRenderer` + `RenderNode`): rebinds the surface on every surface callback and, when a
+  frame comes back `SYNC_LOST_SURFACE_REWARD_IF_FOUND`, rebinds and redraws it (logged once: "lost its surface:
+  binding it again"; "frames are not reaching the screen" if even that fails). Instrumented `WallpaperRendererTest` 3
+  (a red frame read back through an `ImageReader`; no surface; released surface) on fox-api33/37. Also fixed: after
+  the source of the picture on screen went away, the next change showed the fallback picture again
+  (`WallpaperPlaylist.onScreen`, +3 tests). Round-2 findings: removing sources and the crossfade setting work;
+  "Change when switching pages" was turned off where "Move with the pages" (parallax) was meant.
+
 - 2026-10-13 — 4.7 POCO round 1: folder (+24), picked picture, thumbnail taps and shuffle all reached the engine, but
   **the wallpaper never changed on screen**: every crossfade frame logged MIUI HWUI's `The surface had destroyed before
   draw` (≈99 per 800 ms fade) while SurfaceFlinger kept the engine's first frame. Not reproduced after reinstalling: a
