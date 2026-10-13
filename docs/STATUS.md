@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 4 — Wallpaper rotation (Phase 3 done 2026-10-12; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists)
-**Next task:** 4.8 Memory and performance budget (2.8 still deferred)
+**Next task:** 4.9 URI permission resilience (2.8 still deferred)
 
 ## Environment facts (verified 2026-09-17)
 
@@ -77,7 +77,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] 4.5 Static fallback (POCO F3 2026-10-12: page change, Next now, unlock with a MIUI static wallpaper; gesture prompt)
 - [x] 4.6 Lock screen handling (POCO F3 2026-10-12: switch sets the lock image with MIUI Wallpaper Carousel off; Fox live on home and lock shows on the MIUI lock screen)
 - [x] 4.7 Wallpaper settings UI (POCO F3 2026-10-13: folder, picked pictures, thumbnail tap, shuffle, crossfade, parallax, remove, preview "Settings…"; engine renderer fix)
-- [ ] 4.8 Memory and performance budget — numbers recorded (POCO F3 2026-10-13); awaiting confirmation
+- [x] 4.8 Memory and performance budget (POCO F3 2026-10-13: no memory growth over 20 changes; frame work avg 1.1–1.8 ms, worst 8.7 ms accepted by the user, 0 late)
 - [ ] 4.9 URI permission resilience
 - [ ] Device checklist passed on: —
 
