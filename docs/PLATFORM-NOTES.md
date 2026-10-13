@@ -117,6 +117,21 @@ here contradicts what you remember, trust this file unless a device proves other
   Boost speed → Lock apps, a clear left Fox's process and its accessibility service running. Fox has no recents card
   to lock (a launcher excludes itself from recents), so that menu is the way; the Gestures screen says so on Xiaomi
   phones (`Build.MANUFACTURER`, which Redmi and POCO also report).
+- **Navigation gestures in other apps** (task 3.8, ADR-20; measured on fox-api33/37, 2026-10-13). The strips are
+  `TYPE_ACCESSIBILITY_OVERLAY` windows from the service's own `WindowManager`: no extra permission, above apps and the
+  system bars. Flags `NOT_FOCUSABLE | NOT_TOUCH_MODAL | LAYOUT_IN_SCREEN | LAYOUT_NO_LIMITS`, and on API 30+
+  `fitInsetsTypes = 0` so the bottom strip lies over the navigation bar, where a swipe up starts. Frames seen
+  on a 1080×2400 three-button emulator: bottom `[0,2364][1080,2400]`, sides 31 px wide from y 252 down. A window
+  keeps the whole gesture once it has the DOWN, so a 12 dp strip still sees a long swipe. With gesture navigation
+  the system takes edge and bottom swipes before the strips' classifier finishes; nothing fires twice.
+- `View.isAttachedToWindow` turns true only at the window's first traversal, a frame after `addView`. A hide right
+  after a show (the home pauses and resumes around each `onNewIntent`) then skipped the removal and left the strips up
+  over the home. Test `view.parent != null` (set inside `addView`), and only put the strips up once the home has stayed
+  away for 150 ms.
+- Emulator trap (fox-api33, 2026-10-13): switching the navigation mode with `cmd overlay enable-exclusive` froze the
+  display for a rotation-style screenshot, and SurfaceFlinger's RenderEngine never came back from the QEMU GL pipe
+  (`rcCreateSyncKHR`); system_server then looped on watchdog restarts and had not recovered after six minutes. The
+  same switch had worked twice before on that emulator and once on fox-api37. Restart the emulator when it happens.
 - Haptics: `View.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS / GESTURE_START / CONFIRM)`; in Compose use
   `LocalHapticFeedback`.
 

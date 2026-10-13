@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -50,6 +52,9 @@ class GesturesContentTest {
     private var resets = 0
     private var settingsOpened = 0
     private var restarts = 0
+
+    /** The fake store's navigation gestures switch; null until the screen writes it. */
+    private var navigationGestures: Boolean? = null
 
     @Test
     fun choosingLockScreenForDoubleTapWritesIt() {
@@ -177,23 +182,61 @@ class GesturesContentTest {
         composeRule.onNodeWithText(string(R.string.gestures_miui_lock_hint)).assertDoesNotExist()
     }
 
+    @Test
+    fun turningNavigationGesturesOnWritesIt() {
+        setContent()
+
+        composeRule.onNodeWithTag(GesturesTestTags.NAVIGATION_SWITCH).performScrollTo().assertIsOff().performClick()
+
+        assertEquals(true, navigationGestures)
+        composeRule.onNodeWithTag(ACCESSIBILITY_DISCLOSURE_TAG).assertDoesNotExist()
+    }
+
+    @Test
+    fun turningNavigationGesturesOffWritesIt() {
+        setContent(navigation = true)
+
+        composeRule.onNodeWithTag(GesturesTestTags.NAVIGATION_SWITCH).performScrollTo().assertIsOn().performClick()
+
+        assertEquals(false, navigationGestures)
+    }
+
+    @Test
+    fun turningNavigationGesturesOnWithTheServiceOffShowsTheDisclosure() {
+        setContent(accessibility = AccessibilityStatus.OFF)
+
+        composeRule.onNodeWithTag(GesturesTestTags.NAVIGATION_SWITCH).performScrollTo().performClick()
+
+        assertEquals(true, navigationGestures)
+        composeRule.onNodeWithTag(ACCESSIBILITY_DISCLOSURE_TAG).assertIsDisplayed()
+    }
+
     private fun setContent(
         accessibility: AccessibilityStatus = AccessibilityStatus.ON,
         autoRestart: Boolean = false,
         miuiLockHint: Boolean = false,
+        navigation: Boolean = false,
     ) {
         composeRule.setContent {
             FoxTheme {
                 // The store as it is when the screen opens; tests check the store, not a recomposed list.
                 val rows = store.map { (type, action) -> GestureRow(type, action) }.toImmutableList()
                 GesturesContent(
-                    state = GesturesUiState(rows = rows, apps = persistentListOf(camera, chrome), accessibility = accessibility, autoRestart = autoRestart, showMiuiLockHint = miuiLockHint),
+                    state = GesturesUiState(
+                        rows = rows,
+                        apps = persistentListOf(camera, chrome),
+                        accessibility = accessibility,
+                        autoRestart = autoRestart,
+                        showMiuiLockHint = miuiLockHint,
+                        navigationGestures = navigation,
+                    ),
                     onSetGesture = { type, action -> store[type] = action },
                     onReset = { resets++ },
                     loadShortcuts = { entry -> if (entry == chrome) listOf(incognito) else emptyList() },
                     onOpenAccessibilitySettings = { settingsOpened++ },
                     onBack = {},
                     onRestartService = { restarts++ },
+                    onSetNavigationGestures = { navigationGestures = it },
                     iconContent = { Box(Modifier.size(40.dp)) },
                 )
             }

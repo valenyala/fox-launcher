@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.text.input.rememberTextFieldState
@@ -30,6 +31,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -65,6 +67,7 @@ object GesturesTestTags {
     const val ACTION_PICKER = "gestures_action_picker"
     const val APP_CHOOSER = "gestures_app_chooser"
     const val SHORTCUT_PICKER = "gestures_shortcut_picker"
+    const val NAVIGATION_SWITCH = "gestures_navigation_switch"
 }
 
 @Composable
@@ -89,6 +92,7 @@ fun GesturesScreen(
         onBack = onBack,
         modifier = modifier,
         onRestartService = viewModel::restartService,
+        onSetNavigationGestures = viewModel::setNavigationGestures,
     )
 }
 
@@ -96,7 +100,9 @@ fun GesturesScreen(
  * Every gesture with its action (task 3.5). Tapping one opens the action picker; "Open an app…"
  * goes through an app chooser, "Open an app shortcut…" through the chooser and then that app's
  * shortcuts. Actions that need the accessibility service carry a shield, and the service's status
- * heads the list with a way to turn it on.
+ * heads the list with a way to turn it on. Above the home gestures, the switch for the navigation
+ * gestures in other apps (task 3.8); turning it on while the service is not running shows how to
+ * turn the service on.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -109,6 +115,7 @@ fun GesturesContent(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     onRestartService: () -> Unit = {},
+    onSetNavigationGestures: (Boolean) -> Unit = {},
     iconContent: @Composable (AppEntry) -> Unit = { AppIcon(it, ROW_ICON_SIZE.dp) },
 ) {
     val appsByKey = remember(state.apps) { state.apps.associateBy { it.key } }
@@ -158,6 +165,17 @@ fun GesturesContent(
                     )
                 }
                 item { AutoRestartRow(state.autoRestart, state.showMiuiLockHint) }
+                item {
+                    val serviceOn = state.accessibility == AccessibilityStatus.ON
+                    NavigationGesturesRow(
+                        isOn = state.navigationGestures,
+                        accessibilityOn = serviceOn,
+                        onToggle = { on ->
+                            onSetNavigationGestures(on)
+                            if (on && !serviceOn) showDisclosure = true
+                        },
+                    )
+                }
                 items(state.rows, key = { it.type }) { row ->
                     ListItem(
                         headlineContent = { Text(stringResource(row.type.labelRes())) },
@@ -282,6 +300,26 @@ private fun AutoRestartRow(isOn: Boolean, showMiuiLockHint: Boolean) {
                 }
             }
         },
+    )
+}
+
+/** The switch for Back, Home and Recents from the screen edges in other apps (task 3.8). */
+@Composable
+private fun NavigationGesturesRow(isOn: Boolean, accessibilityOn: Boolean, onToggle: (Boolean) -> Unit) {
+    ListItem(
+        headlineContent = { Text(stringResource(R.string.gestures_navigation)) },
+        supportingContent = { Text(stringResource(R.string.gestures_navigation_summary)) },
+        trailingContent = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                ShieldIcon(accessibilityOn)
+                Spacer(Modifier.width(12.dp))
+                // The row handles the toggle, so the switch itself is display-only.
+                Switch(checked = isOn, onCheckedChange = null)
+            }
+        },
+        modifier = Modifier
+            .toggleable(value = isOn, role = Role.Switch, onValueChange = onToggle)
+            .testTag(GesturesTestTags.NAVIGATION_SWITCH),
     )
 }
 

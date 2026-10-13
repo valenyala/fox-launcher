@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 6 — App widgets (Phase 5 done 2026-10-13, its boost checklist item blocked by MIUI until Phase 9; Phase 4 owes three checklist items, deferred; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists)
-**Next task:** 6.1 (see docs/phases/06-app-widgets.md) (2.8 still deferred)
+**Next task:** 3.8's POCO check (added at the user's request, see docs/phases/03-gestures.md), then 6.1 (see docs/phases/06-app-widgets.md) (2.8 still deferred)
 
 ## Environment facts (verified 2026-09-17)
 
@@ -67,6 +67,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] 3.5 Gesture settings UI (POCO F3 2026-10-12: remapping to recents, an app, notifications; reset; Home closes settings)
 - [x] 3.6 System gesture coexistence, predictive back, home intent (gesture navigation: fox-api33/37; three-button: POCO F3, 2026-10-12)
 - [x] 3.7 Drag-follow drawer opening (POCO F3 2026-10-12)
+- [ ] 3.8 Navigation gestures in other apps (user request 2026-10-13, ADR-20): fox-api33/37 pass; **owed:** the POCO F3 checklist
 - [x] Device checklist passed on: POCO F3 (three-button) + fox-api33/37 (gesture navigation), 2026-10-12 — items covered across 3.3–3.7; item 3 done as pinch out → Open app: Camera
 
 ## Phase 4 — Wallpaper rotation
@@ -160,6 +161,22 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-13 — 3.8 checkpoint (user request: full-screen navigation in other apps). Swipe in from the left or right
+  edge = Back, up from the bottom = Home, up and hold = Recents, through three invisible `TYPE_ACCESSIBILITY_OVERLAY`
+  strips that `FoxAccessibilityService` adds (ADR-20, PLATFORM-NOTES G): 12 dp sides from 96 dp down, 14 dp bottom
+  over the navigation bar. Pure `NavGestureClassifier` (30 tests; Back 40 dp or a fast flick, Home 64 dp, Recents
+  after a 250 ms hold past it, haptics on Back armed and on Recents). `NavigationGestures` keeps the strips up only
+  while the switch is on (Gestures settings, default off), Fox's home is not resumed (`HomeVisibility`, counted
+  from `HomeActivity.onResume/onPause`) and the screen is on and unlocked. Service description and disclosure now
+  name the strips. Emulators switched to three-button for the check: Back from both edges, Home, swipe-and-hold
+  Recents (fox-api33/37); strips gone on Fox's home, on screen off and on the lock screen, back after unlock
+  (fox-api33); with gesture navigation the system takes the swipes and Fox fires nothing (fox-api33). **Found and
+  fixed:** the home pauses and resumes around `onNewIntent`, and the hide that followed the show by 5 ms skipped
+  strips not yet "attached", leaving them over the home (fox-api37). `GesturesContentTest` +3 (the switch) compiled
+  but **not run**: fox-api33 then hung (SurfaceFlinger stuck in the emulator's GL pipe after a nav-mode switch,
+  PLATFORM-NOTES G) and needs a restart, and Compose tests do not run on API 37. fox-api37 is back on gesture
+  navigation; fox-api33 was last set to three-button. Not handled: immersive apps and games keep the strips.
 
 - 2026-10-13 — README (not a phase task). `README.md` for users: features, defaults, Boost limits per Android
   version, build and setup, MIUI notes, permissions, development pointers. Media in `docs/media/` (≈4.4 MB),

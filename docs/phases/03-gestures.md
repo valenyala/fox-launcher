@@ -5,7 +5,7 @@ actions through our accessibility service.
 **Prereqs:** Phase 2 complete.
 **Definition of done:** the gesture settings screen lists all gestures; each can be set to any action; defaults work out of
 the box; system actions work once the service is enabled and prompt cleanly when it is not; classifier tests are exhaustive.
-**Out of scope:** per-app gestures, macros (Phase 9).
+**Out of scope:** per-app gestures, macros (Phase 9). Navigation gestures in other apps came later, as 3.8.
 
 Read `PLATFORM-NOTES.md` section G before starting. `DECISIONS.md` ADR-4 and ADR-10 apply.
 
@@ -98,6 +98,25 @@ Read `PLATFORM-NOTES.md` section G before starting. `DECISIONS.md` ADR-4 and ADR
   fire on UP only.
 - **Verify:** classifier tests for the drag lifecycle.
 - **Done when:** the drawer follows the finger and snaps correctly.
+
+## 3.8 Navigation gestures in other apps (added at the user's request, 2026-10-13; ADR-20)
+
+- **Why:** the user wants full-screen navigation in other apps: swipe in from the left or right edge = Back, swipe up
+  from the bottom = Home, swipe up and hold = Recents.
+- **Do:**
+  - `feature/gestures/navigation/NavGestureClassifier` (pure): per edge, Back on a mostly horizontal swipe inwards past
+    a distance or fast; Home on a swipe up within 45°, same rule; Recents when a bottom swipe past the Home distance
+    holds within slop for `holdMs` (fires while the finger is down; the lift then does nothing). One finger only.
+  - `NavigationOverlay`: three `TYPE_ACCESSIBILITY_OVERLAY` strips added by `FoxAccessibilityService` (PLATFORM-NOTES G).
+  - `NavigationGestures`: strips up only while the setting is on, Fox's home is not in front (`HomeVisibility`, fed
+    by `HomeActivity.onResume/onPause`) and the screen is on and unlocked.
+  - Switch "Navigation gestures in apps" in the Gestures settings (default off); service description and disclosure
+    mention the strips.
+- **Verify:** `NavGestureClassifierTest`; `GesturesContentTest` (switch); three-button emulator: Back from both
+  sides, Home, swipe-and-hold Recents, strips gone on home and on the lock screen; gesture navigation: no double Back.
+- **Device checklist:** on the POCO F3 (three-button): Back from both edges, Home, Recents in several apps; edge taps
+  and the keyboard still usable; nothing on the home screen or the lock screen.
+- **Done when:** the device checklist passes.
 
 ## Phase device checklist
 

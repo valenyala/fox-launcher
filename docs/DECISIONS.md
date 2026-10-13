@@ -153,6 +153,23 @@ ordinary task (seen on API 37); that instance hands the request to the home inst
 `EXTRA_OPEN_SETTINGS` and finishes before composing anything, so a launcher never runs twice. The hand-over is not
 counted as a Home press. Back from these settings goes home, not back to the preview.
 
+## ADR-20 Navigation gestures in other apps are accessibility-overlay strips
+The user asked for full-screen navigation in other apps (2026-10-13): swipe in from the left or right edge = Back,
+up from the bottom = Home, up and hold = Recents. The POCO F3 runs three-button navigation, so Android's own gesture
+navigation is not there to do it. A third-party app
+sees touches in other apps only through windows of its own, and the only such window that needs no further
+permission is `TYPE_ACCESSIBILITY_OVERLAY`, added by an accessibility service. So Fox's existing service (ADR-4)
+puts three invisible strips on the screen edges (12 dp sides from 96 dp down, 14 dp bottom, over the navigation bar),
+classifies their touches with a pure `NavGestureClassifier`, and performs `GLOBAL_ACTION_BACK/HOME/RECENTS`.
+Consequences, all accepted: a touch that starts on a strip never reaches the app below (edge taps, the outer few dp
+of the keyboard's edge keys and of the navigation buttons); there is no Back arrow, only a haptic tick; the strips
+are up only while the switch is on (default off), another app is in front and the screen is unlocked. With Android's
+gesture navigation the system takes the same swipes first and Fox performs nothing (fox-api33: one Back, no Fox
+action). Rejected: touch exploration and gesture detection (`FLAG_REQUEST_TOUCH_EXPLORATION_MODE`) change how
+every touch works; `SYSTEM_ALERT_WINDOW` overlays are another permission for the same windows; reading the window
+list to step aside for the keyboard needs `canRetrieveWindowContent`, which the disclosure rules out. The service
+still asks for no events and reads no content; its description and the disclosure now name the strips.
+
 ## Dependency log
 (append `- <lib> <version> — reason` when adding a dependency)
 - AGP (com.android.application) 9.4.0 — build system; built-in Kotlin, see ADR-11.

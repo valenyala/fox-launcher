@@ -40,6 +40,8 @@ data class GesturesUiState(
     val autoRestart: Boolean = false,
     /** A Xiaomi phone, whose "clear recent apps" closes Fox unless it is locked (PLATFORM-NOTES G). */
     val showMiuiLockHint: Boolean = false,
+    /** Back, Home and Recents from the screen edges in other apps (task 3.8). */
+    val navigationGestures: Boolean = false,
 )
 
 /** Gesture settings (task 3.5): every gesture with its action, editable. */
@@ -59,13 +61,15 @@ class GesturesViewModel @Inject constructor(
         appRepository.apps,
         statusChecks,
         FoxAccessibilityService.connected,
-    ) { map, apps, _, _ ->
+        settings.navigationGestures,
+    ) { map, apps, _, _, navigationGestures ->
         GesturesUiState(
             rows = EDITABLE_GESTURES.map { GestureRow(it, map[it] ?: GestureAction.None) }.toImmutableList(),
             apps = apps,
             accessibility = systemActions.status,
             autoRestart = accessibilityRepair.isAvailable,
             showMiuiLockHint = IS_XIAOMI,
+            navigationGestures = navigationGestures,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), GesturesUiState())
 
@@ -83,6 +87,10 @@ class GesturesViewModel @Inject constructor(
 
     fun setGesture(type: GestureType, action: GestureAction) {
         viewModelScope.launch { settings.setGesture(type, action) }
+    }
+
+    fun setNavigationGestures(enabled: Boolean) {
+        viewModelScope.launch { settings.setNavigationGestures(enabled) }
     }
 
     fun resetGestures() {

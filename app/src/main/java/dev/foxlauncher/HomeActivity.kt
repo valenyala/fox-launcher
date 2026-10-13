@@ -40,6 +40,7 @@ import dev.foxlauncher.feature.gestures.system.AccessibilityDisclosureDialog
 import dev.foxlauncher.feature.home.HomeRoot
 import dev.foxlauncher.feature.home.HomeScreen
 import dev.foxlauncher.feature.home.HomeViewModel
+import dev.foxlauncher.feature.home.HomeVisibility
 import dev.foxlauncher.feature.home.isDefaultLauncher
 import dev.foxlauncher.feature.home.requestDefaultLauncherRole
 import dev.foxlauncher.feature.settings.GesturesScreen
@@ -65,6 +66,8 @@ class HomeActivity : ComponentActivity() {
     @Inject lateinit var iconCache: IconCache
 
     @Inject lateinit var nativeWidgets: NativeWidgetRegistry
+
+    @Inject lateinit var homeVisibility: HomeVisibility
 
     /** 120 Hz while touched; MIUI would otherwise hold Fox at 60 Hz (see [HighRefreshRate]). */
     private val refreshRate = HighRefreshRate(this)
@@ -318,8 +321,14 @@ class HomeActivity : ComponentActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        homeVisibility.onResumed()
+    }
+
     override fun onPause() {
         super.onPause()
+        homeVisibility.onPaused()
         refreshRate.releaseNow()
     }
 

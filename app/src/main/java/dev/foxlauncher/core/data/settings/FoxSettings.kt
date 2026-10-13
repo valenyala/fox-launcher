@@ -92,6 +92,17 @@ class FoxSettings @Inject constructor(
     }
 
     /**
+     * Back, Home and Recents by swiping from the screen edges in other apps (task 3.8); off until the
+     * user turns it on, since it needs the accessibility service and takes the edges' touches.
+     */
+    val navigationGestures: Flow<Boolean> = dataStore.data.map { it[Keys.NAVIGATION_GESTURES] ?: false }
+
+    suspend fun setNavigationGestures(enabled: Boolean) = withContext(io) {
+        dataStore.edit { it[Keys.NAVIGATION_GESTURES] = enabled }
+        Unit
+    }
+
+    /**
      * The wallpaper entry the live wallpaper shows (task 4.3); null until the rotation first picks
      * one. Everything that changes the wallpaper writes this, and only the engine draws it.
      */
@@ -192,6 +203,7 @@ class FoxSettings @Inject constructor(
         val DOCK_SLOTS = intPreferencesKey("dock_slots")
         val SHOW_HOME_LABELS = booleanPreferencesKey("show_home_labels")
         val GESTURE_MAP = stringPreferencesKey("gesture_map")
+        val NAVIGATION_GESTURES = booleanPreferencesKey("navigation_gestures")
         val ACTIVE_WALLPAPER = longPreferencesKey("wallpaper_active_entry")
         val CROSSFADE_MS = intPreferencesKey("wallpaper_crossfade_ms")
         val WALLPAPER_CHANGED_AT = longPreferencesKey("wallpaper_changed_at")

@@ -26,9 +26,9 @@
         <item quantity="other">The folder and the %1$d apps in it leave the home screen. The apps stay installed.</item>
     </plurals>
     <string name="accessibility_service_label">Fox gestures</string>
-    <string name="accessibility_service_description">Lets Fox Launcher open notifications and quick settings, lock the screen, show recent apps, the power menu or take a screenshot when you make a home-screen gesture. It does not read what is on your screen.</string>
+    <string name="accessibility_service_description">Lets Fox Launcher open notifications and quick settings, lock the screen, show recent apps, the power menu or take a screenshot when you make a home-screen gesture. If you turn on navigation gestures, it also places thin invisible strips along the screen edges in other apps, to go back, home or to recent apps when you swipe from them. It does not read what is on your screen.</string>
     <string name="accessibility_disclosure_title">Allow system gestures?</string>
-    <string name="accessibility_disclosure">Fox Launcher uses the accessibility service only to perform system actions, such as opening notifications when you gesture. It does not read screen content. Turn on \"Fox gestures\" in the accessibility settings.</string>
+    <string name="accessibility_disclosure">Fox Launcher uses the accessibility service only to perform system actions, such as opening notifications when you gesture, and, if you turn on navigation gestures, to catch swipes from the screen edges in other apps. It does not read screen content. Turn on \"Fox gestures\" in the accessibility settings.</string>
     <string name="accessibility_stopped_title">Fox gestures stopped</string>
     <string name="accessibility_stopped">Android stopped the \"Fox gestures\" service, which happens when recent apps are cleared. In the accessibility settings, turn \"Fox gestures\" off and on again.</string>
     <string name="accessibility_open_settings">Open settings</string>
@@ -150,6 +150,8 @@
     <string name="gestures_auto_restart_off">Off. Android stops \"Fox gestures\" when recent apps are cleared. To let Fox restart it, grant this once from a computer:</string>
     <string name="gestures_miui_lock_hint">On this phone, clearing recent apps closes Fox. To keep it running, lock it in Security → Boost speed → Lock apps.</string>
     <string name="gestures_auto_restart_command" translatable="false">adb shell pm grant dev.foxlauncher android.permission.WRITE_SECURE_SETTINGS</string>
+    <string name="gestures_navigation">Navigation gestures in apps</string>
+    <string name="gestures_navigation_summary">In other apps, swipe in from the left or right edge to go back, swipe up from the bottom edge to go home, and swipe up and hold for recent apps. Touches that start right at those edges go to Fox.</string>
     <string name="gestures_needs_accessibility">Needs the accessibility service</string>
     <string name="gesture_swipe_up">Swipe up</string>
     <string name="gesture_swipe_down">Swipe down</string>
