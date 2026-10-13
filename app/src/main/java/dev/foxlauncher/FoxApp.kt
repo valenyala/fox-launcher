@@ -1,6 +1,11 @@
 package dev.foxlauncher
 
 import android.app.Application
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import androidx.core.content.ContextCompat
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import androidx.work.WorkManager
@@ -14,6 +19,7 @@ import coil3.request.crossfade
 import dagger.hilt.android.HiltAndroidApp
 import dev.foxlauncher.core.common.ApplicationScope
 import dev.foxlauncher.core.common.FoxLog
+import dev.foxlauncher.core.model.RotationTrigger
 import dev.foxlauncher.feature.gestures.system.AccessibilityRepair
 import dev.foxlauncher.feature.wallpaper.RotationScheduler
 import dev.foxlauncher.feature.wallpaper.source.SourceScanner
@@ -48,9 +54,23 @@ class FoxApp : Application(), Configuration.Provider, SingletonImageLoader.Facto
             .setMinimumLoggingLevel(if (BuildConfig.DEBUG) android.util.Log.DEBUG else android.util.Log.INFO)
             .build()
 
+    /**
+     * The unlock trigger (task 4.4). `ACTION_USER_PRESENT` reaches only runtime receivers; registered
+     * here, for the whole process, it works with and without the live wallpaper (task 4.5): the process
+     * lives as long as the launcher or the live wallpaper does. Exported, because SystemUI sends it
+     * under its own uid, which a not-exported receiver refuses; it is a protected broadcast, so no
+     * ordinary app can fake it.
+     */
+    private val unlockReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            scope.launch { rotation.advanceIfDue(RotationTrigger.UNLOCK) }
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         FoxLog.i("FoxApp started")
+        ContextCompat.registerReceiver(this, unlockReceiver, IntentFilter(Intent.ACTION_USER_PRESENT), ContextCompat.RECEIVER_EXPORTED)
         // A new process may be one the system killed with Fox's accessibility service in it, which then
         // stays stopped (PLATFORM-NOTES G). Give an ordinary rebind its moment first.
         scope.launch {

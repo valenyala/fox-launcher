@@ -124,10 +124,18 @@ class ActionExecutorTest {
 
     @Test
     fun wallpaperActionsAdvanceTheRotation() {
-        executor.execute(GestureAction.NextWallpaper, context)
-        executor.execute(GestureAction.PreviousWallpaper, context)
+        assertEquals(ActionResult.DONE, executor.execute(GestureAction.NextWallpaper, context))
+        assertEquals(ActionResult.DONE, executor.execute(GestureAction.PreviousWallpaper, context))
 
         assertEquals(listOf(true, false), wallpaper.moves)
+    }
+
+    @Test
+    fun withoutTheLiveWallpaperAWallpaperGestureOffersItAndChangesNothing() {
+        wallpaper.liveWallpaperApplied = false
+
+        assertEquals(ActionResult.NEEDS_LIVE_WALLPAPER, executor.execute(GestureAction.NextWallpaper, context))
+        assertTrue(wallpaper.moves.isEmpty())
     }
 
     private class FakeSystemActions : SystemActions {
@@ -157,10 +165,12 @@ class ActionExecutorTest {
     }
 
     private class FakeWallpaper : WallpaperAdvancer {
+        var liveWallpaperApplied = true
         val moves = mutableListOf<Boolean>()
 
-        override fun advance(forward: Boolean) {
-            moves += forward
+        override fun advance(forward: Boolean): Boolean {
+            if (liveWallpaperApplied) moves += forward
+            return liveWallpaperApplied
         }
     }
 }

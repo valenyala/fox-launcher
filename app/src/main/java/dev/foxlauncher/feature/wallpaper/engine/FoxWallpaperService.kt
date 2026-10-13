@@ -1,10 +1,6 @@
 package dev.foxlauncher.feature.wallpaper.engine
 
 import android.app.WallpaperColors
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -12,7 +8,6 @@ import android.graphics.Paint
 import android.service.wallpaper.WallpaperService
 import android.view.Choreographer
 import android.view.SurfaceHolder
-import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import dagger.hilt.android.AndroidEntryPoint
 import dev.foxlauncher.core.common.FoxLog
@@ -45,9 +40,7 @@ import kotlinx.coroutines.withContext
  * to each new one on a [Choreographer] loop, so a change never flashes. Images are decoded off the
  * main thread at the surface size, a little wider for parallax.
  *
- * It also hosts two triggers (task 4.4): unlocking (a runtime `ACTION_USER_PRESENT` receiver, as
- * that broadcast cannot reach a manifest receiver) and intervals under 15 minutes, which run on a
- * timer only while the wallpaper is visible.
+ * It also runs intervals under 15 minutes (task 4.4), on a timer only while the wallpaper is visible.
  */
 @AndroidEntryPoint
 class FoxWallpaperService : WallpaperService() {
@@ -61,27 +54,6 @@ class FoxWallpaperService : WallpaperService() {
     @Inject @IoDispatcher lateinit var io: CoroutineDispatcher
 
     @Inject lateinit var rotation: RotationScheduler
-
-    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-
-    private val unlockReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            serviceScope.launch { rotation.advanceIfDue(RotationTrigger.UNLOCK) }
-        }
-    }
-
-    override fun onCreate() {
-        super.onCreate()
-        // Exported: SystemUI sends USER_PRESENT under its own uid, which a not-exported receiver refuses. It is a
-        // protected broadcast, so no ordinary app can send it to us anyway.
-        ContextCompat.registerReceiver(this, unlockReceiver, IntentFilter(Intent.ACTION_USER_PRESENT), ContextCompat.RECEIVER_EXPORTED)
-    }
-
-    override fun onDestroy() {
-        unregisterReceiver(unlockReceiver)
-        serviceScope.cancel()
-        super.onDestroy()
-    }
 
     override fun onCreateEngine(): Engine = FoxEngine()
 

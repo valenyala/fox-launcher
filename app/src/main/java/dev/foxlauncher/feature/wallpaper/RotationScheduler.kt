@@ -24,7 +24,8 @@ import kotlinx.coroutines.sync.withLock
  * The one way the wallpaper changes (CLAUDE.md, data flows): picks the next or previous entry from
  * the playlist (task 4.2) and writes the active entry, which the live wallpaper engine draws
  * (task 4.3). Gestures and "next now" ask directly; the interval, unlock and page-change triggers
- * (task 4.4) go through [advanceIfDue], which applies [TriggerPolicy].
+ * (task 4.4) go through [advanceIfDue], which applies [TriggerPolicy]. While Fox's live wallpaper is
+ * not applied, a change is also set as a static image (task 4.5), except from a gesture ([advance]).
  */
 @Singleton
 class RotationScheduler @Inject constructor(
@@ -36,8 +37,10 @@ class RotationScheduler @Inject constructor(
 
     private val mutex = Mutex()
 
-    override fun advance(forward: Boolean) {
-        scope.launch { advanceNow(forward) }
+    override fun advance(forward: Boolean): Boolean {
+        if (!LiveWallpaper.isFoxActive(context)) return false
+        scope.launch { advanceNow(forward, RotationTrigger.GESTURE) }
+        return true
     }
 
     /** Moves on if [trigger] is due under the user's triggers; returns the entry now active, or null. */
@@ -71,6 +74,7 @@ class RotationScheduler @Inject constructor(
         settings.setActiveWallpaper(id, changedAt = now)
         dao.markShown(id, now)
         FoxLog.d("Wallpaper ${if (forward) "next" else "previous"} ($reason): entry $id")
+        if (!LiveWallpaper.isFoxActive(context)) StaticApplyWorker.enqueue(WorkManager.getInstance(context), id)
         return id
     }
 

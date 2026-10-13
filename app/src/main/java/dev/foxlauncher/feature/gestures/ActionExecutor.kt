@@ -58,6 +58,9 @@ enum class ActionResult {
     /** A system action, but the service is on and stopped: the UI says to turn it off and on. */
     ACCESSIBILITY_STOPPED,
 
+    /** A wallpaper action, but Fox's live wallpaper is not applied: the UI offers it (task 4.5). */
+    NEEDS_LIVE_WALLPAPER,
+
     /** The app or shortcut is gone, or the system refused. */
     FAILED,
 }
@@ -80,8 +83,8 @@ class ActionExecutor @Inject constructor(
         GestureAction.ScrollToDefaultPage -> done(context.scrollToDefaultPage)
         GestureAction.PageOverview -> done(context.openPageOverview)
         GestureAction.HomeSettings -> done(context.openHomeSettings)
-        GestureAction.NextWallpaper -> done { wallpaper.advance(forward = true) }
-        GestureAction.PreviousWallpaper -> done { wallpaper.advance(forward = false) }
+        GestureAction.NextWallpaper -> wallpaperResult(wallpaper.advance(forward = true))
+        GestureAction.PreviousWallpaper -> wallpaperResult(wallpaper.advance(forward = false))
         GestureAction.Notifications -> system(SystemAction.NOTIFICATIONS)
         GestureAction.QuickSettings -> system(SystemAction.QUICK_SETTINGS)
         GestureAction.LockScreen -> system(SystemAction.LOCK_SCREEN)
@@ -105,4 +108,6 @@ class ActionExecutor @Inject constructor(
     }
 
     private fun Boolean.toResult() = if (this) ActionResult.DONE else ActionResult.FAILED
+
+    private fun wallpaperResult(advanced: Boolean) = if (advanced) ActionResult.DONE else ActionResult.NEEDS_LIVE_WALLPAPER
 }

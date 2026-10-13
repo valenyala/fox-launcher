@@ -38,11 +38,14 @@
     <string name="settings_wallpaper">Wallpaper</string>
     <string name="settings_wallpaper_summary">Rotation and the live wallpaper</string>
     <string name="wallpaper_live_active">The Fox live wallpaper is on: changes crossfade.</string>
-    <string name="wallpaper_live_inactive">Rotation draws through the Fox live wallpaper, which is not applied.</string>
+    <string name="wallpaper_live_inactive">Changes show with a flash: smooth crossfades need the Fox live wallpaper.</string>
+    <string name="wallpaper_prompt_title">Use the Fox live wallpaper?</string>
+    <string name="wallpaper_prompt">Fox changes wallpapers through its own live wallpaper, which crossfades them. Apply it in the preview that opens; your current wallpaper stays until you do.</string>
     <string name="wallpaper_apply">Apply</string>
     <string name="wallpaper_next_now">Next wallpaper now</string>
     <string name="wallpaper_interval">Change every</string>
     <string name="wallpaper_interval_off">Never</string>
+    <string name="wallpaper_interval_needs_live">%1$s — needs the Fox live wallpaper (under 15 minutes)</string>
     <plurals name="wallpaper_every_minutes">
         <item quantity="one">%1$d minute</item>
         <item quantity="other">%1$d minutes</item>

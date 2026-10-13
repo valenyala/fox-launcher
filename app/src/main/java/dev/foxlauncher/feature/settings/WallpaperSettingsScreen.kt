@@ -105,9 +105,20 @@ fun WallpaperSettingsContent(
                 )
             }
             item {
+                val minutes = state.triggers.intervalMinutes
+                // Under 15 minutes the live wallpaper's own timer does the work (task 4.4).
+                val needsLive = !state.liveWallpaperActive && minutes in 1 until TriggerPolicy.WORK_MANAGER_MIN_MINUTES
                 ListItem(
                     headlineContent = { Text(stringResource(R.string.wallpaper_interval)) },
-                    supportingContent = { Text(intervalLabel(state.triggers.intervalMinutes)) },
+                    supportingContent = {
+                        Text(
+                            if (needsLive) {
+                                stringResource(R.string.wallpaper_interval_needs_live, intervalLabel(minutes))
+                            } else {
+                                intervalLabel(minutes)
+                            },
+                        )
+                    },
                     modifier = Modifier.clickable { pickingInterval = true },
                 )
             }

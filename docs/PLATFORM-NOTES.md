@@ -152,8 +152,10 @@ here contradicts what you remember, trust this file unless a device proves other
   MediaStore directly; prefer SAF/photo picker and do not request the media permission.
 - WorkManager `PeriodicWorkRequest` minimum interval is 15 minutes. For shorter intervals, the engine runs its own
   timer while visible (it is a long-lived process as long as the wallpaper is set). `ACTION_USER_PRESENT` is not
-  exempt from implicit-broadcast limits, so register it at runtime inside the service (`registerReceiver` in
-  `WallpaperService.onCreate`, unregister in `onDestroy`).
+  exempt from implicit-broadcast limits, so register it at runtime. Fox registers it in `FoxApp` (task 4.5): the
+  process lives as long as the launcher or the live wallpaper does, so unlock rotation also works with the static
+  fallback. Register it **exported**: SystemUI sends `USER_PRESENT` under its own uid, and a `RECEIVER_NOT_EXPORTED`
+  receiver silently never gets it (seen on fox-api33, 2026-10-12).
 - `ACTION_BOOT_COMPLETED` is exempt and can be a manifest receiver (`RECEIVE_BOOT_COMPLETED`); use it to re-enqueue
   the periodic work only if the user chose interval rotation. WorkManager already persists periodic work across reboot,
   so usually nothing is needed.

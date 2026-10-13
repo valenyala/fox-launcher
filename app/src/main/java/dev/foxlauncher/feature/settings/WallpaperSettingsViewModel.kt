@@ -1,7 +1,5 @@
 package dev.foxlauncher.feature.settings
 
-import android.app.WallpaperManager
-import android.content.ComponentName
 import android.content.Context
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
@@ -11,7 +9,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.foxlauncher.core.data.settings.FoxSettings
 import dev.foxlauncher.core.model.RotationTriggers
 import dev.foxlauncher.feature.wallpaper.RotationScheduler
-import dev.foxlauncher.feature.wallpaper.engine.FoxWallpaperService
+import dev.foxlauncher.feature.wallpaper.LiveWallpaper
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -46,7 +44,10 @@ class WallpaperSettingsViewModel @Inject constructor(
         liveWallpaperActive.value = isLiveWallpaperActive()
     }
 
-    fun nextNow() = rotation.advance(forward = true)
+    /** "Next now" is an explicit request: without the live wallpaper it is set as a static image (task 4.5). */
+    fun nextNow() {
+        viewModelScope.launch { rotation.advanceNow() }
+    }
 
     fun setInterval(minutes: Int) {
         viewModelScope.launch {
@@ -63,8 +64,7 @@ class WallpaperSettingsViewModel @Inject constructor(
         viewModelScope.launch { settings.setRotateOnPageChange(enabled) }
     }
 
-    private fun isLiveWallpaperActive(): Boolean =
-        WallpaperManager.getInstance(context).wallpaperInfo?.component == ComponentName(context, FoxWallpaperService::class.java)
+    private fun isLiveWallpaperActive(): Boolean = LiveWallpaper.isFoxActive(context)
 
     private companion object {
         const val STOP_TIMEOUT_MS = 5_000L

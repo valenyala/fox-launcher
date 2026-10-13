@@ -74,7 +74,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] 4.2 WallpaperPlaylist + tests
 - [x] 4.3 FoxWallpaperService crossfade engine (POCO F3 2026-10-12)
 - [x] 4.4 RotationScheduler and triggers (POCO F3 2026-10-12: interval, unlock, page change, gesture; time-of-day schedule left as a TODO, stretch)
-- [ ] 4.5 Static fallback
+- [ ] 4.5 Static fallback — emulators pass; POCO check pending
 - [ ] 4.6 Lock screen handling
 - [ ] 4.7 Wallpaper settings UI
 - [ ] 4.8 Memory and performance budget
@@ -160,6 +160,20 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-12 — 4.5 checkpoint. `StaticWallpaperApplier` (entry decoded at the full display size, `setStream(FLAG_SYSTEM)`
+  with a JPEG; `markFailed` on an unreadable entry) behind a unique `StaticApplyWorker` (latest change wins; skips if
+  the live wallpaper was applied meanwhile). `RotationScheduler.advanceNow` enqueues it whenever Fox's live wallpaper
+  is not the system's. **Deviation, for safety:** the default two-finger swipe up (Next wallpaper) must not replace a
+  user's own wallpaper by accident, so `WallpaperAdvancer.advance` refuses without the live wallpaper and the executor
+  returns `NEEDS_LIVE_WALLPAPER` → "Use the Fox live wallpaper?" (Apply opens the preview). Explicit opt-ins (interval,
+  unlock, page change, "Next now") do use the fallback. **Found:** without the live wallpaper its service is not
+  running, so the unlock receiver moved to `FoxApp` (process-wide; still exported); intervals under 15 minutes still
+  need the live wallpaper (the settings say so). `LiveWallpaper` helper (active? preview intent). Banner: "Changes show
+  with a flash: smooth crossfades need the Fox live wallpaper." Tests: executor +1; instrumented
+  `StaticWallpaperApplierTest` 2 (emulator-only via `assumeTrue`: it replaces the wallpaper). fox-api33: 110/110; on
+  both emulators with a static wallpaper: Next now and unlock set static images (screenshots), the gesture offered the
+  live wallpaper and changed nothing, Apply brought the live wallpaper back.
 
 - 2026-10-12 — **4.4 done.** POCO round 2: every page settle changed the wallpaper (7 in a row, `Page settled` 1/0
   alternating), the interval fired; no configuration change, no error.

@@ -1,8 +1,6 @@
 package dev.foxlauncher
 
-import android.app.WallpaperManager
 import android.content.ActivityNotFoundException
-import android.content.ComponentName
 import android.content.Intent
 import android.content.res.Configuration
 import android.os.Bundle
@@ -49,7 +47,8 @@ import dev.foxlauncher.feature.settings.HiddenAppsScreen
 import dev.foxlauncher.feature.settings.HomeSettingsScreen
 import dev.foxlauncher.feature.settings.SettingsRoute
 import dev.foxlauncher.feature.settings.WallpaperSettingsScreen
-import dev.foxlauncher.feature.wallpaper.engine.FoxWallpaperService
+import dev.foxlauncher.feature.wallpaper.LiveWallpaper
+import dev.foxlauncher.feature.wallpaper.LiveWallpaperPromptDialog
 import javax.inject.Inject
 
 /**
@@ -92,6 +91,7 @@ class HomeActivity : ComponentActivity() {
                     if (homeKeyPresses > 0) {
                         settings = emptyList()
                         viewModel.dismissAccessibilityPrompt()
+                        viewModel.dismissLiveWallpaperPrompt()
                     }
                 }
 
@@ -169,6 +169,16 @@ class HomeActivity : ComponentActivity() {
                                 onDismiss = viewModel::dismissAccessibilityPrompt,
                             )
                         }
+                        val liveWallpaperPrompt by viewModel.liveWallpaperPrompt.collectAsStateWithLifecycle()
+                        if (liveWallpaperPrompt) {
+                            LiveWallpaperPromptDialog(
+                                onApply = {
+                                    viewModel.dismissLiveWallpaperPrompt()
+                                    applyLiveWallpaper()
+                                },
+                                onDismiss = viewModel::dismissLiveWallpaperPrompt,
+                            )
+                        }
                         val closeSettings = { settings = settings.dropLast(1) }
                         when (settings.lastOrNull()) {
                             SettingsRoute.HOME -> HomeSettingsScreen(onBack = closeSettings, onOpen = { settings = settings + it })
@@ -225,10 +235,8 @@ class HomeActivity : ComponentActivity() {
 
     /** The system's preview of Fox's live wallpaper, where the user applies it (PLATFORM-NOTES W). */
     private fun applyLiveWallpaper() {
-        val intent = Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER)
-            .putExtra(WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT, ComponentName(this, FoxWallpaperService::class.java))
         try {
-            startActivity(intent)
+            startActivity(LiveWallpaper.previewIntent(this))
         } catch (e: ActivityNotFoundException) {
             FoxLog.e("No live wallpaper preview on this device", e)
         }

@@ -145,8 +145,18 @@ class HomeViewModel @Inject constructor(
                     }
                 }
             }
+            ActionResult.NEEDS_LIVE_WALLPAPER -> _liveWallpaperPrompt.value = true
             ActionResult.DONE, ActionResult.NOTHING, ActionResult.FAILED -> Unit
         }
+    }
+
+    private val _liveWallpaperPrompt = MutableStateFlow(false)
+
+    /** True while the offer of Fox's live wallpaper should show (a wallpaper gesture without it, task 4.5). */
+    val liveWallpaperPrompt: StateFlow<Boolean> = _liveWallpaperPrompt.asStateFlow()
+
+    fun dismissLiveWallpaperPrompt() {
+        _liveWallpaperPrompt.value = false
     }
 
     fun dismissAccessibilityPrompt() {
