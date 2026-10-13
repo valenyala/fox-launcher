@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 5 — Memory widgets (Phase 4 done 2026-10-13 apart from three checklist items, deferred by the user; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists)
-**Next task:** 5.1 Native widget framework (2.8 still deferred)
+**Next task:** 5.2 MemoryStats + MemInfoParser tests (2.8 still deferred)
 
 ## Environment facts (verified 2026-09-17)
 
@@ -82,7 +82,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [ ] Device checklist: items 1, 3, 6 passed on POCO F3 (covered in 4.4–4.8); **owed:** 2 (15-min interval across a 16-min lock), 4b (the change seen from another app), 5 (reboot keeps the wallpaper and the rotation) — deferred by the user 2026-10-13
 
 ## Phase 5 — Memory widgets
-- [ ] 5.1 Native widget framework — emulator passes; POCO check pending
+- [x] 5.1 Native widget framework (POCO F3 2026-10-13: Clock added from the picker, resized 4×1→5×2→2×1, moved, removed)
 - [ ] 5.2 MemoryStats + MemInfoParser tests
 - [ ] 5.3 RAM gauge, boost and detail widgets
 - [ ] 5.4 BoostStrategy per API level
