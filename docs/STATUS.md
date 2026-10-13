@@ -75,7 +75,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] 4.3 FoxWallpaperService crossfade engine (POCO F3 2026-10-12)
 - [x] 4.4 RotationScheduler and triggers (POCO F3 2026-10-12: interval, unlock, page change, gesture; time-of-day schedule left as a TODO, stretch)
 - [x] 4.5 Static fallback (POCO F3 2026-10-12: page change, Next now, unlock with a MIUI static wallpaper; gesture prompt)
-- [ ] 4.6 Lock screen handling
+- [ ] 4.6 Lock screen handling — emulators pass; POCO: switch works with Carousel off; live-on-lock check pending
 - [ ] 4.7 Wallpaper settings UI
 - [ ] 4.8 Memory and performance budget
 - [ ] 4.9 URI permission resilience
@@ -160,6 +160,18 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-12 — 4.6 checkpoint. "Also change the lock screen" (default off, `wallpaper_change_lock_screen`): pure
+  `StaticTargets` (home while Fox live is not the system's, lock when asked; 4 tests) decides at run time what
+  `StaticApplyWorker` writes, in one `setStream` with `FLAG_SYSTEM`/`FLAG_LOCK`. The worker now applies the entry on
+  screen (`WallpaperPlaylist.showing`, shared with the engine; +1 test) rather than an id passed in. Turning the switch on
+  catches the lock screen up at once (`enqueueLockOnly`, KEEP so a pending change is not lost). Instrumented
+  `StaticWallpaperApplierTest` 4 (fox-api33/37), `WallpaperSettingsContentTest` 7 (fox-api33; API 37 Espresso blocker).
+  Emulators, lock screen enabled for the test (then disabled again): switch on → lock gets entry 1, Next now → home and
+  lock entry 2 in one write; Fox live via *Home and lock* → keyguard shows the live wallpaper and follows Next now with
+  the switch off; switch on → a still copy. fox-api33 delivers `USER_PRESENT` twice per unlock (the 5 s debounce
+  absorbs it). POCO: lock image set on each unlock once MIUI Wallpaper Carousel was off (it overwrote it before).
+  Findings in PLATFORM-NOTES W.
 
 - 2026-10-12 — **4.5 done.** POCO with a MIUI static wallpaper: page change, Next now and unlock each set a Fox image
   (`StaticApplyWorker` SUCCESS, 180–300 ms from the change to `setStream`); the two-finger swipe offered the live

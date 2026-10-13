@@ -65,13 +65,15 @@ fun WallpaperSettingsScreen(
         onIntervalChange = viewModel::setInterval,
         onUnlockChange = viewModel::setOnUnlock,
         onPageChangeChange = viewModel::setOnPageChange,
+        onLockScreenChange = viewModel::setChangeLockScreen,
         modifier = modifier,
     )
 }
 
 /**
- * Wallpaper rotation (task 4.4): whether Fox's live wallpaper is applied, "next now", and what
- * changes the wallpaper by itself. Sources, order, duration and more join in task 4.7.
+ * Wallpaper rotation (task 4.4): whether Fox's live wallpaper is applied, "next now", what changes
+ * the wallpaper by itself, and the lock screen (task 4.6). Sources, order, duration and more join
+ * in task 4.7.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -83,6 +85,7 @@ fun WallpaperSettingsContent(
     onIntervalChange: (Int) -> Unit,
     onUnlockChange: (Boolean) -> Unit,
     onPageChangeChange: (Boolean) -> Unit,
+    onLockScreenChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var pickingInterval by rememberSaveable { mutableStateOf(false) }
@@ -124,6 +127,7 @@ fun WallpaperSettingsContent(
             }
             item { SwitchRow(R.string.wallpaper_on_unlock, state.triggers.onUnlock, onUnlockChange) }
             item { SwitchRow(R.string.wallpaper_on_page_change, state.triggers.onPageChange, onPageChangeChange) }
+            item { SwitchRow(R.string.wallpaper_lock_screen, state.changeLockScreen, onLockScreenChange, R.string.wallpaper_lock_screen_summary) }
         }
     }
     if (pickingInterval) {
@@ -159,9 +163,10 @@ private fun LiveWallpaperBanner(active: Boolean, onApply: () -> Unit) {
 }
 
 @Composable
-private fun SwitchRow(label: Int, checked: Boolean, onChange: (Boolean) -> Unit) {
+private fun SwitchRow(label: Int, checked: Boolean, onChange: (Boolean) -> Unit, summary: Int? = null) {
     ListItem(
         headlineContent = { Text(stringResource(label)) },
+        supportingContent = summary?.let { { Text(stringResource(it)) } },
         // The row handles the toggle, so the switch itself is display-only.
         trailingContent = { Switch(checked = checked, onCheckedChange = null) },
         modifier = Modifier.clickable(role = Role.Switch) { onChange(!checked) },

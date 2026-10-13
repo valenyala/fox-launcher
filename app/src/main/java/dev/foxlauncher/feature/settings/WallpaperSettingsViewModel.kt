@@ -23,6 +23,8 @@ data class WallpaperSettingsUiState(
     /** Fox's live wallpaper is the system wallpaper, so changes crossfade. */
     val liveWallpaperActive: Boolean = true,
     val triggers: RotationTriggers = RotationTriggers(),
+    /** Each new wallpaper is also set on the lock screen (task 4.6). */
+    val changeLockScreen: Boolean = false,
 )
 
 /** The wallpaper settings (task 4.4 brings the triggers; task 4.7 adds sources and the rest). */
@@ -36,7 +38,7 @@ class WallpaperSettingsViewModel @Inject constructor(
     private val liveWallpaperActive = MutableStateFlow(isLiveWallpaperActive())
 
     val uiState: StateFlow<WallpaperSettingsUiState> =
-        combine(liveWallpaperActive, settings.rotationTriggers) { active, triggers -> WallpaperSettingsUiState(active, triggers) }
+        combine(liveWallpaperActive, settings.rotationTriggers, settings.changeLockScreen, ::WallpaperSettingsUiState)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), WallpaperSettingsUiState())
 
     /** Coming back from the system's wallpaper preview: the live wallpaper may have been applied. */
@@ -62,6 +64,10 @@ class WallpaperSettingsViewModel @Inject constructor(
 
     fun setOnPageChange(enabled: Boolean) {
         viewModelScope.launch { settings.setRotateOnPageChange(enabled) }
+    }
+
+    fun setChangeLockScreen(enabled: Boolean) {
+        viewModelScope.launch { rotation.setChangeLockScreen(enabled) }
     }
 
     private fun isLiveWallpaperActive(): Boolean = LiveWallpaper.isFoxActive(context)

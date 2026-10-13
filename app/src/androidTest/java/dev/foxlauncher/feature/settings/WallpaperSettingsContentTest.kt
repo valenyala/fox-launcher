@@ -16,7 +16,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** The wallpaper rotation settings (task 4.4) against fake callbacks. */
+/** The wallpaper rotation settings (tasks 4.4, 4.6) against fake callbacks. */
 @RunWith(AndroidJUnit4::class)
 class WallpaperSettingsContentTest {
 
@@ -54,6 +54,15 @@ class WallpaperSettingsContentTest {
     }
 
     @Test
+    fun theLockScreenSwitchReportsItsNewState() {
+        setContent(changeLockScreen = true)
+
+        composeRule.onNodeWithText(string(R.string.wallpaper_lock_screen)).performClick()
+
+        assertEquals(listOf("lock false"), calls)
+    }
+
+    @Test
     fun nextNowAsksForTheNextWallpaper() {
         setContent()
 
@@ -78,17 +87,18 @@ class WallpaperSettingsContentTest {
         composeRule.onNodeWithText(string(R.string.wallpaper_apply)).assertDoesNotExist()
     }
 
-    private fun setContent(triggers: RotationTriggers = RotationTriggers(), liveActive: Boolean = true) {
+    private fun setContent(triggers: RotationTriggers = RotationTriggers(), liveActive: Boolean = true, changeLockScreen: Boolean = false) {
         composeRule.setContent {
             FoxTheme {
                 WallpaperSettingsContent(
-                    state = WallpaperSettingsUiState(liveWallpaperActive = liveActive, triggers = triggers),
+                    state = WallpaperSettingsUiState(liveWallpaperActive = liveActive, triggers = triggers, changeLockScreen = changeLockScreen),
                     onBack = {},
                     onApplyLiveWallpaper = { calls += "apply" },
                     onNextNow = { calls += "next" },
                     onIntervalChange = { calls += "interval $it" },
                     onUnlockChange = { calls += "unlock $it" },
                     onPageChangeChange = { calls += "page $it" },
+                    onLockScreenChange = { calls += "lock $it" },
                 )
             }
         }

@@ -60,6 +60,8 @@
     </plurals>
     <string name="wallpaper_on_unlock">Change when unlocking</string>
     <string name="wallpaper_on_page_change">Change when switching pages</string>
+    <string name="wallpaper_lock_screen">Also change the lock screen</string>
+    <string name="wallpaper_lock_screen_summary">Each new wallpaper is set there too, as a still image. Not needed if the lock screen already shows the Fox live wallpaper.</string>
     <string name="settings_title">Home settings</string>
     <string name="settings_gestures">Gestures</string>
     <string name="settings_gestures_summary">What each swipe, tap and pinch does</string>

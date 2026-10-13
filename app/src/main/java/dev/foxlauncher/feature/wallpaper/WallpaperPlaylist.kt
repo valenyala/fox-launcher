@@ -61,6 +61,12 @@ data class WallpaperPlaylist(
     companion object {
         const val HISTORY_SIZE = 50
 
+        /**
+         * The entry on screen: the active one while it is still enabled, otherwise the first (before
+         * the rotation first picks one, or after the active one went away).
+         */
+        fun showing(activeId: Long?, enabledIds: List<Long>): Long? = activeId?.takeIf { it in enabledIds } ?: enabledIds.firstOrNull()
+
         /** A fresh seed from the last one; deterministic, so a stored playlist replays the same. */
         fun nextSeed(seed: Long): Long = seed * SEED_MULTIPLIER + SEED_INCREMENT
 

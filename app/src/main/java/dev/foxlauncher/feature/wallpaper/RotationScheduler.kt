@@ -25,7 +25,8 @@ import kotlinx.coroutines.sync.withLock
  * the playlist (task 4.2) and writes the active entry, which the live wallpaper engine draws
  * (task 4.3). Gestures and "next now" ask directly; the interval, unlock and page-change triggers
  * (task 4.4) go through [advanceIfDue], which applies [TriggerPolicy]. While Fox's live wallpaper is
- * not applied, a change is also set as a static image (task 4.5), except from a gesture ([advance]).
+ * not applied, a change is also set as a static image (task 4.5), except from a gesture ([advance]);
+ * so is the lock screen's, when the user asked for it (task 4.6).
  */
 @Singleton
 class RotationScheduler @Inject constructor(
@@ -74,8 +75,16 @@ class RotationScheduler @Inject constructor(
         settings.setActiveWallpaper(id, changedAt = now)
         dao.markShown(id, now)
         FoxLog.d("Wallpaper ${if (forward) "next" else "previous"} ($reason): entry $id")
-        if (!LiveWallpaper.isFoxActive(context)) StaticApplyWorker.enqueue(WorkManager.getInstance(context), id)
+        if (StaticTargets.of(LiveWallpaper.isFoxActive(context), settings.changeLockScreen.first()).isNotEmpty()) {
+            StaticApplyWorker.enqueue(WorkManager.getInstance(context))
+        }
         return id
+    }
+
+    /** Turns "also change the lock screen" on or off; on, the lock screen gets the current image at once. */
+    suspend fun setChangeLockScreen(enabled: Boolean) {
+        settings.setChangeLockScreen(enabled)
+        if (enabled) StaticApplyWorker.enqueueLockOnly(WorkManager.getInstance(context))
     }
 
     /**

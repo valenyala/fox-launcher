@@ -159,6 +159,14 @@ class WallpaperPlaylistTest {
         assertEquals(80L, playlist.current)
     }
 
+    @Test
+    fun theActiveEntryShowsWhileItIsEnabledOtherwiseTheFirst() {
+        assertEquals(2L, WallpaperPlaylist.showing(activeId = 2L, enabledIds = listOf(1L, 2L)))
+        assertEquals(1L, WallpaperPlaylist.showing(activeId = null, enabledIds = listOf(1L, 2L)))
+        assertEquals(1L, WallpaperPlaylist.showing(activeId = 9L, enabledIds = listOf(1L, 2L)))
+        assertNull(WallpaperPlaylist.showing(activeId = 9L, enabledIds = emptyList()))
+    }
+
     /** The next [n] ids, each next() continuing from the playlist the last one returned. */
     private fun WallpaperPlaylist.take(n: Int): List<Long> {
         var playlist = this

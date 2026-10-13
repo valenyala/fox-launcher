@@ -133,6 +133,14 @@ class FoxSettings @Inject constructor(
         Unit
     }
 
+    /** Whether each new wallpaper is also set on the lock screen, as a still image (task 4.6). */
+    val changeLockScreen: Flow<Boolean> = dataStore.data.map { it[Keys.CHANGE_LOCK_SCREEN] ?: false }
+
+    suspend fun setChangeLockScreen(enabled: Boolean) = withContext(io) {
+        dataStore.edit { it[Keys.CHANGE_LOCK_SCREEN] = enabled }
+        Unit
+    }
+
     /** How long a wallpaper crossfade lasts, in ms (task 4.3; the setting arrives in 4.7). */
     val crossfadeMs: Flow<Int> = dataStore.data.map { it[Keys.CROSSFADE_MS] ?: DEFAULT_CROSSFADE_MS }
 
@@ -177,6 +185,7 @@ class FoxSettings @Inject constructor(
         val ROTATION_INTERVAL = intPreferencesKey("wallpaper_rotation_interval_minutes")
         val ROTATE_ON_UNLOCK = booleanPreferencesKey("wallpaper_rotate_on_unlock")
         val ROTATE_ON_PAGE_CHANGE = booleanPreferencesKey("wallpaper_rotate_on_page_change")
+        val CHANGE_LOCK_SCREEN = booleanPreferencesKey("wallpaper_change_lock_screen")
         val PLAYLIST_MODE = stringPreferencesKey("wallpaper_playlist_mode")
         val PLAYLIST_SEED = longPreferencesKey("wallpaper_playlist_seed")
         val PLAYLIST_HISTORY = stringPreferencesKey("wallpaper_playlist_history")

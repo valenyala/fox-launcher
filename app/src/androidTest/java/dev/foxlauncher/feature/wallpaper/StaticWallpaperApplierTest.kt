@@ -25,7 +25,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * The static wallpaper fallback (task 4.5) on the real WallpaperManager. It replaces the device's
+ * The static wallpaper fallback (task 4.5) and the lock screen (task 4.6) on the real WallpaperManager. It replaces the device's
  * wallpaper, so it runs only on an emulator, never on a personal phone.
  */
 @RunWith(AndroidJUnit4::class)
@@ -53,17 +53,41 @@ class StaticWallpaperApplierTest {
         val before = manager.getWallpaperId(WallpaperManager.FLAG_SYSTEM)
         val id = insertEntry("android.resource://${context.packageName}/raw/wallpaper_forest")
 
-        assertTrue(applier.apply(id))
+        assertTrue(applier.apply(id, setOf(StaticTarget.HOME)))
 
         assertNull(manager.wallpaperInfo, "a static wallpaper has no live wallpaper info")
         assertNotEquals(before, manager.getWallpaperId(WallpaperManager.FLAG_SYSTEM))
     }
 
     @Test
+    fun anEntryBecomesTheLockWallpaperAndTheHomeScreenStays() = runBlocking {
+        val manager = WallpaperManager.getInstance(context)
+        val homeBefore = manager.getWallpaperId(WallpaperManager.FLAG_SYSTEM)
+        val lockBefore = manager.getWallpaperId(WallpaperManager.FLAG_LOCK)
+        val id = insertEntry("android.resource://${context.packageName}/raw/wallpaper_dusk")
+
+        assertTrue(applier.apply(id, setOf(StaticTarget.LOCK)))
+
+        assertNotEquals(lockBefore, manager.getWallpaperId(WallpaperManager.FLAG_LOCK))
+        assertEquals(homeBefore, manager.getWallpaperId(WallpaperManager.FLAG_SYSTEM))
+    }
+
+    @Test
+    fun aHomeChangeLeavesTheLockImageAlone() = runBlocking {
+        val manager = WallpaperManager.getInstance(context)
+        assertTrue(applier.apply(insertEntry("android.resource://${context.packageName}/raw/wallpaper_dawn"), setOf(StaticTarget.LOCK)))
+        val lock = manager.getWallpaperId(WallpaperManager.FLAG_LOCK)
+
+        assertTrue(applier.apply(insertEntry("android.resource://${context.packageName}/raw/wallpaper_forest"), setOf(StaticTarget.HOME)))
+
+        assertEquals(lock, manager.getWallpaperId(WallpaperManager.FLAG_LOCK))
+    }
+
+    @Test
     fun anUnreadableEntryChangesNothingAndCountsAFailure() = runBlocking {
         val id = insertEntry("content://dev.foxlauncher.missing/nothing.jpg")
 
-        assertFalse(applier.apply(id))
+        assertFalse(applier.apply(id, setOf(StaticTarget.HOME, StaticTarget.LOCK)))
 
         assertEquals(1, db.wallpaperDao().getEntry(id)?.failedCount)
     }

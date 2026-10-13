@@ -17,6 +17,7 @@ import dev.foxlauncher.core.data.settings.FoxSettings
 import dev.foxlauncher.core.model.RotationTrigger
 import dev.foxlauncher.feature.wallpaper.RotationScheduler
 import dev.foxlauncher.feature.wallpaper.TriggerPolicy
+import dev.foxlauncher.feature.wallpaper.WallpaperPlaylist
 import javax.inject.Inject
 import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineDispatcher
@@ -86,7 +87,7 @@ class FoxWallpaperService : WallpaperService() {
             scope.launch {
                 combine(settings.activeWallpaperEntryId, dao.observeEnabledEntries(), settings.crossfadeMs) { active, entries, ms ->
                     fadeMs = ms
-                    active?.takeIf { id -> entries.any { it.id == id } } ?: entries.firstOrNull()?.id
+                    WallpaperPlaylist.showing(active, entries.map { it.id })
                 }
                     .distinctUntilChanged()
                     .collect { id ->

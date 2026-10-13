@@ -145,6 +145,16 @@ here contradicts what you remember, trust this file unless a device proves other
   the non-seamless fallback. It runs a full-size decode in system server; always pass a stream already scaled down.
 - Lock-screen live wallpaper support varies by OEM and version (AOSP added a lock-screen live-wallpaper picker path in
   API 34). Treat "live on lock" as best-effort; the reliable option is a static `FLAG_LOCK` image set alongside each advance.
+- Measured (task 4.6, 2026-10-12). AOSP preview ("Set wallpaper"): API 33 offers *Home screen* / *Home screen and lock
+  screen*; API 37 adds *Lock screen*. *Home and lock* leaves no separate lock image, so the keyguard shows the live
+  wallpaper itself, crossfades included (fox-api33/37). `setStream(FLAG_LOCK)` gives the lock screen its own still image
+  (the home screen is untouched); `setStream(FLAG_SYSTEM)` alone keeps an existing lock image; both flags in one call
+  make the two share one image again. Fox's "Also change the lock screen" (off by default) writes `FLAG_LOCK` (plus
+  `FLAG_SYSTEM` when the static fallback is on) after each change, in the same worker.
+- MIUI 14 (POCO F3): the keyguard draws its own wallpaper window (`MiuiKeyguardPictorialWallpaper`, from
+  `com.miui.miwallpaper`). Wallpaper Carousel (`com.miui.android.fashiongallery`) sets the lock wallpaper itself
+  (`MiuiWallpaperManagerService setWallpaper which=2 type=gallery`) on screen-on and unlock, overwriting Fox's; with
+  Carousel turned off, Fox's `FLAG_LOCK` image shows. Nothing public detects Carousel; the user must turn it off.
 - User folders: `ACTION_OPEN_DOCUMENT_TREE` + `contentResolver.takePersistableUriPermission(uri, FLAG_GRANT_READ_URI_PERMISSION)`.
   List with `DocumentsContract.buildChildDocumentsUriUsingTree` + query (much faster than `DocumentFile.listFiles()`).
   Persisted permissions can be revoked; handle `SecurityException` by marking the source as needs-reauth.
