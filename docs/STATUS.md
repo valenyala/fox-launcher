@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 4 — Wallpaper rotation (Phase 3 done 2026-10-12; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists)
-**Next task:** 4.7 Wallpaper settings UI — POCO check pending (2.8 still deferred)
+**Next task:** 4.8 Memory and performance budget (2.8 still deferred)
 
 ## Environment facts (verified 2026-09-17)
 
@@ -76,7 +76,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] 4.4 RotationScheduler and triggers (POCO F3 2026-10-12: interval, unlock, page change, gesture; time-of-day schedule left as a TODO, stretch)
 - [x] 4.5 Static fallback (POCO F3 2026-10-12: page change, Next now, unlock with a MIUI static wallpaper; gesture prompt)
 - [x] 4.6 Lock screen handling (POCO F3 2026-10-12: switch sets the lock image with MIUI Wallpaper Carousel off; Fox live on home and lock shows on the MIUI lock screen)
-- [ ] 4.7 Wallpaper settings UI — emulators pass; POCO check pending
+- [x] 4.7 Wallpaper settings UI (POCO F3 2026-10-13: folder, picked pictures, thumbnail tap, shuffle, crossfade, parallax, remove, preview "Settings…"; engine renderer fix)
 - [ ] 4.8 Memory and performance budget
 - [ ] 4.9 URI permission resilience
 - [ ] Device checklist passed on: —
@@ -160,6 +160,12 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-13 — **4.7 done.** POCO round 3 on the renderer build: every swipe, the unlock change and the thumbnail
+  taps crossfaded on screen, zero dead-surface lines; parallax switched the decode width 1296 ↔ 1080; the preview ran
+  its own engine (`created (preview)`) and its "Settings…" opened `.WallpaperSettings` → Fox's wallpaper settings.
+  Not done: restarting Fox repeatedly to stress the startup race (the user did not ask for it); the renderer's
+  rebind path ("lost its surface") has not fired on the phone yet, so watch for it.
 
 - 2026-10-13 — 4.7 POCO round 2: **the freeze came back** with the same build, on a fresh start before any touch
   (first frame at 00:49:31, dead-surface lines right after): a race on MIUI's surface swap at bind time, not an
