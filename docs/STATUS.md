@@ -82,7 +82,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [ ] Device checklist: items 1, 3, 6 passed on POCO F3 (covered in 4.4–4.8); **owed:** 2 (15-min interval across a 16-min lock), 4b (the change seen from another app), 5 (reboot keeps the wallpaper and the rotation) — deferred by the user 2026-10-13
 
 ## Phase 5 — Memory widgets
-- [ ] 5.1 Native widget framework
+- [ ] 5.1 Native widget framework — emulator passes; POCO check pending
 - [ ] 5.2 MemoryStats + MemInfoParser tests
 - [ ] 5.3 RAM gauge, boost and detail widgets
 - [ ] 5.4 BoostStrategy per API level
@@ -160,6 +160,24 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-13 — 5.1 checkpoint. `feature/widgets`: `NativeWidgetSpec` (kind, name, description, min/default/max
+  `Span`, content with a `NativeWidgetScope`), `NativeWidgetRegistry` (Hilt `Set` multibinding, `NativeWidgetModule`),
+  `LocalNativeWidgets`, `WidgetPickerSheet` (live previews at default size), `clock/ClockWidget` (2×1..5×2, default
+  4×1, ticks each minute, large type at two rows). Pure `WidgetResize` (an edge moves a cell at a time, stopping at
+  min/max, the grid edge or the first taken cell) and `WidgetPlacement` (page in view, else another, else a new
+  page), 10 tests. Grid: a native widget draws its content across its cells on a translucent rounded surface; long
+  press → popup (Resize, Remove) + drag (multi-cell drag already worked); **Resize** shows `WidgetResizeFrame`
+  (edge handles, live preview, commit on release, tap outside / Back / Home ends it). Home settings → **Widgets** →
+  picker sheet → `HomeViewModel.addNativeWidget` (page in view, tracked from `onPageSettled(page)`).
+  **Deviations:** package `feature/widgets`, not `feature/widgets/native` (`native` is a Java keyword; Hilt's
+  generated Java would not compile); resize comes from the popup's Resize entry (handles under the popup's
+  tap-outside layer could not be touched); no `configJson` yet (no widget needs one; it will come with a migration
+  when one does). **Found on fox-api33 (fixed):** the frame's `swallowPointers` consumed a handle's first small
+  moves in the Main pass, so its drag detector gave up before touch slop: handles never moved under a real finger,
+  yet the test passed with 22 px steps; the test now drags in small steps. Tests: `HomeScreenWidgetTest` 6,
+  `WidgetPickerSheetTest` 1 (fox-api33). fox-api33: Widgets → Clock placed at 0,0 (4×1); Resize → right +1 (5×1),
+  bottom +1 (5×2); long-press drag → rows 2–3; Remove → gone; no crash.
 
 - 2026-10-13 — **4.9 done.** POCO with a throwaway `Pictures/FoxTest` (3 test images over adb, deleted afterwards):
   renamed away → tapping its thumbnail logged the provider's `IllegalArgumentException`, flagged "FoxTest is gone",

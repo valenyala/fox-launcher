@@ -21,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -38,10 +39,14 @@ import dev.foxlauncher.core.model.AppEntry
 import dev.foxlauncher.core.model.HomeItem
 import dev.foxlauncher.core.ui.AppIcon
 import dev.foxlauncher.core.ui.UNAVAILABLE_ICON_ALPHA
+import dev.foxlauncher.feature.widgets.LocalNativeWidgets
+import dev.foxlauncher.feature.widgets.NativeWidgetScope
 import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.persistentMapOf
 
 private const val FOLDER_BACKGROUND_ALPHA = 0.3f
+private const val WIDGET_BACKGROUND_ALPHA = 0.25f
+private val WIDGET_CORNER = 20.dp
 private const val FOLDER_PREVIEW_COUNT = 4
 
 /** Size of the app badge on a shortcut's icon, as a fraction of the icon. */
@@ -84,6 +89,10 @@ fun HomeItemView(
     onLongClick: ((HomeItem, LayoutCoordinates) -> Unit)? = null,
     shortcutIcons: ImmutableMap<String, ImageBitmap> = persistentMapOf(),
 ) {
+    if (item is HomeItem.NativeWidget) {
+        NativeWidgetView(item, interactive = onClick != null, onLongClick = onLongClick, modifier = modifier)
+        return
+    }
     val bounds = remember { IconBounds() }
     val coordinates = remember { ItemCoordinates() }
     val interaction = if (onClick == null) {
@@ -114,6 +123,48 @@ fun HomeItemView(
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center,
             )
+        }
+    }
+}
+
+/**
+ * A native widget (task 5.1): its spec's content across all its cells, on a translucent rounded
+ * surface. Taps belong to the content; a long press opens the popup and arms a drag, as for icons.
+ * A kind Fox no longer has says so instead of vanishing.
+ */
+@Composable
+private fun NativeWidgetView(
+    item: HomeItem.NativeWidget,
+    interactive: Boolean,
+    onLongClick: ((HomeItem, LayoutCoordinates) -> Unit)?,
+    modifier: Modifier,
+) {
+    val spec = LocalNativeWidgets.current[item.kind]
+    val coordinates = remember { ItemCoordinates() }
+    val interaction = if (!interactive || onLongClick == null) {
+        Modifier
+    } else {
+        Modifier.combinedClickable(
+            interactionSource = null,
+            indication = null,
+            onLongClick = { coordinates.value?.let { onLongClick(item, it) } },
+            onClick = {},
+        )
+    }
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier
+            .fillMaxSize()
+            .onPlaced { coordinates.value = it }
+            .then(interaction)
+            .padding(4.dp)
+            .clip(RoundedCornerShape(WIDGET_CORNER))
+            .background(Color.Black.copy(alpha = WIDGET_BACKGROUND_ALPHA)),
+    ) {
+        if (spec != null) {
+            spec.content(NativeWidgetScope(item.position.spanX, item.position.spanY))
+        } else {
+            Text(stringResource(R.string.widget_missing), style = wallpaperLabelStyle(), textAlign = TextAlign.Center, modifier = Modifier.padding(8.dp))
         }
     }
 }

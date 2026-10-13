@@ -26,7 +26,9 @@ import dev.foxlauncher.feature.gestures.ExecContext
 import dev.foxlauncher.feature.gestures.system.AccessibilityRepair
 import dev.foxlauncher.feature.home.drag.DropAction
 import dev.foxlauncher.feature.wallpaper.RotationScheduler
+import dev.foxlauncher.feature.home.grid.CellRect
 import dev.foxlauncher.feature.home.grid.GridSpec
+import dev.foxlauncher.feature.widgets.NativeWidgetRegistry
 import javax.inject.Inject
 import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.persistentMapOf
@@ -73,6 +75,7 @@ class HomeViewModel @Inject constructor(
     private val actionExecutor: ActionExecutor,
     private val accessibilityRepair: AccessibilityRepair,
     private val rotation: RotationScheduler,
+    private val nativeWidgets: NativeWidgetRegistry,
 ) : ViewModel() {
 
     private val appsByKey = appRepository.apps.map { apps -> apps.associateBy { it.key }.toImmutableMap() }
@@ -163,8 +166,12 @@ class HomeViewModel @Inject constructor(
         _accessibilityPrompt.value = null
     }
 
-    /** The pager settled on another page: the optional page-change wallpaper trigger (task 4.4). */
-    fun onPageSettled() {
+    /** The page in view, where new widgets go (task 5.1). */
+    private var currentPage = 0
+
+    /** The pager settled on [page]: the optional page-change wallpaper trigger (task 4.4). */
+    fun onPageSettled(page: Int) {
+        currentPage = page
         viewModelScope.launch { rotation.advanceIfDue(RotationTrigger.PAGE_CHANGE) }
     }
 
@@ -199,6 +206,7 @@ class HomeViewModel @Inject constructor(
      * shortcuts, uninstall for non-system apps.
      */
     suspend fun popupFor(item: HomeItem): ItemPopupModel {
+        if (item is HomeItem.NativeWidget) return ItemPopupModel(canResize = nativeWidgets[item.kind]?.resizable == true)
         val app = appOf(item) ?: return ItemPopupModel()
         // A shortcut item is itself a shortcut: its popup does not list the app's others.
         val shortcuts = if (item is HomeItem.App) appRepository.shortcutsFor(app) else emptyList()
@@ -214,6 +222,7 @@ class HomeViewModel @Inject constructor(
             PopupAction.AppInfo -> appOf(item)?.let { appRepository.openAppInfo(it, sourceBounds) }
             PopupAction.Uninstall -> appOf(item)?.let(appRepository::uninstall)
             PopupAction.Remove -> viewModelScope.launch { homeRepository.applyDrop(item, DropAction.Remove(item.id)) }
+            PopupAction.Resize -> Unit // HomeScreen shows the handles.
             is PopupAction.OpenShortcut -> action.shortcut.let {
                 appRepository.startShortcut(it.packageName, it.id, it.userSerial, sourceBounds, null)
             }
@@ -232,6 +241,24 @@ class HomeViewModel @Inject constructor(
 
     fun onRenameFolder(folder: HomeItem.Folder, title: String) {
         viewModelScope.launch { homeRepository.renameFolder(folder.folderId, title) }
+    }
+
+    /** A widget's resize handles were let go at [cell] (task 5.1), already checked to be free. */
+    fun onResizeWidget(item: HomeItem, cell: CellRect) {
+        val moved = item.position.copy(col = cell.col, row = cell.row, spanX = cell.spanX, spanY = cell.spanY)
+        viewModelScope.launch { homeRepository.move(listOf(item to moved)) }
+    }
+
+    /**
+     * Places a new native widget at its default size (task 5.1): on the page in view when it fits,
+     * else on the first page with room, else on a new page.
+     */
+    fun addNativeWidget(kind: String) {
+        val spec = nativeWidgets[kind] ?: return
+        viewModelScope.launch {
+            val position = homeRepository.addNativeWidget(kind, spec.defaultSpan, currentPage, uiState.value.gridSpec)
+            FoxLog.d("Widget $kind placed on page ${position.page} at ${position.col},${position.row}")
+        }
     }
 
     /** A home drag ended; [action] is what `DragResolver` decided. */

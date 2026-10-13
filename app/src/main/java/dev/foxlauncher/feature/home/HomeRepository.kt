@@ -11,6 +11,11 @@ import dev.foxlauncher.core.model.HomeContainer
 import dev.foxlauncher.core.model.HomeItem
 import dev.foxlauncher.core.model.HomeLayout
 import dev.foxlauncher.core.model.HomePosition
+import dev.foxlauncher.feature.home.grid.CellRect
+import dev.foxlauncher.feature.home.grid.GridLayoutEngine
+import dev.foxlauncher.feature.home.grid.GridSpec
+import dev.foxlauncher.feature.home.grid.Span
+import dev.foxlauncher.feature.home.grid.WidgetPlacement
 import dev.foxlauncher.feature.home.drag.DragResolver
 import dev.foxlauncher.feature.home.drag.DropAction
 import dev.foxlauncher.feature.home.drag.NEW_ITEM_ID
@@ -85,6 +90,21 @@ class HomeRepository @Inject constructor(
             )
         }
         dao.moveItems(rows)
+    }
+
+    /**
+     * Places a new native widget of [kind] (task 5.1): [span] cells on [preferredPage] if they are
+     * free there, else on the first page with room, else on a new page after the last (see
+     * `WidgetPlacement`). Returns where it went.
+     */
+    suspend fun addNativeWidget(kind: String, span: Span, preferredPage: Int, grid: GridSpec): HomePosition {
+        val onPages = dao.getAll().filter { it.container == HomeContainer.PAGE }
+        val taken = onPages.groupBy { it.page }.mapValues { (_, rows) -> rows.map { CellRect(it.col, it.row, it.spanX, it.spanY) } }
+        val pageCount = (onPages.maxOfOrNull { it.page } ?: 0) + 1
+        val (page, cell) = WidgetPlacement.place(GridLayoutEngine(grid), taken, pageCount, preferredPage, span)
+        val position = HomePosition(HomeContainer.PAGE, page, cell.col, cell.row, cell.spanX, cell.spanY)
+        dao.insert(HomeLayoutMapper.toEntity(HomeItem.NativeWidget(id = 0, position = position, kind = kind), createdAt = System.currentTimeMillis()))
+        return position
     }
 
     suspend fun remove(itemIds: List<Long>) {

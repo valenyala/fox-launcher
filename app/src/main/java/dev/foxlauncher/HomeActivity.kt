@@ -46,6 +46,9 @@ import dev.foxlauncher.feature.settings.GesturesScreen
 import dev.foxlauncher.feature.settings.HiddenAppsScreen
 import dev.foxlauncher.feature.settings.HomeSettingsScreen
 import dev.foxlauncher.feature.settings.SettingsRoute
+import dev.foxlauncher.feature.widgets.LocalNativeWidgets
+import dev.foxlauncher.feature.widgets.NativeWidgetRegistry
+import dev.foxlauncher.feature.widgets.WidgetPickerSheet
 import dev.foxlauncher.feature.settings.WallpaperSettingsScreen
 import dev.foxlauncher.feature.wallpaper.LiveWallpaper
 import dev.foxlauncher.feature.wallpaper.LiveWallpaperPromptDialog
@@ -60,6 +63,8 @@ import javax.inject.Inject
 class HomeActivity : ComponentActivity() {
 
     @Inject lateinit var iconCache: IconCache
+
+    @Inject lateinit var nativeWidgets: NativeWidgetRegistry
 
     /** 120 Hz while touched; MIUI would otherwise hold Fox at 60 Hz (see [HighRefreshRate]). */
     private val refreshRate = HighRefreshRate(this)
@@ -103,6 +108,8 @@ class HomeActivity : ComponentActivity() {
                 val drawerViewModel: DrawerViewModel = hiltViewModel()
                 // Settings screens stack over the home, which stays composed under them (see SettingsRoute).
                 var settings by rememberSaveable { mutableStateOf(listOf<SettingsRoute>()) }
+                // The native widget picker, over the home (task 5.1).
+                var widgetPicker by rememberSaveable { mutableStateOf(false) }
                 LaunchedEffect(requestedSettings) {
                     requestedSettings?.let { settings = listOf(it) }
                     requestedSettings = null
@@ -111,6 +118,7 @@ class HomeActivity : ComponentActivity() {
                 LaunchedEffect(homeKeyPresses) {
                     if (homeKeyPresses > 0) {
                         settings = emptyList()
+                        widgetPicker = false
                         viewModel.dismissAccessibilityPrompt()
                         viewModel.dismissLiveWallpaperPrompt()
                     }
@@ -132,7 +140,11 @@ class HomeActivity : ComponentActivity() {
                 }
 
                 val iconGeneration by iconCache.generation.collectAsStateWithLifecycle()
-                CompositionLocalProvider(LocalIconCache provides iconCache, LocalIconGeneration provides iconGeneration) {
+                CompositionLocalProvider(
+                    LocalIconCache provides iconCache,
+                    LocalIconGeneration provides iconGeneration,
+                    LocalNativeWidgets provides nativeWidgets,
+                ) {
                     HomeRoot(
                         isDefaultLauncher = isDefault,
                         onRequestDefaultLauncher = { requestDefaultLauncherRole(roleRequest) },
@@ -143,8 +155,9 @@ class HomeActivity : ComponentActivity() {
                             homeKeyWhileHome = homeKeyWhileHome && settings.isEmpty(),
                             onPageSettled = { page ->
                                 FoxLog.d("Page settled: $page")
-                                viewModel.onPageSettled()
+                                viewModel.onPageSettled(page)
                             },
+                            onResizeWidget = viewModel::onResizeWidget,
                             onDrawerClosed = drawerViewModel::onDrawerClosed,
                             state = homeState,
                             onItemClick = { item, bounds ->
@@ -202,7 +215,14 @@ class HomeActivity : ComponentActivity() {
                         }
                         val closeSettings = { settings = settings.dropLast(1) }
                         when (settings.lastOrNull()) {
-                            SettingsRoute.HOME -> HomeSettingsScreen(onBack = closeSettings, onOpen = { settings = settings + it })
+                            SettingsRoute.HOME -> HomeSettingsScreen(
+                                onBack = closeSettings,
+                                onOpen = { settings = settings + it },
+                                onOpenWidgets = {
+                                    settings = emptyList()
+                                    widgetPicker = true
+                                },
+                            )
                             SettingsRoute.GESTURES -> GesturesScreen(
                                 viewModel = hiltViewModel(),
                                 onBack = closeSettings,
@@ -215,6 +235,16 @@ class HomeActivity : ComponentActivity() {
                             )
                             SettingsRoute.HIDDEN_APPS -> HiddenAppsScreen(hiltViewModel(), onBack = closeSettings)
                             null -> Unit
+                        }
+                        if (widgetPicker) {
+                            WidgetPickerSheet(
+                                specs = nativeWidgets.all,
+                                onPick = { spec ->
+                                    widgetPicker = false
+                                    viewModel.addNativeWidget(spec.kind)
+                                },
+                                onDismiss = { widgetPicker = false },
+                            )
                         }
                     }
                 }

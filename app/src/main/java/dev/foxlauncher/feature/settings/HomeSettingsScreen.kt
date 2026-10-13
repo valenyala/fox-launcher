@@ -17,12 +17,13 @@ import dev.foxlauncher.R
 /** Where settings screens live while Fox has no NavHost (the home must stay composed under them). */
 enum class SettingsRoute { HOME, GESTURES, WALLPAPER, HIDDEN_APPS }
 
-/** The settings root (task 3.5): the "Home settings" gesture action and the drawer menu open it. */
+/** The settings root (task 3.5): the "Home settings" gesture action and the drawer menu open it. Widgets first (task 5.1). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeSettingsScreen(
     onBack: () -> Unit,
     onOpen: (SettingsRoute) -> Unit,
+    onOpenWidgets: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BackHandler(onBack = onBack)
@@ -36,6 +37,14 @@ fun HomeSettingsScreen(
         modifier = modifier.fillMaxSize(),
     ) { padding ->
         LazyColumn(contentPadding = padding) {
+            item {
+                // The widget picker opens over the home, not as another settings screen (task 5.1).
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.widgets_title)) },
+                    supportingContent = { Text(stringResource(R.string.widgets_summary)) },
+                    modifier = Modifier.clickable(onClick = onOpenWidgets),
+                )
+            }
             item {
                 ListItem(
                     headlineContent = { Text(stringResource(R.string.settings_gestures)) },

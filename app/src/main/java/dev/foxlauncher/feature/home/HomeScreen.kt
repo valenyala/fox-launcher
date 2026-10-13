@@ -78,6 +78,7 @@ import dev.foxlauncher.core.model.AppEntry
 import dev.foxlauncher.core.model.GestureAction
 import dev.foxlauncher.core.model.GestureType
 import dev.foxlauncher.core.model.HomeItem
+import dev.foxlauncher.core.model.HomeLayout
 import dev.foxlauncher.feature.gestures.gestureArena
 import dev.foxlauncher.feature.home.drag.DragOverlay
 import dev.foxlauncher.feature.home.drag.DropAction
@@ -89,7 +90,11 @@ import dev.foxlauncher.feature.home.drag.homeDragLayer
 import dev.foxlauncher.feature.home.drag.newAppItem
 import dev.foxlauncher.feature.home.drag.newShortcutItem
 import dev.foxlauncher.feature.home.drag.rememberHomeDragState
+import dev.foxlauncher.feature.home.grid.CellRect
 import dev.foxlauncher.feature.home.grid.GridLayoutEngine
+import dev.foxlauncher.feature.home.grid.WidgetResize
+import dev.foxlauncher.feature.widgets.LocalNativeWidgets
+import dev.foxlauncher.feature.widgets.NativeWidgetSpec
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.drop
@@ -143,6 +148,12 @@ object HomeTestTags {
 
 /** An item's open popup: the item, its bounds in the drag layer (the anchor) and in the window. */
 private data class OpenPopup(val item: HomeItem, val anchor: Rect, val windowBounds: Rect)
+
+/**
+ * The widget being resized (task 5.1): its id, and the cells and drag-layer bounds it had when the
+ * handles appeared, from which its bounds after each resize follow.
+ */
+private data class ResizeTarget(val itemId: Long, val originCell: CellRect, val originBounds: Rect)
 
 /** What the drawer slot knows of, and can ask of, the home screen. */
 @Stable
@@ -202,6 +213,7 @@ fun HomeScreen(
     loadPopup: suspend (HomeItem) -> ItemPopupModel = { ItemPopupModel() },
     onPopupAction: (HomeItem, PopupAction, Rect?) -> Unit = { _, _, _ -> },
     onGesture: (GestureType, HomeControls) -> Unit = { _, _ -> },
+    onResizeWidget: (HomeItem, CellRect) -> Unit = { _, _ -> },
     homeKeyWhileHome: Boolean = false,
     onPageSettled: (Int) -> Unit = {},
     drawer: @Composable DrawerScope.() -> Unit,
@@ -235,6 +247,7 @@ fun HomeScreen(
     }
     SideEffect { dragState.setOpenFolder(openFolder) }
     var popup by remember { mutableStateOf<OpenPopup?>(null) }
+    var resizing by remember { mutableStateOf<ResizeTarget?>(null) }
     val popupItem = popup?.item
     val popupModel by produceState<ItemPopupModel?>(null, popupItem) {
         value = null
@@ -354,9 +367,10 @@ fun HomeScreen(
     LaunchedEffect(Unit) { if (isOpen) progress.snapTo(1f) }
     LaunchedEffect(homeKeyPresses) {
         if (homeKeyPresses > 0) {
-            val nothingOpen = dragState.dragging == null && popup == null && openFolderId == null && !isOpen
+            val nothingOpen = dragState.dragging == null && popup == null && openFolderId == null && !isOpen && resizing == null
             dragState.cancel()
             popup = null
+            resizing = null
             openFolderId = null
             settle(open = false)
             // Back from an app, Home keeps the page (as Launcher3); while home it runs its action (default: first page).
@@ -373,6 +387,7 @@ fun HomeScreen(
     BackHandler(enabled = isOpen) { settle(open = false) }
     BackHandler(enabled = openFolder != null) { openFolderId = null }
     BackHandler(enabled = popup != null) { popup = null }
+    BackHandler(enabled = resizing != null) { resizing = null }
     val outsideFolder by remember { derivedStateOf { dragState.isOutsideOpenFolder() } }
     LaunchedEffect(outsideFolder) {
         if (outsideFolder) {
@@ -389,11 +404,12 @@ fun HomeScreen(
                 // A resize mid-drag (multi-window, a large screen rotating): every cell moved, so put the item back.
                 dragState.cancel()
                 popup = null
+                resizing = null
             }
             .homeDragLayer(dragState)
             // After the drag layer: a drag that owns the finger has consumed its events before the arena sees them.
             .gestureArena(
-                enabled = { !isDrawerShown && openFolderId == null && popup == null && dragState.dragging == null },
+                enabled = { !isDrawerShown && openFolderId == null && popup == null && resizing == null && dragState.dragging == null },
                 isOnItem = { dragState.itemAt(it) != null },
                 onGesture = { currentOnGesture(it, currentHomeControls) },
                 // A swipe to the left goes to the next page, or to the previous one right to left.
@@ -500,17 +516,29 @@ fun HomeScreen(
                 onAction = { action ->
                     popup = null
                     val item = shownPopup.item
-                    // A folder takes its apps with it: ask first, as when it is dropped on Remove.
-                    if (action == PopupAction.Remove && item is HomeItem.Folder) {
-                        folderToRemove = item
-                    } else {
-                        onPopupAction(item, action, shownPopup.windowBounds)
+                    when {
+                        // A folder takes its apps with it: ask first, as when it is dropped on Remove.
+                        action == PopupAction.Remove && item is HomeItem.Folder -> folderToRemove = item
+                        action == PopupAction.Resize -> item.position.let { p ->
+                            resizing = ResizeTarget(item.id, CellRect(p.col, p.row, p.spanX, p.spanY), shownPopup.anchor)
+                        }
+                        else -> onPopupAction(item, action, shownPopup.windowBounds)
                     }
                 },
                 onDismiss = { popup = null },
                 // Dragged out, a shortcut becomes a pinned shortcut item; the popup closes as the drag begins.
                 onShortcutLongPress = { shortcut -> dragState.arm(newShortcutItem(shortcut), onDragStart = { popup = null }) },
             )
+        }
+        resizing?.let { target ->
+            val widget = state.layout.pages.asSequence().flatMap { it.items }.firstOrNull { it.id == target.itemId } as? HomeItem.NativeWidget
+            val spec = widget?.let { LocalNativeWidgets.current[it.kind] }
+            if (widget == null || spec == null) {
+                // Removed or moved off the grid meanwhile: nothing to resize.
+                SideEffect { resizing = null }
+            } else {
+                ResizeHandles(widget, spec, target, state.layout, engine, onResize = onResizeWidget, onDismiss = { resizing = null })
+            }
         }
         RemoveZone(dragState, Modifier.testTag(HomeTestTags.REMOVE_ZONE))
         DragOverlay(dragState) { item ->
@@ -550,6 +578,43 @@ fun HomeScreen(
             onDismiss = { folderToRemove = null },
         )
     }
+}
+
+/** [WidgetResizeFrame] for [widget], where it is now, limited by its spec and the other items on its page. */
+@Composable
+private fun ResizeHandles(
+    widget: HomeItem.NativeWidget,
+    spec: NativeWidgetSpec,
+    target: ResizeTarget,
+    layout: HomeLayout,
+    engine: GridLayoutEngine,
+    onResize: (HomeItem, CellRect) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val p = widget.position
+    val cell = CellRect(p.col, p.row, p.spanX, p.spanY)
+    val origin = target.originCell
+    val cellW = target.originBounds.width / origin.spanX
+    val cellH = target.originBounds.height / origin.spanY
+    val bounds = Rect(
+        left = target.originBounds.left + (cell.col - origin.col) * cellW,
+        top = target.originBounds.top + (cell.row - origin.row) * cellH,
+        right = target.originBounds.left + (cell.right - origin.col) * cellW,
+        bottom = target.originBounds.top + (cell.bottom - origin.row) * cellH,
+    )
+    val others = layout.pages.getOrNull(p.page)?.items.orEmpty()
+        .filter { it.id != widget.id }
+        .map { it.position.let { q -> CellRect(q.col, q.row, q.spanX, q.spanY) } }
+    val occupied = remember(others, engine) { engine.occupancy(others) }
+    WidgetResizeFrame(
+        bounds = bounds,
+        cell = cell,
+        horizontal = spec.minSpan.x != spec.maxSpan.x,
+        vertical = spec.minSpan.y != spec.maxSpan.y,
+        resize = { edge, cells -> WidgetResize.resized(engine, cell, edge, cells, spec.minSpan, spec.maxSpan, occupied) },
+        onResize = { onResize(widget, it) },
+        onDismiss = onDismiss,
+    )
 }
 
 /**

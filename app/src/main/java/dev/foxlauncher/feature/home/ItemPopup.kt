@@ -54,6 +54,8 @@ data class ItemPopupModel(
     val shortcuts: ImmutableList<PopupShortcut> = persistentListOf(),
     val canOpenAppInfo: Boolean = false,
     val canUninstall: Boolean = false,
+    /** A native widget that can change size (task 5.1). */
+    val canResize: Boolean = false,
 )
 
 /** A choice made in a home item's popup. */
@@ -63,6 +65,9 @@ sealed interface PopupAction {
 
     /** Off the home screen; the app stays installed. */
     data object Remove : PopupAction
+
+    /** Shows the widget's resize handles (task 5.1). */
+    data object Resize : PopupAction
 
     data class OpenShortcut(val shortcut: AppShortcut) : PopupAction
 }
@@ -127,6 +132,7 @@ private fun PopupCard(model: ItemPopupModel, onAction: (PopupAction) -> Unit, on
                 }
             }
             if (model.shortcuts.isNotEmpty()) HorizontalDivider(Modifier.padding(vertical = 4.dp))
+            if (model.canResize) PopupRow(stringResource(R.string.popup_resize)) { onAction(PopupAction.Resize) }
             if (model.canOpenAppInfo) PopupRow(stringResource(R.string.popup_app_info)) { onAction(PopupAction.AppInfo) }
             PopupRow(stringResource(R.string.home_remove)) { onAction(PopupAction.Remove) }
             if (model.canUninstall) PopupRow(stringResource(R.string.popup_uninstall)) { onAction(PopupAction.Uninstall) }

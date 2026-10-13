@@ -33,6 +33,14 @@
     <string name="accessibility_stopped">Android stopped the \"Fox gestures\" service, which happens when recent apps are cleared. In the accessibility settings, turn \"Fox gestures\" off and on again.</string>
     <string name="accessibility_open_settings">Open settings</string>
     <string name="accessibility_not_now">Not now</string>
+    <string name="widget_clock">Clock</string>
+    <string name="widget_clock_description">The time and date, in large type</string>
+    <string name="widgets_title">Widgets</string>
+    <string name="widgets_summary">Add a clock and more to the home screen</string>
+    <string name="widget_size">%1$d × %2$d</string>
+    <string name="widget_missing">This widget is no longer available</string>
+    <string name="popup_resize">Resize</string>
+    <string name="widget_resize_done">Done</string>
     <string name="wallpaper_label">Fox wallpapers</string>
     <string name="wallpaper_description">Rotates your wallpapers with a smooth crossfade.</string>
     <string name="settings_wallpaper">Wallpaper</string>
