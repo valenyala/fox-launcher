@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 5 — Memory widgets (Phase 4 done 2026-10-13 apart from three checklist items, deferred by the user; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists)
-**Next task:** 5.3 RAM gauge, boost and detail widgets (2.8 still deferred)
+**Next task:** 5.4 BoostStrategy per API level (2.8 still deferred)
 
 ## Environment facts (verified 2026-09-17)
 
@@ -84,7 +84,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 ## Phase 5 — Memory widgets
 - [x] 5.1 Native widget framework (POCO F3 2026-10-13: Clock added from the picker, resized 4×1→5×2→2×1, moved, removed)
 - [x] 5.2 MemoryStats + MemInfoParser tests (no UI: JVM tests on a POCO F3 and an emulator sample, instrumented on fox-api33/37)
-- [ ] 5.3 RAM gauge, boost and detail widgets — emulators pass; POCO check pending
+- [x] 5.3 RAM gauge, boost and detail widgets (POCO F3 2026-10-13: gauge and details read right, Boost placed, moved and tapped; recent apps verified on emulators only, usage access not granted on the phone)
 - [ ] 5.4 BoostStrategy per API level
 - [ ] 5.5 (stretch) AppWidgetProvider export
 - [ ] Device checklist passed on: —
