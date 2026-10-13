@@ -161,6 +161,13 @@ Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out o
 
 ## Session notes
 
+- 2026-10-13 — README (not a phase task). `README.md` for users: features, defaults, Boost limits per Android
+  version, build and setup, MIUI notes, permissions, development pointers. Media in `docs/media/` (≈4.4 MB),
+  recorded on fox-api37 with `adb shell screenrecord` and converted with ffmpeg. fox-api37 now has a demo layout
+  (clock and the three memory widgets, a Gmail + Calendar folder), the Fox live wallpaper on home and lock, "Fox
+  gestures" on, and swipe right on the first page mapped to Next wallpaper. Seen while recording: the Boost widget's
+  1 × 1 preview in the picker cuts its caption to "Limited on" (on the home grid it reads in full).
+
 - 2026-10-13 — 5.5 checkpoint. `MemoryGaugeAppWidget` (`AppWidgetProvider`, Hilt entry point, reads memory off
   the main thread with `goAsync`): RemoteViews layout with a ring `ProgressBar` (layer-list ring drawable), the %
   and "x.x GB free"; system accent colour and widget corner radius from API 31 (`values-v31`); every 30 minutes
