@@ -62,6 +62,19 @@
             android:exported="true"
             android:targetActivity=".HomeActivity" />
 
+        <!-- The RAM gauge as an app widget for other launchers (task 5.5). Exported: the system delivers the updates. -->
+        <receiver
+            android:name=".feature.memory.appwidget.MemoryGaugeAppWidget"
+            android:exported="true"
+            android:label="@string/widget_memory_gauge">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/memory_gauge_appwidget_info" />
+        </receiver>
+
         <!-- System actions for gestures (ADR-4, PLATFORM-NOTES G). Bound only by the system, which holds
              BIND_ACCESSIBILITY_SERVICE. -->
         <service

@@ -9,6 +9,7 @@
             android:permission="android.permission.DUMP">
             <intent-filter>
                 <action android:name="dev.foxlauncher.debug.NEXT_WALLPAPER" />
+                <action android:name="dev.foxlauncher.debug.PIN_MEMORY_GAUGE" />
             </intent-filter>
         </receiver>
     </application>

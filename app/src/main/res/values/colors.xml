@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#E8622A</color>
+    <!-- The RAM gauge app widget's ring: Fox's orange; Material You's accent from Android 12 (values-v31). -->
+    <color name="memory_gauge_ring">#FFFF8A5C</color>
 </resources>

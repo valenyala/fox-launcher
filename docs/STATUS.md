@@ -86,7 +86,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] 5.2 MemoryStats + MemInfoParser tests (no UI: JVM tests on a POCO F3 and an emulator sample, instrumented on fox-api33/37)
 - [x] 5.3 RAM gauge, boost and detail widgets (POCO F3 2026-10-13: gauge and details read right, Boost placed, moved and tapped; recent apps verified on emulators only, usage access not granted on the phone)
 - [x] 5.4 BoostStrategy per API level (POCO F3 2026-10-13: "Limited on MIUI", self trim measured 4 MB; MIUI blocks closing other apps, see PLATFORM-NOTES M)
-- [ ] 5.5 (stretch) AppWidgetProvider export
+- [ ] 5.5 (stretch) AppWidgetProvider export — emulator (Pixel Launcher) passes; POCO check pending
 - [ ] Device checklist passed on: — (5.4 "boost reduces used memory on API ≤ 33" blocked on the POCO by MIUI until Shizuku, Phase 9; the 34+ caption passed on fox-api37)
 
 ## Phase 6 — App widgets
@@ -160,6 +160,16 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-13 — 5.5 checkpoint. `MemoryGaugeAppWidget` (`AppWidgetProvider`, Hilt entry point, reads memory off
+  the main thread with `goAsync`): RemoteViews layout with a ring `ProgressBar` (layer-list ring drawable), the %
+  and "x.x GB free"; system accent colour and widget corner radius from API 31 (`values-v31`); every 30 minutes
+  (`updatePeriodMillis` 1 800 000, the shortest honoured) and on tap (explicit refresh broadcast). Manifest receiver
+  exported for `APPWIDGET_UPDATE`. Debug-only `PIN_MEMORY_GAUGE` (adb, DUMP) calls `requestPinAppWidget`, which
+  Android takes only from an app in front (start a Fox activity first). Instrumented `MemoryGaugeViewsTest` 1
+  (fox-api33/37: the RemoteViews applied read "65%", "2.1 GB free", ring at 65). fox-api37, Pixel Launcher: pin
+  dialog "RAM gauge 2 × 1", added, shows 48 % / 2.0 GB free in the accent colour; a tap refreshed it ("1 updated").
+  Fox itself hosts app widgets only from phase 6.
 
 - 2026-10-13 — 5.4 POCO round 1: Boost asked 65 apps to close and nothing closed ("Nothing to free", apps still
   running). **MIUI silently ignores `killBackgroundProcesses` from apps**: proven with `run-as` (Fox's uid: nothing)

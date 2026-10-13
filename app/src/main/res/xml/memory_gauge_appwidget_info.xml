@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fox's RAM gauge for other launchers (task 5.5): 30 minutes is the shortest updatePeriodMillis Android honours; a tap refreshes it. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/widget_memory_gauge_description"
+    android:initialLayout="@layout/memory_gauge_appwidget"
+    android:minWidth="110dp"
+    android:minHeight="40dp"
+    android:previewLayout="@layout/memory_gauge_appwidget"
+    android:resizeMode="horizontal|vertical"
+    android:targetCellWidth="2"
+    android:targetCellHeight="1"
+    android:updatePeriodMillis="1800000"
+    android:widgetCategory="home_screen" />
