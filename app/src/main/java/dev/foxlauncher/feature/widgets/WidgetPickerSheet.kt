@@ -23,11 +23,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
 import dev.foxlauncher.R
 
 object WidgetPickerTestTags {
     const val SHEET = "widget_picker_sheet"
+
+    fun preview(kind: String) = "widget_picker_preview_$kind"
 }
 
 /** The size of one grid cell in the picker's previews, roughly a phone's. */
@@ -69,9 +72,19 @@ private fun PickerRow(spec: NativeWidgetSpec, onClick: () -> Unit) {
             modifier = Modifier
                 .size(PREVIEW_CELL_WIDTH * spec.defaultSpan.x, PREVIEW_CELL_HEIGHT * spec.defaultSpan.y)
                 .clip(RoundedCornerShape(20.dp))
-                .background(Color.Black.copy(alpha = PREVIEW_BACKGROUND_ALPHA)),
+                .background(Color.Black.copy(alpha = PREVIEW_BACKGROUND_ALPHA))
+                .testTag(WidgetPickerTestTags.preview(spec.kind)),
         ) {
-            spec.content(NativeWidgetScope(spec.defaultSpan.x, spec.defaultSpan.y, isPreview = true))
+            Box(Modifier.clearAndSetSemantics { }) {
+                spec.content(NativeWidgetScope(spec.defaultSpan.x, spec.defaultSpan.y, isPreview = true))
+            }
+            // Over the preview, so a tap on it adds the widget: a widget's own button (Boost) would otherwise take the tap
+            // and nothing would happen (found on the POCO).
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .clickable(interactionSource = null, indication = null, onClick = onClick),
+            )
         }
         Text(stringResource(spec.nameRes), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
         Text(

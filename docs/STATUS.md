@@ -173,7 +173,8 @@ Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out o
   `BoostCapability` (5 tests). `MemoryWidgetContentTest` 13 (fox-api33). Emulators: picker previews read live memory;
   all three placed; boost showed "Freeing…" then "Nothing to free" (true: a GC freed nothing); fox-api37 shows the
   caption and its explanation. Fixed on the way: the gauge's "2.3 GB fr…" (now wraps), the caption cut to "Fox only
-  on" (shorter text, icon under it).
+  on" (shorter text, icon under it). **POCO round 1:** gauge and details fine; Boost could not be added: in the picker
+  its preview is a button and took the tap. Previews now sit under a tap layer that adds the widget (+1 picker test).
 
 - 2026-10-13 — **5.2 done.** `feature/memory`: pure `MemInfoParser` (`Name: value kB` lines; unknown, foreign-unit
   and cut-off lines skipped; null without `MemTotal`), pure `MemorySnapshot.of` (ActivityManager's total/available
