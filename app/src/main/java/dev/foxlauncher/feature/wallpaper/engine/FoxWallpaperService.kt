@@ -10,6 +10,7 @@ import android.view.Choreographer
 import android.view.SurfaceHolder
 import androidx.core.net.toUri
 import dagger.hilt.android.AndroidEntryPoint
+import dev.foxlauncher.BuildConfig
 import dev.foxlauncher.core.common.FoxLog
 import dev.foxlauncher.core.common.IoDispatcher
 import dev.foxlauncher.core.data.db.WallpaperDao
@@ -42,6 +43,9 @@ import kotlinx.coroutines.withContext
  * main thread at the surface size, a little wider for parallax unless the user turned it off
  * (task 4.7). Frames go through Fox's own [WallpaperRenderer], which survives MIUI swapping the surface.
  *
+ * Memory (task 4.8): an engine holds at most two surface-sized bitmaps, the one showing and the one
+ * fading in or being decoded; a fade still running when the next image is wanted ends first.
+ *
  * It also runs intervals under 15 minutes (task 4.4), on a timer only while the wallpaper is visible.
  */
 @AndroidEntryPoint
@@ -57,13 +61,29 @@ class FoxWallpaperService : WallpaperService() {
 
     @Inject lateinit var rotation: RotationScheduler
 
+    /** The live engines: the system's and, while the picker shows one, a preview. */
+    private val engines = mutableSetOf<FoxEngine>()
+
     override fun onCreateEngine(): Engine = FoxEngine()
+
+    /**
+     * Nothing is decoded ahead of time, so the only thing to give back is a fade's outgoing image:
+     * under memory pressure a running crossfade ends at once (task 4.8).
+     */
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        @Suppress("DEPRECATION") // RUNNING_LOW still arrives for the wallpaper's foreground-like process.
+        if (level >= TRIM_MEMORY_RUNNING_LOW) engines.forEach { it.endFade() }
+    }
 
     private inner class FoxEngine : Engine(), Choreographer.FrameCallback {
 
         /** Tells engines apart in the log: the system may run a preview engine beside the real one. */
         private val name = "Wallpaper engine ${Integer.toHexString(System.identityHashCode(this))}"
         private val renderer = WallpaperRenderer(name)
+
+        /** Frame timing of the running crossfade, logged when it ends; debug builds only (task 4.8). */
+        private val frameStats = FrameStats()
 
         /** Whether the last frame reached the screen; a change is logged once, not every frame. */
         private var framesShown = true
@@ -91,6 +111,7 @@ class FoxWallpaperService : WallpaperService() {
 
         override fun onCreate(surfaceHolder: SurfaceHolder) {
             super.onCreate(surfaceHolder)
+            engines += this
             FoxLog.d("$name created${if (isPreview) " (preview)" else ""}")
             setOffsetNotificationsEnabled(true)
             scope.launch {
@@ -178,6 +199,7 @@ class FoxWallpaperService : WallpaperService() {
         override fun onComputeColors(): WallpaperColors? = current?.takeUnless { it.isRecycled }?.let(WallpaperColors::fromBitmap)
 
         override fun onDestroy() {
+            engines -= this
             FoxLog.d("$name destroyed")
             scope.cancel()
             Choreographer.getInstance().removeFrameCallback(this)
@@ -215,6 +237,8 @@ class FoxWallpaperService : WallpaperService() {
             if (surfaceW == 0 || surfaceH == 0) return // onSurfaceChanged loads it.
             loadJob?.cancel()
             loadJob = scope.launch {
+                // Never three images at once: the fade in progress ends before the next one is decoded.
+                finishFade()
                 val entry = withContext(io) { dao.getEntry(id) } ?: return@launch
                 val width = if (parallax) (surfaceW * (1 + PARALLAX_EXTRA)).roundToInt() else surfaceW
                 val bitmap = withContext(io) { loader.load(entry.uri.toUri(), width, surfaceH) }
@@ -227,6 +251,7 @@ class FoxWallpaperService : WallpaperService() {
                     finishFade()
                     incoming = bitmap
                     fadeStartNanos = 0L
+                    frameStats.reset()
                     Choreographer.getInstance().postFrameCallback(this@FoxEngine)
                 } else {
                     finishFade()
@@ -240,15 +265,24 @@ class FoxWallpaperService : WallpaperService() {
 
         override fun doFrame(frameTimeNanos: Long) {
             if (incoming == null) return
+            val workStart = System.nanoTime()
             if (fadeStartNanos == 0L) fadeStartNanos = frameTimeNanos
             val elapsedMs = (frameTimeNanos - fadeStartNanos) / NANOS_PER_MS
             if (elapsedMs >= fadeMs) {
                 finishFade()
                 notifyColorsChanged()
+                if (BuildConfig.DEBUG) frameStats.summary()?.let { FoxLog.d("$name: crossfade frames: $it") }
             } else {
                 draw(WallpaperGeometry.crossfadeAlpha(elapsedMs, fadeMs), frameTimeNanos)
                 Choreographer.getInstance().postFrameCallback(this)
+                if (BuildConfig.DEBUG) frameStats.frame(frameTimeNanos, System.nanoTime() - workStart)
             }
+        }
+
+        /** Under memory pressure: the crossfade jumps to its end, freeing the outgoing image. */
+        fun endFade() {
+            Choreographer.getInstance().removeFrameCallback(this)
+            finishFade()
         }
 
         /** Ends a crossfade: the incoming image becomes the only one; the old one is freed. */

@@ -259,6 +259,12 @@ here contradicts what you remember, trust this file unless a device proves other
   about 141 MB in front) and evicts its code pages. The first frame after a long absence pays page faults
   (`filemap_fault` in a trace) that no app-side change avoids.
 
+- Wallpaper engine (POCO F3, 2026-10-13, task 4.8): a crossfade of two 1080×2400 bitmaps through Fox's own
+  `HardwareRenderer` costs 1.1–1.8 ms of main-thread work per frame (record + `syncAndDraw`), worst 8.7 ms, no missed
+  vsync; MIUI drives the wallpaper at 60 Hz even while the launcher window runs at 120. The first fade after a start
+  is slower (texture uploads): measure after a warm-up. `run-as <pkg> kill -10 <pid>` makes a debuggable app collect
+  garbage (ART logs "SIGUSR1 forcing GC"), so meminfo shows what stays.
+
 ## C. Compose specifics that bite launchers
 
 - Do not put the grid in `LazyVerticalGrid`; items have absolute cells and spans. Use a custom `Layout` per page with

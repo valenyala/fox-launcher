@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds only: hooks for the scripts in scripts/perf. DUMP is held by the adb shell, not by apps. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <receiver
+            android:name=".debug.DebugWallpaperReceiver"
+            android:exported="true"
+            android:permission="android.permission.DUMP">
+            <intent-filter>
+                <action android:name="dev.foxlauncher.debug.NEXT_WALLPAPER" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

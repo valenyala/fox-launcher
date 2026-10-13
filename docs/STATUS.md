@@ -77,7 +77,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] 4.5 Static fallback (POCO F3 2026-10-12: page change, Next now, unlock with a MIUI static wallpaper; gesture prompt)
 - [x] 4.6 Lock screen handling (POCO F3 2026-10-12: switch sets the lock image with MIUI Wallpaper Carousel off; Fox live on home and lock shows on the MIUI lock screen)
 - [x] 4.7 Wallpaper settings UI (POCO F3 2026-10-13: folder, picked pictures, thumbnail tap, shuffle, crossfade, parallax, remove, preview "Settings…"; engine renderer fix)
-- [ ] 4.8 Memory and performance budget
+- [ ] 4.8 Memory and performance budget — numbers recorded (POCO F3 2026-10-13); awaiting confirmation
 - [ ] 4.9 URI permission resilience
 - [ ] Device checklist passed on: —
 
@@ -160,6 +160,30 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-13 — 4.8 measured. **Bitmaps:** the loader decodes straight to the surface size (`ImageDecoder`
+  `setTargetSize` + `setCrop` from pure `WallpaperGeometry.coverDecode`), so a photo never exists at full size (a
+  4000×3000 one used to be decoded whole, 48 MB, then copied); the engine ends a running fade before decoding the next
+  image, so it holds at most two surface-sized bitmaps; `onTrimMemory` (≥ RUNNING_LOW) ends a fade at once (there is no
+  pre-decoded "next" to drop). **Tools:** pure `FrameStats` (per crossfade: frame gaps from Choreographer, work per
+  frame; logged in debug), a debug-only `NEXT_WALLPAPER` receiver (adb only: `android.permission.DUMP`), and
+  `scripts/perf/wallpaper.sh` (warm-up, forced GC via `run-as kill -10` before each meminfo, readings every 10
+  changes, crossfade lines, engine trouble). Debug build (the receiver and the frame log need it). Tests: geometry
+  12 (cover decode replaces sample size + crop), `FrameStats` 5, instrumented `WallpaperLoaderTest` 4 (exact size,
+  centre crop, EXIF rotation, upscale; fox-api33/37).
+
+  POCO F3, Fox live wallpaper, 1100 ms crossfade, parallax off (1080×2400 images), 20 changes 3 s apart:
+
+  | after | PSS | RSS | Graphics | Java heap |
+  |---|---|---|---|---|
+  | 3 warm-up changes | 208.7 MB | 285.6 MB | 109.6 MB | 15.0 MB |
+  | +10 changes | 209.0 MB | 285.9 MB | 110.0 MB | 15.0 MB |
+  | +20 changes | 198.0 MB | 273.2 MB | 110.1 MB | 16.1 MB |
+
+  No growth. Crossfades: 67 frames each, work per frame avg 1.1–1.8 ms, worst single frame 8.7 ms (two of 20 fades
+  had a frame over 8 ms), 0 late frames in all 20; the very first fade after a fresh start had a 34 ms frame and 2
+  late ones (caches filling), hence the warm-up. MIUI runs the wallpaper at 60 Hz (16.5 ms gaps), not 120. A first
+  run without warm-up or GC read +22 MB: uncollected garbage and the first textures, gone in the run above.
 
 - 2026-10-13 — **4.7 done.** POCO round 3 on the renderer build: every swipe, the unlock change and the thumbnail
   taps crossfaded on screen, zero dead-surface lines; parallax switched the decode width 1296 ↔ 1080; the preview ran
