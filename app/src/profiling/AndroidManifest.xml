@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The profiling build (release code, debug key) can be traced from the shell (task 8.2): perfetto sees its
+     app trace sections, as it does a debug build's, without the debug build's costs. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <profileable android:shell="true" />
+    </application>
+</manifest>

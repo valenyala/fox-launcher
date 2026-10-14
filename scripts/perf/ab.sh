@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # A/B of one scenario between APKs: installs them in turn (A B A B, so thermal drift hits both) and
 # records gfxinfo framestats around each of 3 repetitions per round, then prints per-frame UI-thread
-# and GPU work, which (unlike janky %) does not depend on the refresh rate MIUI picks.
+# and GPU work, which (unlike janky %) does not depend on the refresh rate MIUI picks. Each install is
+# compiled with its baseline profile first (compile_like_play), as on a user's phone.
 # Scenarios: open (drawer opening), scroll (drawer flings), pages (home page swipes), return (back home
-# after 12 s in Settings; also prints the system's TotalTime until Fox has drawn, and Fox's first frame).
-# Usage: ab.sh <open|scroll|pages|return> A.apk B.apk [...]
+# after 12 s in Settings; also prints the system's TotalTime until Fox has drawn, and Fox's first frame),
+# folder (open and close the folder at FOLDER_TAP="x y", default the POCO F3's dock folder).
+# Usage: ab.sh <open|scroll|pages|return|folder> A.apk B.apk [...]
 set -u
 source "$(dirname "$0")/common.sh"
 scenario=$1; shift
@@ -13,6 +15,7 @@ run_once() {
     open) adb shell input swipe 540 1900 540 900 150; sleep 0.8 ;;
     scroll) adb shell input swipe 540 1900 540 600 120; sleep 0.5; adb shell input swipe 540 600 540 1900 120; sleep 0.5 ;;
     pages) adb shell input swipe 900 1100 180 1100 180; sleep 0.4; adb shell input swipe 180 1100 900 1100 180; sleep 0.4 ;;
+    folder) adb shell input tap ${FOLDER_TAP:-748 2244}; sleep 1.2; adb shell input keyevent KEYCODE_BACK; sleep 1 ;;
     return) adb shell am start -n com.android.settings/.Settings > /dev/null; sleep 12
       adb shell am start -W -a android.intent.action.MAIN -c android.intent.category.HOME |
         awk '/TotalTime/ {print $2}' >> "$out/ab-return-$name.times"; sleep 1.5 ;;
@@ -23,6 +26,7 @@ for round in 1 2; do
   for apk in "$@"; do
     name=$(basename "$apk" .apk)
     adb install -r "$apk" > /dev/null
+    compile_like_play
     go_home; sleep 4; require_fox_in_front
     [ "$scenario" = scroll ] && { adb shell input swipe 540 1900 540 900 150; sleep 1.2; }
     for i in 1 2 3; do

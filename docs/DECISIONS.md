@@ -270,3 +270,4 @@ area's new size, comes only once the app starts, so it is not waited for (PLATFO
 - dev.rikka.shizuku:api and :provider 13.1.5 (newest on Maven Central, 2023-09) — deep boost through Shizuku, task 9.1, ADR-9, ADR-21.
 - androidx.baselineprofile plugin 1.5.0, androidx.benchmark:benchmark-macro-junit4 1.5.0, androidx.test.uiautomator 2.4.0 (newest stable on Google Maven, 2026-10-14) — `:baselineprofile` generator and macrobenchmarks, task 8.1.
 - androidx.profileinstaller 1.4.1 (newest stable, 2026-10-14) — installs the baseline profile on sideloaded builds, task 8.1.
+- androidx.compose.runtime:runtime-tracing (Compose BOM 2026.09.00 → 1.12.1), androidx.tracing:tracing-perfetto and -binary 1.0.1 (newest stable, 2026-10-14), profiling build only — composable names in system traces for the jank pass, task 8.2.

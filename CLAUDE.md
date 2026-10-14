@@ -65,7 +65,9 @@ ANDROID_SERIAL=emulator-5556 ./gradlew installDebug          # pick one device w
 # performance (release-like build; results in build/perf)
 ./gradlew :app:assembleProfiling && adb install -r app/build/outputs/apk/profiling/app-profiling.apk
 ./scripts/perf/measure.sh <label>                          # cold start, page swipes, drawer, memory
-./scripts/perf/ab.sh <open|scroll|pages|return> A.apk B.apk   # A/B per-frame work of one scenario
+./scripts/perf/ab.sh <open|scroll|pages|return|folder> A.apk B.apk   # A/B per-frame work of one scenario
+./scripts/perf/trace.sh <label> [seconds]                  # system trace with composable names (profiling build)
+./gradlew :app:assembleProfiling -PcomposeReports          # Compose compiler stability reports in app/build/compose_compiler
 ANDROID_SERIAL=emulator-5558 ./gradlew :app:generateBaselineProfile             # regenerate app/src/main/generated/baselineProfiles (emulators only)
 ANDROID_SERIAL=emulator-5558 ./gradlew :baselineprofile:connectedBenchmarkReleaseAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=dev.foxlauncher.baselineprofile.FoxBenchmarks   # startup + drawer macrobenchmarks (emulators only)
 ```

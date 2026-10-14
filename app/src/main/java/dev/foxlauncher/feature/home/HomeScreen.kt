@@ -2,14 +2,14 @@ package dev.foxlauncher.feature.home
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterExitState
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
@@ -309,10 +309,14 @@ fun HomeScreen(
         scope.launch { progress.snapTo(0f) }
     }
 
-    val drawerScope = object : DrawerScope {
-        override val isShown: Boolean get() = isDrawerShown
-        override val isSearchRequested: Boolean get() = openedForSearch
-        override fun onAppLongPress(entry: AppEntry) = dragState.arm(newAppItem(entry), onDragStart = ::closeDrawerNow)
+    // One instance for good (its getters read state), so the drawer slot's content stays the same lambda: a new
+    // scope on each recomposition of the home (a folder opening, say) recomposed every drawer cell (task 8.2).
+    val drawerScope = remember(dragState) {
+        object : DrawerScope {
+            override val isShown: Boolean get() = isDrawerShown
+            override val isSearchRequested: Boolean get() = openedForSearch
+            override fun onAppLongPress(entry: AppEntry) = dragState.arm(newAppItem(entry), onDragStart = ::closeDrawerNow)
+        }
     }
     // Building the drawer is the costliest frame in the app (about 60 ms on the POCO F3), so it is
     // built once, right after the home's first frame, and kept: opening only moves a layer.
@@ -682,9 +686,16 @@ private fun OpenFolder(
     if (folder != null) shown = folder
     AnimatedVisibility(
         visible = folder != null,
-        enter = fadeIn() + scaleIn(initialScale = FOLDER_OPEN_SCALE),
-        exit = fadeOut() + scaleOut(targetScale = FOLDER_OPEN_SCALE),
+        enter = EnterTransition.None,
+        exit = ExitTransition.None,
     ) {
+        // The fade and scale of fadeIn() + scaleIn(), but with alpha applied per draw call: theirs copies
+        // the full-screen sheet off screen every frame, which made opening a folder jank on the POCO F3
+        // (task 8.2), as the drawer's fade had. AnimatedVisibility waits for this animation before it goes.
+        val progress = transition.animateFloat(
+            transitionSpec = { spring(stiffness = Spring.StiffnessMediumLow) },
+            label = "folder",
+        ) { if (it == EnterExitState.Visible) 1f else 0f }
         val current = shown ?: return@AnimatedVisibility
         key(current.id) {
             FolderSheet(
@@ -693,6 +704,14 @@ private fun OpenFolder(
                 cellHeight = cellHeight,
                 onClose = onClose,
                 onTitleChange = { title -> if (title != current.title) onRename(current, title) },
+                modifier = Modifier.graphicsLayer {
+                    val p = progress.value
+                    val scale = FOLDER_OPEN_SCALE + (1f - FOLDER_OPEN_SCALE) * p
+                    alpha = p
+                    scaleX = scale
+                    scaleY = scale
+                    compositingStrategy = CompositingStrategy.ModulateAlpha
+                },
                 itemContent = itemContent,
             )
         }

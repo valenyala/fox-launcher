@@ -69,6 +69,15 @@ kotlin {
     jvmToolchain(17)
 }
 
+// Compose compiler stability reports (task 8.2), on request: ./gradlew :app:assembleProfiling -PcomposeReports
+// writes app/build/compose_compiler/*-composables.txt, *-classes.txt and the metrics.
+if (providers.gradleProperty("composeReports").isPresent) {
+    composeCompiler {
+        reportsDestination = layout.buildDirectory.dir("compose_compiler")
+        metricsDestination = layout.buildDirectory.dir("compose_compiler")
+    }
+}
+
 // One baseline profile for every build type (task 8.1), generated on an emulator by :baselineprofile.
 baselineProfile {
     mergeIntoMain = true
@@ -85,6 +94,10 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     // Installs the baseline profile (task 8.1) on installs that do not come from Play, such as adb's.
     implementation(libs.androidx.profileinstaller)
+    // Composable names in system traces (task 8.2), in the profiling build only.
+    "profilingImplementation"(libs.androidx.compose.runtime.tracing)
+    "profilingImplementation"(libs.androidx.tracing.perfetto)
+    "profilingImplementation"(libs.androidx.tracing.perfetto.binary)
     baselineProfile(project(":baselineprofile"))
     implementation(libs.shizuku.api)
     implementation(libs.shizuku.provider)

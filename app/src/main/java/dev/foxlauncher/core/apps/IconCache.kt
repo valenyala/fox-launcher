@@ -51,7 +51,8 @@ import kotlinx.coroutines.withContext
 
 /**
  * App icons rendered once, off the main thread, and cached in memory and on disk. Icon loading is
- * the classic launcher jank source, so composition only ever sees finished [ImageBitmap]s.
+ * the classic launcher jank source, so composition only ever sees finished [ImageBitmap]s, and
+ * hardware ones, which drawing never has to upload.
  *
  * Disk files live under `filesDir/icons/<config>/` as `<package>@<serial>@<hash>.png`, where the
  * config names the size, shape, icon pack and themed colors (task 7.1) and the hash covers
@@ -164,7 +165,7 @@ class IconCache @Inject constructor(
         val info = appRepository.shortcutInfo(shortcut.packageName, shortcut.id, shortcut.userSerial) ?: return null
         return withContext(io) {
             launcherApps.getShortcutIconDrawable(info, densityDpi)
-                ?.let { IconRenderer.render(it, cfg.sizePx, cfg.shape).asImageBitmap() }
+                ?.let { IconRenderer.render(it, cfg.sizePx, cfg.shape).toHardware().asImageBitmap() }
                 ?.also { memory.put(key, it) }
         }
     }
@@ -209,8 +210,8 @@ class IconCache @Inject constructor(
     private suspend fun load(entry: AppEntry, cfg: Config, key: String): ImageBitmap {
         val start = SystemClock.elapsedRealtimeNanos()
         val file = File(File(rootDir, cfg.dirName), filePrefix(entry.packageName, entry.userSerial) + sha1(key) + ".png")
-        val fromDisk = if (file.exists()) BitmapFactory.decodeFile(file.path) else null
-        val bitmap = fromDisk ?: render(entry, cfg).also { write(it, file) }
+        val fromDisk = if (file.exists()) BitmapFactory.decodeFile(file.path, HARDWARE_DECODE) else null
+        val bitmap = fromDisk ?: render(entry, cfg).also { write(it, file) }.toHardware()
         val image = bitmap.asImageBitmap()
         memory.put(key, image)
         val micros = (SystemClock.elapsedRealtimeNanos() - start) / NANOS_PER_MICRO
@@ -275,6 +276,13 @@ class IconCache @Inject constructor(
         }
     }
 
+    /**
+     * The icon as a hardware bitmap (task 8.2): it lives in graphics memory from now on, so drawing it
+     * uploads nothing. Opening the drawer had uploaded every visible icon again on its first frames
+     * (up to 20 ms on the POCO F3). Done here, on IO; the software copy is only for the PNG and the badge.
+     */
+    private fun Bitmap.toHardware(): Bitmap = copy(Bitmap.Config.HARDWARE, false) ?: this
+
     /** Writes via a temp file and rename, so a crash mid-write never leaves a truncated PNG behind. */
     private fun write(bitmap: Bitmap, file: File) {
         try {
@@ -291,6 +299,9 @@ class IconCache @Inject constructor(
 
     private companion object {
         const val ICONS_DIR = "icons"
+
+        /** Disk icons decode straight into graphics memory (see [toHardware]). */
+        val HARDWARE_DECODE = BitmapFactory.Options().apply { inPreferredConfig = Bitmap.Config.HARDWARE }
         const val KEY_SEPARATOR = "|"
         const val MEMORY_CACHE_KB = 48 * 1024
         const val BYTES_PER_KB = 1024

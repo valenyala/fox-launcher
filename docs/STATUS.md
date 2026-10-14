@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 8 — Performance & release (started 2026-10-14 at the user's call, with 7.2–7.8 still open; phase 9 done; Phase 4 owes three checklist items, deferred; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists)
-**Next task:** 8.2 Jank pass. Still open: 7.2–7.8; 3.8's POCO check; 2.8 deferred
+**Next task:** 8.3 R8, keep rules, signing. Still open: 7.2–7.8; 3.8's POCO check; 2.8 deferred
 
 ## Environment facts (verified 2026-09-17)
 
@@ -112,7 +112,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 
 ## Phase 8 — Performance & release
 - [x] 8.1 Baseline profiles + macrobenchmark: profile generated on fox-api37 (26,315 rules, 3,108 Fox's); cold start TTID, fox-api37 macrobenchmark median 850 → 609 ms; POCO F3 `am start -W` median 188 → 169 ms (target < 500 ms)
-- [ ] 8.2 Jank pass
+- [x] 8.2 Jank pass: drawer scroll 0.38–0.78% janky on the POCO F3 (target < 1%); folder open/close recomposition 12–22 → 5–10 ms; drawer open and folder stay ~4–5% janky from display pacing (dequeueBuffer waits at MIUI's 60 Hz, the 60↔120 Hz switch at touch), not Fox's work
 - [ ] 8.3 R8, keep rules, signing
 - [ ] 8.4 Battery pass
 - [ ] 8.5 Play listing and disclosures
@@ -164,6 +164,27 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-14 — 8.2 (user: go ahead; the POCO driven with the user's go-ahead). Tools: `-PcomposeReports` (Compose
+  compiler reports; strong skipping on, so unstable parameters only cost when the instance changes: `HomePage(items)`,
+  `Dock(items)`, none hot); the profiling build is `profileable` and carries runtime-tracing + tracing-perfetto(-binary)
+  1.0.1, so `scripts/perf/trace.sh` records a system trace with composable names (handshake broadcast, `track_event`);
+  `ab.sh` now compiles each install with its profile first (`compile_like_play`; measuring right after an install had
+  put drawer scroll at UI p90 7.8 ms, compiled it is 3.5) and has a `folder` scenario (`FOLDER_TAP`). Findings on the
+  POCO, all A/B with installs alternating:
+  (1) Drawer scroll, compiled: 6 janky in 1,024 frames (0.59%), already under target. Icons are now hardware bitmaps
+  (`IconCache`: disk decode with `inPreferredConfig = HARDWARE`, rendered ones copied after the PNG is written):
+  nothing to upload on draw; scroll 0.78 → 0.38% janky, worst GPU frame 27 → 13 ms.
+  (2) Folder open/close, by trace: each recomposed 37 compositions in one frame (12–22 ms): `HomeScreen` made a new
+  `DrawerScope` object on every recomposition, so the drawer slot's content lambda changed and every kept drawer cell
+  (30 `DrawerItem`s) recomposed. `remember(dragState)` it (its getters read state): 3–4 compositions, 5–10 ms; worst
+  UI-thread frame 42 → 25 ms. The folder's fade is now `transition.animateFloat` in a `ModulateAlpha` layer instead of
+  `fadeIn() + scaleIn()` (their layer copied the full-screen sheet off screen each frame), same spring.
+  (3) What stays: one janky first frame per drawer open (recomposition + record of the shown drawer, and when it
+  coincides, the 60→120 Hz switch Fox asks for at finger down: swap 17–19 ms), and the folder's render thread
+  sleeping in `dequeueBuffer` 10–15 ms a frame (S 144 of 200 ms) at MIUI's 60 Hz this session: display pacing.
+  gfxinfo janky % for drawer open and folder did not move (≈4%, ≈5%). Wallpaper crossfade: 4.8's 1.1–1.8 ms a frame.
+  Full instrumented suite 197/197 on fox-api33.
 
 - 2026-10-14 — 8.1 (phase 8 started at the user's call). New test module `:baselineprofile` (ADR-1's exception;
   one module for generator and benchmarks, Android Studio's layout, where the plan had two): `com.android.test` +
