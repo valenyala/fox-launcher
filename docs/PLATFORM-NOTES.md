@@ -134,6 +134,10 @@ here contradicts what you remember, trust this file unless a device proves other
   `INVISIBLE` between gestures; an invisible root hides the window, so it costs no composition. Raw `MotionEvent`
   coordinates are its own (it starts at the display corner, `fitInsetsTypes = 0`). A finger held still sends no
   events, so the Recents hold ring redraws itself (`postInvalidateOnAnimation`) until the hold fires.
+- Over Fox's own settings screens the strips are up too (2026-10-14): `GLOBAL_ACTION_BACK` reaches the home's
+  back dispatcher and pops one settings screen, `GLOBAL_ACTION_HOME` closes them (fox-api37, three buttons). With
+  Android's gesture navigation on fox-api37 an edge swipe that starts on the strip fires both the system's Back and
+  Fox's: two screens popped (contrary to fox-api33's single Back in ADR-20); same in other apps.
 - Emulator trap (fox-api33, 2026-10-13): switching the navigation mode with `cmd overlay enable-exclusive` froze the
   display for a rotation-style screenshot, and SurfaceFlinger's RenderEngine never came back from the QEMU GL pipe
   (`rcCreateSyncKHR`); system_server then looped on watchdog restarts and had not recovered after six minutes. The

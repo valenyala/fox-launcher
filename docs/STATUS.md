@@ -165,6 +165,14 @@ Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out o
 
 ## Session notes
 
+- 2026-10-14 — User request: Fox's navigation gestures (3.8) over Fox's settings screens too. `HomeVisibility` gets
+  `onSettingsOpen` (from the home's composition, the settings stack non-empty) and exposes `homeGesturesInFront`
+  (resumed and no settings screen), which `NavigationGestures` uses instead of `inFront`. Summary string: "In other
+  apps and in Fox's settings". fox-api37: overlays 0 on the home, 4 on Home settings; three buttons: left-edge swipe
+  on Wallpaper → Home settings (one step), bottom-edge swipe → home, strips down. With gesture navigation one edge
+  swipe popped two screens (system Back + Fox's), also so in other apps (PLATFORM-NOTES G). **Owed:** POCO check
+  that one swipe is one step back under MIUI's full-screen gestures.
+
 - 2026-10-14 — 9.7 done on the POCO: with the launch off the main thread, Brave's START follows "shown directly …
   applied true" by 63 ms (was 0.65–0.96 s); four rounds, hidden again on Home in 1–12 ms. Brave reopened from the
   background relaunches once each time (snapshot starting window relaunch), as ADR-24 accepts.

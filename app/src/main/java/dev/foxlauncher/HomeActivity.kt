@@ -169,6 +169,9 @@ class HomeActivity : ComponentActivity() {
                     requestedSettings?.let { settings = listOf(it) }
                     requestedSettings = null
                 }
+                // Over a settings screen the navigation gestures work as in other apps (task 3.8).
+                val settingsOpen = settings.isNotEmpty()
+                LaunchedEffect(settingsOpen) { homeVisibility.onSettingsOpen(settingsOpen) }
                 // Home goes home: it closes any settings screen and the accessibility dialog, as it closes the drawer.
                 LaunchedEffect(homeKeyPresses) {
                     if (homeKeyPresses > 0) {

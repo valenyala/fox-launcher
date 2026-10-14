@@ -163,7 +163,7 @@ permission is `TYPE_ACCESSIBILITY_OVERLAY`, added by an accessibility service. S
 puts three invisible strips on the screen edges (12 dp sides from 96 dp down, 14 dp bottom, over the navigation bar),
 classifies their touches with a pure `NavGestureClassifier`, and performs `GLOBAL_ACTION_BACK/HOME/RECENTS`.
 Consequences, all accepted: a touch that starts on a strip never reaches the app below (edge taps, the outer few dp
-of the keyboard's edge keys and of the navigation buttons); the strips are up only while the switch is on (default off), another app is in front and the screen is unlocked. With Android's
+of the keyboard's edge keys and of the navigation buttons); the strips are up only while the switch is on (default off), another app (or, since 2026-10-14 at the user's request, one of Fox's settings screens) is in front and the screen is unlocked. With Android's
 gesture navigation the system takes the same swipes first and Fox performs nothing (fox-api33: one Back, no Fox
 action). Rejected: touch exploration and gesture detection (`FLAG_REQUEST_TOUCH_EXPLORATION_MODE`) change how
 every touch works; `SYSTEM_ALERT_WINDOW` overlays are another permission for the same windows; reading the window

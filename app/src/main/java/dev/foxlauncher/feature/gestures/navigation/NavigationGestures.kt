@@ -27,9 +27,9 @@ import kotlinx.coroutines.launch
 
 /**
  * Puts the [NavigationOverlay] up while it is wanted (task 3.8): the user turned navigation
- * gestures on, another app is in front (the home has its own gestures), the screen is on and
- * unlocked (the lock screen keeps its edges to itself), and that app is not one Fox opened with the
- * navigation buttons (task 9.7: the user wants buttons there, not gestures).
+ * gestures on, another app or one of Fox's settings screens is in front (the home has its own
+ * gestures), the screen is on and unlocked (the lock screen keeps its edges to itself), and that
+ * app is not one Fox opened with the navigation buttons (task 9.7: the user wants buttons there).
  */
 class NavigationGestures @Inject constructor(
     private val settings: FoxSettings,
@@ -45,7 +45,7 @@ class NavigationGestures @Inject constructor(
             try {
                 combine(
                     settings.navigationGestures,
-                    homeVisibility.inFront,
+                    homeVisibility.homeGesturesInFront,
                     screenUnlocked(service),
                     settings.buttonsShownByFox,
                 ) { on, homeInFront, unlocked, buttonApp ->
