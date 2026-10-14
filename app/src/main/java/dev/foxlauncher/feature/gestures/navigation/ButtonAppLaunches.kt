@@ -1,11 +1,9 @@
 package dev.foxlauncher.feature.gestures.navigation
 
 import dev.foxlauncher.core.common.ApplicationScope
-import dev.foxlauncher.core.common.MainDispatcher
 import dev.foxlauncher.core.data.settings.FoxSettings
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -27,7 +25,6 @@ class ButtonAppLaunches @Inject constructor(
     private val settings: FoxSettings,
     private val navigationButtons: NavigationButtons,
     @param:ApplicationScope private val scope: CoroutineScope,
-    @param:MainDispatcher private val main: CoroutineDispatcher,
 ) {
     private val apps: StateFlow<Set<String>> = settings.buttonApps.stateIn(scope, SharingStarted.Eagerly, emptySet())
 
@@ -36,14 +33,16 @@ class ButtonAppLaunches @Inject constructor(
 
     /**
      * Runs [open] for [packageName]'s app or shortcut: straight away, unless the app is listed and
-     * Fox can change the buttons; then on the main thread once the buttons show.
+     * Fox can change the buttons; then once the buttons show, off the main thread, which is busy for
+     * most of a second applying the change to Fox's own home (POCO F3), while starting an app works
+     * from any thread.
      */
     fun open(packageName: String, userSerial: Long, open: () -> Unit) {
         if (!navigationButtons.canChange() || !ButtonApps.isListed(apps.value, packageName, userSerial)) {
             open()
             return
         }
-        scope.launch(main) {
+        scope.launch {
             mutex.withLock {
                 val show = ButtonApps.showBeforeOpening(listed = true, hiddenNow = navigationButtons.isHidden())
                 if (show && navigationButtons.setHidden(false, awaitApplied = true)) settings.setButtonsShownByFox(true)
