@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 6 — App widgets (Phase 5 done 2026-10-13, its boost checklist item blocked by MIUI until Phase 9; Phase 4 owes three checklist items, deferred; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists)
-**Next task:** 6.5 (see docs/phases/06-app-widgets.md) (6.1–6.4 owe their POCO check; 3.8's POCO check still owed, the user went on to phase 6 first; 2.8 still deferred)
+**Next task:** the POCO checks of 6.1–6.5 and phase 6's device checklist, then phase 7 (see docs/phases/07-polish.md) (3.8's POCO check still owed, the user went on to phase 6 first; 2.8 still deferred)
 
 ## Environment facts (verified 2026-09-17)
 
@@ -95,7 +95,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [ ] 6.2 Widget picker: fox-api33/37 pass (App widgets tab, 27 / 34 providers grouped by app, preview layouts and images); **owed:** the POCO F3
 - [ ] 6.3 Bind + configure flow: fox-api33/37 pass (bind dialog, Cancel, Create, Always allow, configure, Back out of configure); **owed:** the POCO F3
 - [ ] 6.4 Render, size, resize, touch coexistence: fox-api37 pass, fox-api33 renders (render, tap, size, resize to min, drag, swipe over a widget opens the drawer); **owed:** the POCO F3, incl. a scrolling widget (none on the emulators)
-- [ ] 6.5 Persistence and provider removal
+- [ ] 6.5 Persistence and provider removal: fox-api37 pass (Remove frees the id, uninstalling Calendar removes its widget, a process restart keeps them), fox-api33 start-up keeps its widget; **owed:** the POCO F3, incl. a reboot. Work-profile groups read "App · Work" (no work profile on the devices)
 - [ ] Device checklist passed on: —
 
 ## Phase 7 — Polish & personalization
@@ -161,6 +161,19 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-14 — 6.5. Pure `AppWidgetCleanup.plan` (6 tests): an item leaves when its id is no longer the host's or its
+  provider is gone; an id is freed when no remaining item uses it and it is not pending. `AppWidgetReconciler`
+  (started from `HomeActivity.onCreate`) runs it on IO at start and, debounced 500 ms, whenever the home's set of app
+  widget ids changes, the host hears `onProvidersChanged` / `onAppWidgetRemoved`, or a package changes. `AppWidgetBinder`
+  keeps the ids of widgets still being added (allocated, not yet saved; restored ones re-marked after process death),
+  so a run mid-flow leaves them; `HomeViewModel.addAppWidget` settles the id once the row is saved. The host's view
+  map is now synchronized (ids are freed off the main thread). fox-api37: start-up found 3 ids and 3 items, nothing to
+  do; popup Remove on the schedule widget freed id 12 (`dumpsys`: 3 → 2); `pm uninstall --user 0` Calendar: Android
+  deleted id 11 and the month view left the home, Calendar restored with `install-existing` (its app icon also left
+  the demo folder, the 2.x orphan pruning, and the folder collapsed to Gmail; rebuilt by dragging Calendar from the
+  drawer onto Gmail, and a stray scripted drag of the RAM gauge undone); force-stop and relaunch: the clock still renders.
+  Reboot not tried on the emulators (the POCO checklist has it).
 
 - 2026-10-14 — 6.4. `FoxAppWidgetHost.onCreateView` makes `FoxAppWidgetHostView`s (kept by id): each reports its size
   in dp from `onSizeChanged` (posted; `updateAppWidgetSize` with `SizeF` from API 31, the deprecated min/max form

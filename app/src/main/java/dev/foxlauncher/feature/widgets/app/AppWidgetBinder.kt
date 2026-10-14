@@ -8,6 +8,7 @@ import android.content.Intent
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.foxlauncher.core.apps.AppRepository
 import dev.foxlauncher.core.common.FoxLog
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -23,8 +24,22 @@ class AppWidgetBinder @Inject constructor(
 ) : AppWidgetBindPort {
 
     private val appWidgetManager = AppWidgetManager.getInstance(context)
+    private val unsettled: MutableSet<Int> = ConcurrentHashMap.newKeySet()
 
-    override fun allocateId(): Int = host.allocateAppWidgetId()
+    /** Ids allocated for widgets not yet on the home (task 6.5): the cleanup leaves them alone. */
+    val pendingIds: Set<Int> get() = unsettled.toSet()
+
+    override fun allocateId(): Int = host.allocateAppWidgetId().also { unsettled += it }
+
+    /** [appWidgetId] belongs to a widget being added again: the activity came back from process death mid-flow. */
+    fun markPending(appWidgetId: Int) {
+        unsettled += appWidgetId
+    }
+
+    /** [appWidgetId]'s widget is saved on the home. */
+    fun settled(appWidgetId: Int) {
+        unsettled -= appWidgetId
+    }
 
     override fun bindIfAllowed(pending: PendingAppWidget): BindAttempt {
         val provider = ComponentName.unflattenFromString(pending.provider) ?: return BindAttempt.FAILED
@@ -56,5 +71,8 @@ class AppWidgetBinder @Inject constructor(
         return info.widgetFeatures and skippable != skippable
     }
 
-    override fun deleteId(appWidgetId: Int) = host.deleteAppWidgetId(appWidgetId)
+    override fun deleteId(appWidgetId: Int) {
+        unsettled -= appWidgetId
+        host.deleteAppWidgetId(appWidgetId)
+    }
 }

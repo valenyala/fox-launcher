@@ -30,6 +30,7 @@ import dev.foxlauncher.feature.wallpaper.RotationScheduler
 import dev.foxlauncher.feature.home.grid.CellRect
 import dev.foxlauncher.feature.home.grid.GridSpec
 import dev.foxlauncher.feature.widgets.NativeWidgetRegistry
+import dev.foxlauncher.feature.widgets.app.AppWidgetBinder
 import dev.foxlauncher.feature.widgets.app.FoxAppWidgetHost
 import dev.foxlauncher.feature.widgets.app.PendingAppWidget
 import javax.inject.Inject
@@ -80,6 +81,7 @@ class HomeViewModel @Inject constructor(
     private val rotation: RotationScheduler,
     private val nativeWidgets: NativeWidgetRegistry,
     private val appWidgetHost: FoxAppWidgetHost,
+    private val appWidgetBinder: AppWidgetBinder,
 ) : ViewModel() {
 
     private val appsByKey = appRepository.apps.map { apps -> apps.associateBy { it.key }.toImmutableMap() }
@@ -280,6 +282,7 @@ class HomeViewModel @Inject constructor(
                 currentPage,
                 uiState.value.gridSpec,
             )
+            appWidgetBinder.settled(pending.appWidgetId)
             FoxLog.d("App widget ${pending.appWidgetId} placed on page ${position.page} at ${position.col},${position.row}")
         }
     }

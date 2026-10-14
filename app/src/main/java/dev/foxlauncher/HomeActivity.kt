@@ -56,6 +56,7 @@ import dev.foxlauncher.feature.widgets.WidgetPickerViewModel
 import dev.foxlauncher.feature.widgets.app.AppWidgetBindFlow
 import dev.foxlauncher.feature.widgets.app.AppWidgetBinder
 import dev.foxlauncher.feature.widgets.app.AppWidgetPreview
+import dev.foxlauncher.feature.widgets.app.AppWidgetReconciler
 import dev.foxlauncher.feature.widgets.app.AppWidgetProviders
 import dev.foxlauncher.feature.widgets.app.FoxAppWidgetHost
 import dev.foxlauncher.feature.widgets.app.LocalAppWidgetHost
@@ -86,6 +87,8 @@ class HomeActivity : ComponentActivity() {
     @Inject lateinit var appWidgetProviders: AppWidgetProviders
 
     @Inject lateinit var appWidgetBinder: AppWidgetBinder
+
+    @Inject lateinit var appWidgetReconciler: AppWidgetReconciler
 
     // The same instance as hiltViewModel() in the composition: same store, same default key.
     private val homeViewModel: HomeViewModel by viewModels()
@@ -131,6 +134,8 @@ class HomeActivity : ComponentActivity() {
             return
         }
         isHome = true
+        pendingAppWidget?.let { appWidgetBinder.markPending(it.appWidgetId) }
+        appWidgetReconciler.start()
         enableEdgeToEdge()
         // A launcher has nowhere to go back to. Unhandled, Back on a root launcher activity makes Android 12+
         // move the home task behind the last app, which then shows (task 3.6). Added first, so the drawer's,

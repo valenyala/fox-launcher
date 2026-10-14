@@ -15,7 +15,11 @@ import dev.foxlauncher.core.common.IoDispatcher
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.withContext
 
 /**
@@ -35,7 +39,11 @@ class FoxAppWidgetHost @Inject constructor(
 
     private val appWidgetManager = AppWidgetManager.getInstance(context)
     private var started = 0
-    private val views = SparseArray<FoxAppWidgetHostView>()
+    private val views = SparseArray<FoxAppWidgetHostView>() // Guarded by itself: ids are also deleted off the main thread.
+    private val _changes = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+
+    /** A provider was installed, updated or removed, or Android deleted one of Fox's widgets (task 6.5). */
+    val changes: SharedFlow<Unit> = _changes.asSharedFlow()
     private val infos = ConcurrentHashMap<Int, AppWidgetProviderInfo>()
 
     /** From `HomeActivity.onStart`. */
@@ -52,19 +60,27 @@ class FoxAppWidgetHost @Inject constructor(
     /** From `HomeActivity.onDestroy`: the views made by [createView] hold the activity's context. */
     public override fun clearViews() {
         super.clearViews()
-        views.clear()
+        synchronized(views) { views.clear() }
     }
 
     override fun onCreateView(context: Context, appWidgetId: Int, appWidget: AppWidgetProviderInfo?): AppWidgetHostView =
-        FoxAppWidgetHostView(context).also { views.put(appWidgetId, it) }
+        FoxAppWidgetHostView(context).also { synchronized(views) { views.put(appWidgetId, it) } }
 
     /** The latest view [createView] made for [appWidgetId] (task 6.4), or null. */
-    fun viewOf(appWidgetId: Int): FoxAppWidgetHostView? = views[appWidgetId]
+    fun viewOf(appWidgetId: Int): FoxAppWidgetHostView? = synchronized(views) { views[appWidgetId] }
 
     override fun deleteAppWidgetId(appWidgetId: Int) {
         super.deleteAppWidgetId(appWidgetId)
-        views.remove(appWidgetId)
+        synchronized(views) { views.remove(appWidgetId) }
         infos.remove(appWidgetId)
+    }
+
+    override fun onProvidersChanged() {
+        _changes.tryEmit(Unit)
+    }
+
+    override fun onAppWidgetRemoved(appWidgetId: Int) {
+        _changes.tryEmit(Unit)
     }
 
     /** The provider bound to [appWidgetId], read off the main thread; null when there is none (any more). */
