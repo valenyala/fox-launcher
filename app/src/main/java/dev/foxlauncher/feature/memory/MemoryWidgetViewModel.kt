@@ -51,7 +51,7 @@ class MemoryWidgetViewModel @Inject constructor(
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_MS), null)
 
-    val boostLimit: BoostLimit? get() = booster.limit
+    val boostLimit: StateFlow<BoostLimit?> = booster.limit
 
     suspend fun boost(): BoostResult = booster.boost()
 

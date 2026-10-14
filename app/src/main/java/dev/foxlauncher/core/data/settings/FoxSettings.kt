@@ -102,6 +102,14 @@ class FoxSettings @Inject constructor(
         Unit
     }
 
+    /** Boost through Shizuku (task 9.1, ADR-9): off until the user turns it on. */
+    val deepBoost: Flow<Boolean> = dataStore.data.map { it[Keys.DEEP_BOOST] ?: false }
+
+    suspend fun setDeepBoost(enabled: Boolean) = withContext(io) {
+        dataStore.edit { it[Keys.DEEP_BOOST] = enabled }
+        Unit
+    }
+
     /**
      * The wallpaper entry the live wallpaper shows (task 4.3); null until the rotation first picks
      * one. Everything that changes the wallpaper writes this, and only the engine draws it.
@@ -204,6 +212,7 @@ class FoxSettings @Inject constructor(
         val SHOW_HOME_LABELS = booleanPreferencesKey("show_home_labels")
         val GESTURE_MAP = stringPreferencesKey("gesture_map")
         val NAVIGATION_GESTURES = booleanPreferencesKey("navigation_gestures")
+        val DEEP_BOOST = booleanPreferencesKey("deep_boost")
         val ACTIVE_WALLPAPER = longPreferencesKey("wallpaper_active_entry")
         val CROSSFADE_MS = intPreferencesKey("wallpaper_crossfade_ms")
         val WALLPAPER_CHANGED_AT = longPreferencesKey("wallpaper_changed_at")

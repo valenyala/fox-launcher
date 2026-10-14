@@ -35,6 +35,17 @@ class BoostTargetsTest {
     }
 
     @Test
+    fun shizukuItselfIsNeverClosed() {
+        val targets = BoostTargets.choose(
+            listOf("moe.shizuku.privileged.api", "com.maps"),
+            emptySet(),
+            ProtectedApps(self = "dev.foxlauncher", shizuku = "moe.shizuku.privileged.api"),
+        )
+
+        assertEquals(listOf("com.maps"), targets)
+    }
+
+    @Test
     fun aComponentGivesItsPackage() {
         assertEquals("com.google.android.inputmethod.latin", BoostTargets.packageOfComponent("com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME"))
         assertNull(BoostTargets.packageOfComponent(null))
@@ -53,8 +64,22 @@ class BoostTargetsTest {
 
     @Test
     fun withoutALimitBothStrategiesRunAndWithOneOnlyTheSelfTrim() {
-        assertEquals(listOf("self", "others"), BoostStrategies.forLimit(null, "self", "others"))
-        assertEquals(listOf("self"), BoostStrategies.forLimit(BoostLimit.ANDROID_14, "self", "others"))
-        assertEquals(listOf("self"), BoostStrategies.forLimit(BoostLimit.MIUI, "self", "others"))
+        assertEquals(listOf("self", "others"), BoostStrategies.choose(null, deepActive = false, "self", "others", "deep"))
+        assertEquals(listOf("self"), BoostStrategies.choose(BoostLimit.ANDROID_14, deepActive = false, "self", "others", "deep"))
+        assertEquals(listOf("self"), BoostStrategies.choose(BoostLimit.MIUI, deepActive = false, "self", "others", "deep"))
+    }
+
+    @Test
+    fun anActiveDeepBoostRunsFirstWhateverTheLimit() {
+        for (limit in listOf(null, BoostLimit.ANDROID_14, BoostLimit.MIUI)) {
+            assertEquals(listOf("deep", "self"), BoostStrategies.choose(limit, deepActive = true, "self", "others", "deep"), "$limit")
+        }
+    }
+
+    @Test
+    fun anActiveDeepBoostLiftsTheLimit() {
+        assertEquals(null, BoostStrategies.limit(BoostLimit.MIUI, deepActive = true))
+        assertEquals(BoostLimit.MIUI, BoostStrategies.limit(BoostLimit.MIUI, deepActive = false))
+        assertEquals(null, BoostStrategies.limit(null, deepActive = false))
     }
 }

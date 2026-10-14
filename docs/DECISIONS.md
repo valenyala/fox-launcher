@@ -172,6 +172,20 @@ feedback (asked for the same day) is a fourth overlay window, full-screen and `F
 gestures: a bubble slides in from the edge with the action's glyph, takes the accent colour once lifting would act,
 fills a ring during the Recents hold, and swells away when the action fires.
 
+## ADR-21 The deep boost runs shell commands in Fox's own Shizuku user service
+Task 9.1 (user asked for phase 9 before 7 and 8, 2026-10-14) puts ADR-9's Shizuku boost into practice without any
+hidden API in Fox's process: the plan's `IActivityManager` stub would link hidden methods that Android 14+ may block
+for an app targeting API 37. Instead Fox binds a Shizuku *user service*, `FoxShellService` (AIDL `IFoxShell`), which
+Shizuku starts in a process of its own running as the shell, and that service runs `cmd activity kill --user current
+<pkg>` (= `am kill`) per package, each name a separate argument and checked against a package-name pattern. The
+shell holds `FORCE_STOP_PACKAGES`, so this closes other apps' background processes on Android 14+ and on MIUI, both of
+which ignore an app's `killBackgroundProcesses` (PLATFORM-NOTES M). It is the same call as the Android 13 boost and the
+same candidates (`BoostCandidates`, Shizuku itself added to the protected apps), never a force stop: alarms, jobs and
+notifications of the closed apps survive. The service lives only for one boost (unbound with `remove = true`).
+`ShizukuProvider.disableAutomaticSuiInitialization()` is called from `FoxApp.attachBaseContext`, because the provider
+would otherwise probe for Sui through a hidden `ServiceManager` method in Fox's process. Opt-in as ADR-9 requires: a
+"Deep boost" settings screen, off by default; while off or while Shizuku is not ready, the ADR-5 strategies run.
+
 ## Dependency log
 (append `- <lib> <version> — reason` when adding a dependency)
 - AGP (com.android.application) 9.4.0 — build system; built-in Kotlin, see ADR-11.
@@ -194,3 +208,4 @@ fills a ring during the Recents hold, and swells away when the action fires.
 - org.jetbrains.kotlinx:kotlinx-collections-immutable 0.5.2 — stable Compose parameters.
 - junit 4.13.2, kotlin-test 2.3.21, turbine 1.2.1 — JVM unit tests, per ADR-7.
 - androidx.test runner/rules 1.7.0, androidx.test.ext:junit 1.3.0, compose ui-test-junit4/manifest (BOM) — instrumented tests.
+- dev.rikka.shizuku:api and :provider 13.1.5 (newest on Maven Central, 2023-09) — deep boost through Shizuku, task 9.1, ADR-9, ADR-21.

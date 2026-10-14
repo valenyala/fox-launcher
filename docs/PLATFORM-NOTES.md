@@ -243,6 +243,15 @@ here contradicts what you remember, trust this file unless a device proves other
   request via `Settings.ACTION_USAGE_ACCESS_SETTINGS`.
 - `ComponentCallbacks2.onTrimMemory` on the app + clearing `IconCache` memory layer is the "self trim" strategy.
   `System.gc()` is allowed but reports nothing meaningful; do not count it as freed memory.
+- Shizuku (task 9.1, ADR-21), verified on fox-api33/37 with Shizuku 13.6.0 from its GitHub release (the Google APIs
+  images have no Play Store): start the server with `adb shell <pm path dir>/lib/x86_64/libshizuku.so` after
+  `adb unroot` (as root it would run as uid 0, not the shell). The server hands its binder to `ShizukuProvider` when
+  an app process starts, so a Fox already running when Shizuku starts learns of it only at its next start (the
+  server also restarted Fox for its provider after a force stop). Permission: Shizuku's own dialog, "Allow all the
+  time". The user service runs as `dev.foxlauncher:shell` under the shell uid. fox-api37: `cmd activity kill` from it
+  logged "Killing …moe.shizuku.privileged.api (adj 700): kill background", which Android 14+ refuses to an app.
+  `ShizukuProvider` probes for Sui with a hidden `ServiceManager.getService` unless
+  `disableAutomaticSuiInitialization()` runs first (Fox calls it in `attachBaseContext`).
 
 ## AW. App widgets (third-party)
 

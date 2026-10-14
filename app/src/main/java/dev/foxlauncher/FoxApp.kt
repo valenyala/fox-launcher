@@ -28,6 +28,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import rikka.shizuku.ShizukuProvider
 
 /**
  * Application entry point: Hilt root, WorkManager factory and the Coil singleton loader.
@@ -47,6 +48,13 @@ class FoxApp : Application(), Configuration.Provider, SingletonImageLoader.Facto
     @Inject lateinit var wallpaperSources: WallpaperSources
 
     @Inject lateinit var rotation: RotationScheduler
+
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(base)
+        // Before the content providers start: ShizukuProvider would otherwise probe for Sui (a Magisk module) through a
+        // hidden API in Fox's own process. Fox uses only Shizuku, and only for the deep boost (task 9.1, ADR-21).
+        ShizukuProvider.disableAutomaticSuiInitialization()
+    }
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()

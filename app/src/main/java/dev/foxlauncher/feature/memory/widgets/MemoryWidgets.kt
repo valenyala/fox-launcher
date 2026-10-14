@@ -72,9 +72,10 @@ private fun MemoryBoost(scope: NativeWidgetScope) {
     val coroutines = rememberCoroutineScope()
     var state by remember { mutableStateOf<BoostUiState>(BoostUiState.Idle) }
     var explaining by remember { mutableStateOf(false) }
+    val limit by viewModel.boostLimit.collectAsStateWithLifecycle()
     MemoryBoostContent(
         state = state,
-        limit = viewModel.boostLimit,
+        limit = limit,
         onBoost = {
             // In the picker the whole preview is the button that adds the widget.
             if (scope.isPreview) return@MemoryBoostContent
@@ -90,14 +91,14 @@ private fun MemoryBoost(scope: NativeWidgetScope) {
         },
         onInfo = { if (!scope.isPreview) explaining = true },
     )
-    val limit = viewModel.boostLimit
-    if (explaining && limit != null) {
+    val shownLimit = limit
+    if (explaining && shownLimit != null) {
         AlertDialog(
             onDismissRequest = { explaining = false },
             title = {
-                Text(stringResource(if (limit == BoostLimit.MIUI) R.string.memory_boost_limits_miui_title else R.string.memory_boost_limits_title))
+                Text(stringResource(if (shownLimit == BoostLimit.MIUI) R.string.memory_boost_limits_miui_title else R.string.memory_boost_limits_title))
             },
-            text = { Text(stringResource(if (limit == BoostLimit.MIUI) R.string.memory_boost_limits_miui else R.string.memory_boost_limits)) },
+            text = { Text(stringResource(if (shownLimit == BoostLimit.MIUI) R.string.memory_boost_limits_miui else R.string.memory_boost_limits)) },
             confirmButton = { TextButton(onClick = { explaining = false }) { Text(stringResource(android.R.string.ok)) } },
         )
     }

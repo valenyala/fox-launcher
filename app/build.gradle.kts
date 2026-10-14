@@ -44,6 +44,8 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+        // IFoxShell, the Shizuku user service's interface (task 9.1, ADR-21).
+        aidl = true
     }
 
     compileOptions {
@@ -75,6 +77,8 @@ dependencies {
     androidTestImplementation(platform(libs.androidx.compose.bom))
 
     implementation(libs.androidx.core.ktx)
+    implementation(libs.shizuku.api)
+    implementation(libs.shizuku.provider)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)

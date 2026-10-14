@@ -44,7 +44,9 @@ import dev.foxlauncher.feature.home.HomeScreen
 import dev.foxlauncher.feature.home.HomeViewModel
 import dev.foxlauncher.feature.home.HomeVisibility
 import dev.foxlauncher.feature.home.isDefaultLauncher
+import dev.foxlauncher.feature.memory.shizuku.ShizukuAccess
 import dev.foxlauncher.feature.home.requestDefaultLauncherRole
+import dev.foxlauncher.feature.settings.DeepBoostScreen
 import dev.foxlauncher.feature.settings.GesturesScreen
 import dev.foxlauncher.feature.settings.HiddenAppsScreen
 import dev.foxlauncher.feature.settings.HomeSettingsScreen
@@ -89,6 +91,8 @@ class HomeActivity : ComponentActivity() {
     @Inject lateinit var appWidgetBinder: AppWidgetBinder
 
     @Inject lateinit var appWidgetReconciler: AppWidgetReconciler
+
+    @Inject lateinit var shizukuAccess: ShizukuAccess
 
     // The same instance as hiltViewModel() in the composition: same store, same default key.
     private val homeViewModel: HomeViewModel by viewModels()
@@ -136,6 +140,7 @@ class HomeActivity : ComponentActivity() {
         isHome = true
         pendingAppWidget?.let { appWidgetBinder.markPending(it.appWidgetId) }
         appWidgetReconciler.start()
+        shizukuAccess.start()
         enableEdgeToEdge()
         // A launcher has nowhere to go back to. Unhandled, Back on a root launcher activity makes Android 12+
         // move the home task behind the last app, which then shows (task 3.6). Added first, so the drawer's,
@@ -282,6 +287,7 @@ class HomeActivity : ComponentActivity() {
                                 onApplyLiveWallpaper = ::applyLiveWallpaper,
                             )
                             SettingsRoute.HIDDEN_APPS -> HiddenAppsScreen(hiltViewModel(), onBack = closeSettings)
+                            SettingsRoute.DEEP_BOOST -> DeepBoostScreen(hiltViewModel(), onBack = closeSettings)
                             null -> Unit
                         }
                         if (widgetPicker) {

@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 9 — Power features, at the user's request before phases 7 and 8 (2026-10-14) (Phase 6 done 2026-10-14; Phase 5 done 2026-10-13, its boost checklist item blocked by MIUI until Phase 9; Phase 4 owes three checklist items, deferred; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists)
-**Next task:** 9.1 (see docs/phases/09-power-features.md) (3.8's POCO check still owed; 2.8 still deferred; phases 7 and 8 not started)
+**Next task:** 9.1's POCO check, then 9.3 (see docs/phases/09-power-features.md; 9.2 and 9.5 dropped by the user) (3.8's POCO check still owed; 2.8 still deferred; phases 7 and 8 not started)
 
 ## Environment facts (verified 2026-09-17)
 
@@ -119,11 +119,11 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [ ] 8.6 Crash reporting decision
 
 ## Phase 9 — Power features (optional)
-- [ ] 9.1 Shizuku boost strategy
-- [ ] 9.2 Online wallpaper sources
+- [ ] 9.1 Shizuku boost strategy: fox-api33/37 pass (Shizuku 13.6.0; status steps, permission, opt-in, boost through the shell; on API 37 it closed an app Android 14+ refuses to apps); **owed:** the POCO F3 (MIUI), and 5.4's boost checklist item with it
+- [-] 9.2 Online wallpaper sources: dropped by the user (2026-10-14)
 - [ ] 9.3 Per-app gestures and macros
 - [ ] 9.4 External intent API
-- [ ] 9.5 Extra transitions, lock-screen live wallpaper
+- [-] 9.5 Extra transitions, lock-screen live wallpaper: dropped by the user (2026-10-14)
 
 ## Blockers
 
@@ -162,6 +162,24 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-14 — 9.1 (the user asked for phase 9 before 7 and 8, then dropped 9.2 and 9.5). Deep boost through Shizuku
+  (ADR-21): `FoxShellService` (AIDL `IFoxShell`, `aidl` build feature) runs in Shizuku's shell process and calls
+  `cmd activity kill --user current <pkg>` per checked package name; `ShizukuAccess` follows Shizuku (binder listeners,
+  status from a pure `DeepBoostStatus`, 5 tests), asks its permission, opens its app or store page, and binds the
+  service for one call (10 s timeout, unbound with remove even if cancelled). `DeepBoost` = status + the new `deep_boost`
+  setting (off). `ShizukuBoostStrategy` uses the same `BoostCandidates` (extracted from `LegacyKillStrategy`; work-profile
+  entries no longer listed, as `killBackgroundProcesses` acts in Fox's profile only) plus Shizuku in `ProtectedApps`.
+  `MemoryBooster` picks strategies per boost (`BoostStrategies.choose`: deep first when active) and exposes `limit` as a
+  flow, so the Boost widget's "Limited on …" caption goes while deep boost is active; the limit dialogs mention Deep
+  boost. Settings → Deep boost: explanation, switch, status card with the next step (Get / Open Shizuku, Allow). Unit
+  tests: status 5, strategies +2, targets +1; UI `DeepBoostContentTest` 3. Shizuku `api`/`provider` 13.1.5 (dependency
+  log); `ShizukuProvider` in the manifest; `disableAutomaticSuiInitialization()` in `FoxApp.attachBaseContext` after
+  logcat showed the Sui probe's hidden `ServiceManager.getService` in Fox's process. fox-api37 (Shizuku 13.6.0 from
+  GitHub, started over adb): not running → needs permission (after Fox restarted) → Allow all the time → ready; switch
+  on; Boost with Shizuku's manager app in the background: ActivityManager "Killing …(adj 700): kill background", server
+  kept, caption gone. fox-api33: same steps; with Shizuku protected there was nothing left to close (0 of 0). Full instrumented
+  suite 185/185 on fox-api33.
 
 - 2026-10-14 — 6.6 (user request after the POCO round: "make a search bar for the widgets, there are too many";
   the POCO lists 168 providers). Search field above the picker's tabs, narrowing both: `AppWidgetCatalog.search` (app
