@@ -1,5 +1,6 @@
 package dev.foxlauncher.feature.home
 
+import android.appwidget.AppWidgetProviderInfo
 import android.graphics.Rect
 import android.os.Bundle
 import androidx.compose.runtime.Immutable
@@ -29,6 +30,7 @@ import dev.foxlauncher.feature.wallpaper.RotationScheduler
 import dev.foxlauncher.feature.home.grid.CellRect
 import dev.foxlauncher.feature.home.grid.GridSpec
 import dev.foxlauncher.feature.widgets.NativeWidgetRegistry
+import dev.foxlauncher.feature.widgets.app.FoxAppWidgetHost
 import dev.foxlauncher.feature.widgets.app.PendingAppWidget
 import javax.inject.Inject
 import kotlinx.collections.immutable.ImmutableMap
@@ -77,6 +79,7 @@ class HomeViewModel @Inject constructor(
     private val accessibilityRepair: AccessibilityRepair,
     private val rotation: RotationScheduler,
     private val nativeWidgets: NativeWidgetRegistry,
+    private val appWidgetHost: FoxAppWidgetHost,
 ) : ViewModel() {
 
     private val appsByKey = appRepository.apps.map { apps -> apps.associateBy { it.key }.toImmutableMap() }
@@ -208,6 +211,10 @@ class HomeViewModel @Inject constructor(
      */
     suspend fun popupFor(item: HomeItem): ItemPopupModel {
         if (item is HomeItem.NativeWidget) return ItemPopupModel(canResize = nativeWidgets[item.kind]?.resizable == true)
+        if (item is HomeItem.AppWidget) {
+            val resizeMode = appWidgetHost.providerInfo(item.appWidgetId)?.resizeMode ?: AppWidgetProviderInfo.RESIZE_NONE
+            return ItemPopupModel(canResize = resizeMode != AppWidgetProviderInfo.RESIZE_NONE)
+        }
         val app = appOf(item) ?: return ItemPopupModel()
         // A shortcut item is itself a shortcut: its popup does not list the app's others.
         val shortcuts = if (item is HomeItem.App) appRepository.shortcutsFor(app) else emptyList()

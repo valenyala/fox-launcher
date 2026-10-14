@@ -207,6 +207,9 @@ class HomeDragState internal constructor(
     }
 
     /** Where [coordinates] sit in drag-layer coordinates (to anchor a popup); null when either is detached. */
+    /** [position] in this layer, in window coordinates (where Android views are hit-tested); null before it is placed. */
+    fun windowPositionOf(position: Offset): Offset? = layer?.takeIf { it.isAttached }?.localToWindow(position)
+
     fun boundsOf(coordinates: LayoutCoordinates): Rect? {
         val layer = layer?.takeIf { it.isAttached } ?: return null
         return if (coordinates.isAttached) layer.localBoundingBoxOf(coordinates) else null

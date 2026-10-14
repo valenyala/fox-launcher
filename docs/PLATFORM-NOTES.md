@@ -261,6 +261,17 @@ here contradicts what you remember, trust this file unless a device proves other
   widget still gets taps and scrolls. Do not set `AppWidgetHostView.setOnLongClickListener` as the only path.
 - Removing a widget: `host.deleteAppWidgetId(id)` then delete the `HomeItem`. Provider uninstalled: `onProvidersChanged`
   / `AppWidgetHost.onProviderChanged`; drop items whose provider no longer resolves.
+- The host keeps one view per id: a second `createView` for the same id (a drag overlay, say) takes the widget's updates
+  away from the first. Fox's drag overlay draws a bitmap of the live view instead (task 6.4).
+- In Compose, `AndroidView` gets moves after the ancestors' Initial pass, so the home's gesture arena, which claims a
+  vertical swipe at touch slop, would always beat a list inside a widget. Fox leaves a gesture alone when, at its
+  down, a view under the finger can scroll vertically (`canScrollVertically`); a list that fits keeps the home's swipe.
+- `getInstalledProvidersForProfile` and `getAppWidgetInfo` give sizes in px for this display. The provider's
+  `providerInfo` (its `ActivityInfo`) is hidden API: read the app label through `LauncherApps.getApplicationInfo`.
+- The bind dialog (`AllowBindAppWidgetActivity`) answers `RESULT_OK` on Create; "Always allow" makes
+  `bindAppWidgetIdIfAllowed` succeed from then on. The configuration activity answers through `onActivityResult` only
+  (`startAppWidgetConfigureActivityForResult` uses an `IntentSender` Fox never sees).
+- Emulators: Google Calendar's schedule widget and Gmail's want a signed-in account, so no scrolling widget there.
 
 ## S. Broadcasts, background, permissions summary
 

@@ -43,8 +43,9 @@ private val PINCH_THRESHOLD = 48.dp
  * px, then [onDragEnd] with the release velocity in px/s.
  *
  * A gesture that starts while [enabled] is false, at or below [systemGestureTop] (the system's own
- * gesture strip: its home and recents swipes start there), or whose events arrive already consumed
- * (a drag owns the finger), is ignored to its end; one whose events get consumed midway is
+ * gesture strip: its home and recents swipes start there), on content that scrolls by itself
+ * ([startsOnScrollingContent]: a list in an app widget, task 6.4), or whose events arrive already
+ * consumed (a drag owns the finger), is ignored to its end; one whose events get consumed midway is
  * cancelled. [enabled] is read only when a gesture starts: a followed drag may open what disables it.
  *
  * The lambdas are read on every event, so they must read current state rather than capture it.
@@ -57,6 +58,7 @@ fun Modifier.gestureArena(
     pagerTakesSwipeRight: () -> Boolean = { false },
     dockTop: () -> Float = { Float.POSITIVE_INFINITY },
     systemGestureTop: () -> Float = { Float.POSITIVE_INFINITY },
+    startsOnScrollingContent: (Offset) -> Boolean = { false },
     followsVerticalDrag: (fromDock: Boolean, upward: Boolean) -> Boolean = { _, _ -> false },
     onDragStart: () -> Unit = {},
     onDrag: (dyPx: Float) -> Unit = {},
@@ -76,7 +78,9 @@ fun Modifier.gestureArena(
             while (true) {
                 val event = awaitPointerEvent(PointerEventPass.Initial)
                 if (down.isEmpty()) {
-                    ignoring = !enabled() || event.changes.any { it.isConsumed || it.position.y >= systemGestureTop() }
+                    ignoring = !enabled() || event.changes.any {
+                        it.isConsumed || it.position.y >= systemGestureTop() || startsOnScrollingContent(it.position)
+                    }
                     consumeRest = false
                     // A new size means new thresholds; it only changes between gestures.
                     if (classifier == null || size != classifierSize) {

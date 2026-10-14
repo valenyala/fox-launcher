@@ -1,14 +1,22 @@
 package dev.foxlauncher.feature.widgets.app
 
 import android.appwidget.AppWidgetHost
+import android.appwidget.AppWidgetHostView
+import android.appwidget.AppWidgetManager
+import android.appwidget.AppWidgetProviderInfo
 import android.content.Context
 import android.os.DeadObjectException
 import android.os.TransactionTooLargeException
+import android.util.SparseArray
 import androidx.compose.runtime.staticCompositionLocalOf
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.foxlauncher.core.common.FoxLog
+import dev.foxlauncher.core.common.IoDispatcher
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.withContext
 
 /**
  * Fox's one `AppWidgetHost` for third-party widgets (task 6.1, PLATFORM-NOTES AW). One per process:
@@ -16,12 +24,19 @@ import javax.inject.Singleton
  * widgets get updates only while the home is started.
  *
  * It counts started instances rather than keeping a flag, as [dev.foxlauncher.feature.home.HomeVisibility]
- * does: during the hand-over of ADR-19 a second instance briefly exists. Main thread only.
+ * does: during the hand-over of ADR-19 a second instance briefly exists. Main thread only, except
+ * [providerInfo].
  */
 @Singleton
-class FoxAppWidgetHost @Inject constructor(@ApplicationContext context: Context) : AppWidgetHost(context, HOST_ID) {
+class FoxAppWidgetHost @Inject constructor(
+    @ApplicationContext context: Context,
+    @param:IoDispatcher private val io: CoroutineDispatcher,
+) : AppWidgetHost(context, HOST_ID) {
 
+    private val appWidgetManager = AppWidgetManager.getInstance(context)
     private var started = 0
+    private val views = SparseArray<FoxAppWidgetHostView>()
+    private val infos = ConcurrentHashMap<Int, AppWidgetProviderInfo>()
 
     /** From `HomeActivity.onStart`. */
     fun onHomeStarted() {
@@ -35,7 +50,33 @@ class FoxAppWidgetHost @Inject constructor(@ApplicationContext context: Context)
     }
 
     /** From `HomeActivity.onDestroy`: the views made by [createView] hold the activity's context. */
-    public override fun clearViews() = super.clearViews()
+    public override fun clearViews() {
+        super.clearViews()
+        views.clear()
+    }
+
+    override fun onCreateView(context: Context, appWidgetId: Int, appWidget: AppWidgetProviderInfo?): AppWidgetHostView =
+        FoxAppWidgetHostView(context).also { views.put(appWidgetId, it) }
+
+    /** The latest view [createView] made for [appWidgetId] (task 6.4), or null. */
+    fun viewOf(appWidgetId: Int): FoxAppWidgetHostView? = views[appWidgetId]
+
+    override fun deleteAppWidgetId(appWidgetId: Int) {
+        super.deleteAppWidgetId(appWidgetId)
+        views.remove(appWidgetId)
+        infos.remove(appWidgetId)
+    }
+
+    /** The provider bound to [appWidgetId], read off the main thread; null when there is none (any more). */
+    suspend fun providerInfo(appWidgetId: Int): AppWidgetProviderInfo? = withContext(io) {
+        appWidgetManager.getAppWidgetInfo(appWidgetId)?.also { infos[appWidgetId] = it } ?: run {
+            infos.remove(appWidgetId)
+            null
+        }
+    }
+
+    /** What the latest [providerInfo] found for [appWidgetId], without waiting. */
+    fun cachedInfo(appWidgetId: Int): AppWidgetProviderInfo? = infos[appWidgetId]
 
     private fun listen() {
         try {

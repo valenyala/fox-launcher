@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 6 — App widgets (Phase 5 done 2026-10-13, its boost checklist item blocked by MIUI until Phase 9; Phase 4 owes three checklist items, deferred; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists)
-**Next task:** 6.4 (see docs/phases/06-app-widgets.md) (6.1–6.3 owe their POCO check; 3.8's POCO check still owed, the user went on to phase 6 first; 2.8 still deferred)
+**Next task:** 6.5 (see docs/phases/06-app-widgets.md) (6.1–6.4 owe their POCO check; 3.8's POCO check still owed, the user went on to phase 6 first; 2.8 still deferred)
 
 ## Environment facts (verified 2026-09-17)
 
@@ -94,7 +94,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [ ] 6.1 AppWidgetHost lifecycle: fox-api33/37 pass (one host, listening only while home is started, kept across config changes); **owed:** the POCO F3 (`dumpsys appwidget`)
 - [ ] 6.2 Widget picker: fox-api33/37 pass (App widgets tab, 27 / 34 providers grouped by app, preview layouts and images); **owed:** the POCO F3
 - [ ] 6.3 Bind + configure flow: fox-api33/37 pass (bind dialog, Cancel, Create, Always allow, configure, Back out of configure); **owed:** the POCO F3
-- [ ] 6.4 Render, size, resize, touch coexistence
+- [ ] 6.4 Render, size, resize, touch coexistence: fox-api37 pass, fox-api33 renders (render, tap, size, resize to min, drag, swipe over a widget opens the drawer); **owed:** the POCO F3, incl. a scrolling widget (none on the emulators)
 - [ ] 6.5 Persistence and provider removal
 - [ ] Device checklist passed on: —
 
@@ -161,6 +161,22 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-14 — 6.4. `FoxAppWidgetHost.onCreateView` makes `FoxAppWidgetHostView`s (kept by id): each reports its size
+  in dp from `onSizeChanged` (posted; `updateAppWidgetSize` with `SizeF` from API 31, the deprecated min/max form
+  before), answers `scrollsVerticallyAt` (window point, any view under it with `canScrollVertically`) and makes a
+  `snapshot`. `AppWidgetView` loads the provider off the main thread (`providerInfo`, cached for resizing), then
+  `AndroidView` of `host.createView`; a provider gone shows "no longer available"; the drag overlay draws the snapshot,
+  since a second `createView` would steal the id's updates (PLATFORM-NOTES AW). `HomeItemView` wraps it in the native
+  widgets' Initial-pass long-press detector. The arena gets `startsOnScrollingContent`: a gesture whose down lands on
+  a widget view that can scroll vertically is left to it. Popup offers Resize unless `resizeMode` is none; the resize
+  frame takes min/max spans from `AppWidgetSizing` with the provider and the item's cell size. **Found and fixed (also
+  in native widgets since 5.1):** the long-press handler, keyed by item id, captured the item of its first
+  composition, so a drag after a resize or move restored the old cells. Instrumented `FoxAppWidgetHostViewTest` 4
+  (list that scrolls, title and outside do not, a list that fits does not, snapshot), fox-api33. fox-api37: Numeral
+  clock (3 × 2) and Calendar month view (4 × 4) render live; next-month tap works, also after a drag; swipe up over
+  the calendar opens the drawer; resize stopped at 3 rows and the calendar re-laid out; long-press drag moved it and
+  kept 4 × 3. fox-api33: the clock renders after a reinstall; full instrumented suite 178/178. No scrolling widget on the emulators (Calendar schedule and Gmail want an account): the POCO checks it.
 
 - 2026-10-13 — 6.3. Pure `AppWidgetBindFlow` (allocate → bind if allowed, else `AskToBind` → `Configure` when needed →
   `Place`; a refusal, a failed bind or a cancelled configuration frees the id: 7 tests) on `AppWidgetBindPort`, which

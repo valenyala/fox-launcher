@@ -48,6 +48,7 @@ import dev.foxlauncher.core.ui.AppIcon
 import dev.foxlauncher.core.ui.UNAVAILABLE_ICON_ALPHA
 import dev.foxlauncher.feature.widgets.LocalNativeWidgets
 import dev.foxlauncher.feature.widgets.NativeWidgetScope
+import dev.foxlauncher.feature.widgets.app.AppWidgetView
 import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.persistentMapOf
 
@@ -100,6 +101,10 @@ fun HomeItemView(
         NativeWidgetView(item, interactive = onClick != null, onLongClick = onLongClick, modifier = modifier)
         return
     }
+    if (item is HomeItem.AppWidget) {
+        AppWidgetItemView(item, interactive = onClick != null, onLongClick = onLongClick, modifier = modifier)
+        return
+    }
     val bounds = remember { IconBounds() }
     val coordinates = remember { ItemCoordinates() }
     val interaction = if (onClick == null) {
@@ -149,11 +154,13 @@ private fun NativeWidgetView(
     val spec = LocalNativeWidgets.current[item.kind]
     val coordinates = remember { ItemCoordinates() }
     val currentOnLongClick by rememberUpdatedState(onLongClick)
+    // The gesture outlives recompositions (keyed by id): a resize or a move must not start the next drag from the old cells.
+    val currentItem by rememberUpdatedState(item)
     val interaction = if (!interactive || onLongClick == null) {
         Modifier
     } else {
         Modifier.pointerInput(item.id) {
-            detectWidgetLongPress { coordinates.value?.let { currentOnLongClick?.invoke(item, it) } }
+            detectWidgetLongPress { coordinates.value?.let { currentOnLongClick?.invoke(currentItem, it) } }
         }
     }
     Box(
@@ -171,6 +178,41 @@ private fun NativeWidgetView(
         } else {
             Text(stringResource(R.string.widget_missing), style = wallpaperLabelStyle(), textAlign = TextAlign.Center, modifier = Modifier.padding(8.dp))
         }
+    }
+}
+
+/**
+ * A third-party widget (task 6.4) across all its cells. Taps and scrolls belong to the widget; a
+ * long press opens the popup and arms a drag, watched before the widget sees it, as for native ones.
+ */
+@Composable
+private fun AppWidgetItemView(
+    item: HomeItem.AppWidget,
+    interactive: Boolean,
+    onLongClick: ((HomeItem, LayoutCoordinates) -> Unit)?,
+    modifier: Modifier,
+) {
+    val coordinates = remember { ItemCoordinates() }
+    val currentOnLongClick by rememberUpdatedState(onLongClick)
+    // The gesture outlives recompositions (keyed by id): a resize or a move must not start the next drag from the old cells.
+    val currentItem by rememberUpdatedState(item)
+    val interaction = if (!interactive || onLongClick == null) {
+        Modifier
+    } else {
+        Modifier.pointerInput(item.id) {
+            detectWidgetLongPress { coordinates.value?.let { currentOnLongClick?.invoke(currentItem, it) } }
+        }
+    }
+    AppWidgetView(
+        appWidgetId = item.appWidgetId,
+        interactive = interactive,
+        modifier = modifier
+            .fillMaxSize()
+            .onPlaced { coordinates.value = it }
+            .then(interaction)
+            .padding(4.dp),
+    ) {
+        Text(stringResource(R.string.widget_missing), style = wallpaperLabelStyle(), textAlign = TextAlign.Center, modifier = Modifier.padding(8.dp))
     }
 }
 

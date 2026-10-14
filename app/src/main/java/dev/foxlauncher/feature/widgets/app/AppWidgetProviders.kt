@@ -78,18 +78,7 @@ class AppWidgetProviders @Inject constructor(
             label = label,
             description = if (atLeastS) loadDescription(context)?.toString() else null,
             isWorkProfile = isWorkProfile,
-            size = ProviderSize(
-                minWidth = minWidth,
-                minHeight = minHeight,
-                minResizeWidth = minResizeWidth,
-                minResizeHeight = minResizeHeight,
-                maxResizeWidth = if (atLeastS) maxResizeWidth else 0,
-                maxResizeHeight = if (atLeastS) maxResizeHeight else 0,
-                targetCellWidth = if (atLeastS) targetCellWidth else 0,
-                targetCellHeight = if (atLeastS) targetCellHeight else 0,
-                resizesHorizontally = resizeMode and AppWidgetProviderInfo.RESIZE_HORIZONTAL != 0,
-                resizesVertically = resizeMode and AppWidgetProviderInfo.RESIZE_VERTICAL != 0,
-            ),
+            size = providerSize(),
             previewImage = previewImage,
             previewLayout = if (atLeastS) previewLayout else 0,
             icon = icon,
@@ -116,4 +105,21 @@ class AppWidgetProviders @Inject constructor(
     }
 
     private class Loaded(val option: AppWidgetOption, val info: AppWidgetProviderInfo, val previewViews: RemoteViews?)
+}
+
+/** This provider's sizes in the shape [AppWidgetSizing] takes. */
+fun AppWidgetProviderInfo.providerSize(): ProviderSize {
+    val atLeastS = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    return ProviderSize(
+        minWidth = minWidth,
+        minHeight = minHeight,
+        minResizeWidth = minResizeWidth,
+        minResizeHeight = minResizeHeight,
+        maxResizeWidth = if (atLeastS) maxResizeWidth else 0,
+        maxResizeHeight = if (atLeastS) maxResizeHeight else 0,
+        targetCellWidth = if (atLeastS) targetCellWidth else 0,
+        targetCellHeight = if (atLeastS) targetCellHeight else 0,
+        resizesHorizontally = resizeMode and AppWidgetProviderInfo.RESIZE_HORIZONTAL != 0,
+        resizesVertically = resizeMode and AppWidgetProviderInfo.RESIZE_VERTICAL != 0,
+    )
 }

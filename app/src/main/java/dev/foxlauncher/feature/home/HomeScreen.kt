@@ -93,9 +93,13 @@ import dev.foxlauncher.feature.home.drag.newShortcutItem
 import dev.foxlauncher.feature.home.drag.rememberHomeDragState
 import dev.foxlauncher.feature.home.grid.CellRect
 import dev.foxlauncher.feature.home.grid.GridLayoutEngine
+import dev.foxlauncher.feature.home.grid.GridSpec
+import dev.foxlauncher.feature.home.grid.Span
 import dev.foxlauncher.feature.home.grid.WidgetResize
 import dev.foxlauncher.feature.widgets.LocalNativeWidgets
-import dev.foxlauncher.feature.widgets.NativeWidgetSpec
+import dev.foxlauncher.feature.widgets.app.AppWidgetSizing
+import dev.foxlauncher.feature.widgets.app.LocalAppWidgetHost
+import dev.foxlauncher.feature.widgets.app.providerSize
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.drop
@@ -251,6 +255,7 @@ fun HomeScreen(
     SideEffect { dragState.setOpenFolder(openFolder) }
     var popup by remember { mutableStateOf<OpenPopup?>(null) }
     var resizing by remember { mutableStateOf<ResizeTarget?>(null) }
+    val appWidgetHost = LocalAppWidgetHost.current
     val popupItem = popup?.item
     val popupModel by produceState<ItemPopupModel?>(null, popupItem) {
         value = null
@@ -428,6 +433,12 @@ fun HomeScreen(
                 pagerTakesSwipeRight = { if (isRtl) pagerState.canScrollForward else pagerState.canScrollBackward },
                 dockTop = dragState::dockTop,
                 systemGestureTop = { heightPx - systemGestureStrip },
+                // A list in an app widget scrolls itself (task 6.4).
+                startsOnScrollingContent = { at ->
+                    val widget = dragState.itemAt(at) as? HomeItem.AppWidget
+                    val window = widget?.let { dragState.windowPositionOf(at) }
+                    window != null && appWidgetHost?.viewOf(widget.appWidgetId)?.scrollsVerticallyAt(window.x, window.y) == true
+                },
                 // Task 3.7: a swipe up that opens the drawer drags it with the finger; any other vertical swipe
                 // (remapped, downwards) is recognized when it lifts.
                 followsVerticalDrag = { fromDock, upward ->
@@ -545,13 +556,13 @@ fun HomeScreen(
             )
         }
         resizing?.let { target ->
-            val widget = state.layout.pages.asSequence().flatMap { it.items }.firstOrNull { it.id == target.itemId } as? HomeItem.NativeWidget
-            val spec = widget?.let { LocalNativeWidgets.current[it.kind] }
-            if (widget == null || spec == null) {
+            val widget = state.layout.pages.asSequence().flatMap { it.items }.firstOrNull { it.id == target.itemId }
+            val range = widget?.let { resizeRange(it, target, state.gridSpec) }
+            if (widget == null || range == null) {
                 // Removed or moved off the grid meanwhile: nothing to resize.
                 SideEffect { resizing = null }
             } else {
-                ResizeHandles(widget, spec, target, state.layout, engine, onResize = onResizeWidget, onDismiss = { resizing = null })
+                ResizeHandles(widget, range, target, state.layout, engine, onResize = onResizeWidget, onDismiss = { resizing = null })
             }
         }
         RemoveZone(dragState, Modifier.testTag(HomeTestTags.REMOVE_ZONE))
@@ -594,11 +605,30 @@ fun HomeScreen(
     }
 }
 
-/** [WidgetResizeFrame] for [widget], where it is now, limited by its spec and the other items on its page. */
+/** The spans a widget may be resized between. */
+private data class SpanRange(val min: Span, val max: Span)
+
+/**
+ * The spans [widget] may take: a native widget's from its spec (task 5.1), an app widget's from its
+ * provider and the cell size (task 6.4). Null for anything else, or an app widget not yet drawn.
+ */
+@Composable
+private fun resizeRange(widget: HomeItem, target: ResizeTarget, grid: GridSpec): SpanRange? = when (widget) {
+    is HomeItem.NativeWidget -> LocalNativeWidgets.current[widget.kind]?.let { SpanRange(it.minSpan, it.maxSpan) }
+    is HomeItem.AppWidget -> LocalAppWidgetHost.current?.cachedInfo(widget.appWidgetId)?.let { info ->
+        val cellW = target.originBounds.width / target.originCell.spanX
+        val cellH = target.originBounds.height / target.originCell.spanY
+        if (cellW <= 0f || cellH <= 0f) return@let null
+        AppWidgetSizing.spans(info.providerSize(), cellW, cellH, grid)?.let { SpanRange(it.min, it.max) }
+    }
+    else -> null
+}
+
+/** [WidgetResizeFrame] for [widget], where it is now, limited by [range] and the other items on its page. */
 @Composable
 private fun ResizeHandles(
-    widget: HomeItem.NativeWidget,
-    spec: NativeWidgetSpec,
+    widget: HomeItem,
+    range: SpanRange,
     target: ResizeTarget,
     layout: HomeLayout,
     engine: GridLayoutEngine,
@@ -623,9 +653,9 @@ private fun ResizeHandles(
     WidgetResizeFrame(
         bounds = bounds,
         cell = cell,
-        horizontal = spec.minSpan.x != spec.maxSpan.x,
-        vertical = spec.minSpan.y != spec.maxSpan.y,
-        resize = { edge, cells -> WidgetResize.resized(engine, cell, edge, cells, spec.minSpan, spec.maxSpan, occupied) },
+        horizontal = range.min.x != range.max.x,
+        vertical = range.min.y != range.max.y,
+        resize = { edge, cells -> WidgetResize.resized(engine, cell, edge, cells, range.min, range.max, occupied) },
         onResize = { onResize(widget, it) },
         onDismiss = onDismiss,
     )
