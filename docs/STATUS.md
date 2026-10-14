@@ -80,7 +80,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] 4.7 Wallpaper settings UI (POCO F3 2026-10-13: folder, picked pictures, thumbnail tap, shuffle, crossfade, parallax, remove, preview "Settings…"; engine renderer fix)
 - [x] 4.8 Memory and performance budget (POCO F3 2026-10-13: no memory growth over 20 changes; frame work avg 1.1–1.8 ms, worst 8.7 ms accepted by the user, 0 late)
 - [x] 4.9 URI permission resilience (POCO F3 2026-10-13: test folder renamed away → no crash, folder flagged, banner, Pick again restored it; revoked grant on fox-api33)
-- [x] 4.10 Per-image framing replaces the parallax (user, 2026-10-14; ADR-26; fox-api33/37, POCO install; the user's check owed)
+- [x] 4.10 Per-image framing replaces the parallax (user, 2026-10-14; ADR-26; fox-api33/37; POCO F3: user checked, swipes traced)
 - [ ] Device checklist: items 1, 3, 6 passed on POCO F3 (covered in 4.4–4.8); **owed:** 2 (15-min interval across a 16-min lock), 4b (the change seen from another app), 5 (reboot keeps the wallpaper and the rotation) — deferred by the user 2026-10-13
 
 ## Phase 5 — Memory widgets
@@ -176,8 +176,9 @@ Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out o
   thumbnails load without it. Checks: unit tests; instrumented `WallpaperFramingEditorTest` 4,
   `WallpaperSettingsContentTest` 17, `StaticWallpaperApplierTest` 4, `WallpaperRendererTest` 3 (fox-api33);
   v3 → v4 migration kept the entries on fox-api33/37 and the POCO; fox-api33: zoomed framing on screen and in the
-  thumbnail, drag + Save re-decodes and crossfades. **Owed:** the user's check with real photos on the POCO; whether
-  the offset timeouts and per-page snapshots are gone on the POCO.
+  thumbnail, drag + Save re-decodes and crossfades. POCO (user: "tested it ok"): three pictures framed (saved
+  focusX 0.32–0.54), each shown framed afterwards; no freeze, no crash; three page swipes traced: no per-page
+  snapshot, no wallpaper frames, 0 offset timeouts (before: one per landing, up to 18 ms, and a timeout every ~10 s).
 
 - 2026-10-14 — User tests on the POCO (log read back): no freeze, every change shown. But MIUI delivered
   `ACTION_SCREEN_OFF` 0.9–2.7 s late, so with quick lock/unlocks the lock image was set after the wake, once after

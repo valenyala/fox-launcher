@@ -209,7 +209,8 @@ here contradicts what you remember, trust this file unless a device proves other
   `setWallpaperOffsetSteps(1f/(pageCount-1), 1f)` as the pager scrolls. Some OEMs never call `onOffsetsChanged`; treat
   the offset as optional. Fox's engine has no parallax since ADR-26 and calls `setOffsetNotificationsEnabled(false)`:
   WindowManager then neither sends it offsets nor waits for its acknowledgement, and Android 13's per-page snapshot
-  (below) runs only after a colour change, not on every page landing (per the AOSP source; POCO check pending).
+  (below) runs only after a colour change, not on every page landing. POCO F3 (2026-10-14), three page swipes: no
+  `WallpaperService#` slice and no wallpaper frame in the trace, no "Timeout waiting for wallpaper to offset".
 - Decode at surface size: `ImageDecoder.decodeBitmap(source) { decoder, info, _ -> decoder.setTargetSampleSize(...) }`
   or `BitmapFactory.Options.inSampleSize` from `inJustDecodeBounds`. Use `Bitmap.Config.ARGB_8888` for software canvas
   drawing; hardware bitmaps cannot be drawn to a software canvas but can to `lockHardwareCanvas`. Apply EXIF rotation.
