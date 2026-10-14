@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 6 — App widgets (Phase 5 done 2026-10-13, its boost checklist item blocked by MIUI until Phase 9; Phase 4 owes three checklist items, deferred; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists)
-**Next task:** 6.2 (see docs/phases/06-app-widgets.md) (3.8's POCO check still owed, the user went on to phase 6 first; 2.8 still deferred)
+**Next task:** 6.3 (see docs/phases/06-app-widgets.md) (3.8's POCO check still owed, the user went on to phase 6 first; 2.8 still deferred)
 
 ## Environment facts (verified 2026-09-17)
 
@@ -92,7 +92,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 
 ## Phase 6 — App widgets
 - [x] 6.1 AppWidgetHost lifecycle (fox-api33/37: one host, listening only while home is started, kept across config changes)
-- [ ] 6.2 Widget picker
+- [x] 6.2 Widget picker (fox-api33/37: App widgets tab, 27 / 34 providers grouped by app, preview layouts and images; a pick only logs until 6.3)
 - [ ] 6.3 Bind + configure flow
 - [ ] 6.4 Render, size, resize, touch coexistence
 - [ ] 6.5 Persistence and provider removal
@@ -161,6 +161,21 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-13 — 6.2. Picker gets tabs, Fox (native, as before) and App widgets. `AppWidgetProviders` (`@Singleton`, IO)
+  reads `getInstalledProvidersForProfile` for every profile, skipping keyguard-only and `WIDGET_FEATURE_HIDE_FROM_PICKER`
+  providers; app label through `LauncherApps.getApplicationInfo` (the provider's `providerInfo` is hidden API); keeps
+  each `AppWidgetProviderInfo` and its preview `RemoteViews` (made on IO: the constructor looks the package up) by key
+  for previews and 6.3. Pure `AppWidgetSizing` (Launcher3's span rules with no cell gap: ceil of px over the cell, target
+  cells when in range, min never above default, `resizeMode` fixes a direction, null when the minimum exceeds the grid;
+  12 tests) and `AppWidgetCatalog.group` (by package + profile, collator order, personal first; 4 tests).
+  `WidgetPickerViewModel` reloads on each opening. `HomeScreen.onCellSizeChanged` reports one cell (pager less side
+  padding over the grid) so spans and previews use the real cell; previews draw at that size, scaled down to the sheet
+  width: preview layout in an `AppWidgetHostView` inflating on IO (`setExecutor`), else the preview image or icon via
+  Coil `android.resource://` URIs. Work-profile groups read "App · Work". UI tests +4 (grouping order, cells and pick,
+  too-large left out, empty text), 6/6 on fox-api33. Found while testing: a test swipe on the sheet hit the scrim (the
+  sheet node's bounds ignore its offset) and dismissed it. fox-api37: Calendar month view 4 × 4, Gmail 3 × 1, Clock
+  Analog 3 × 2, At a Glance, previews right; a tap closes the sheet and logs the key and span.
 
 - 2026-10-13 — 6.1. `FoxAppWidgetHost` (`feature/widgets/app`), `HOST_ID` 0x0F0C (3852, never change). A Hilt `@Singleton`
   (one host per process, PLATFORM-NOTES AW) injected into `HomeActivity`, which drives it: `startListening` from

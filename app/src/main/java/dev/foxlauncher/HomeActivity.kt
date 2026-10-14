@@ -21,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.DpSize
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -50,6 +51,9 @@ import dev.foxlauncher.feature.settings.SettingsRoute
 import dev.foxlauncher.feature.widgets.LocalNativeWidgets
 import dev.foxlauncher.feature.widgets.NativeWidgetRegistry
 import dev.foxlauncher.feature.widgets.WidgetPickerSheet
+import dev.foxlauncher.feature.widgets.WidgetPickerViewModel
+import dev.foxlauncher.feature.widgets.app.AppWidgetPreview
+import dev.foxlauncher.feature.widgets.app.AppWidgetProviders
 import dev.foxlauncher.feature.widgets.app.FoxAppWidgetHost
 import dev.foxlauncher.feature.widgets.app.LocalAppWidgetHost
 import dev.foxlauncher.feature.settings.WallpaperSettingsScreen
@@ -72,6 +76,8 @@ class HomeActivity : ComponentActivity() {
     @Inject lateinit var homeVisibility: HomeVisibility
 
     @Inject lateinit var appWidgetHost: FoxAppWidgetHost
+
+    @Inject lateinit var appWidgetProviders: AppWidgetProviders
 
     /** This instance is the home, not the hand-over of an alias intent that finishes in [onCreate] (ADR-19). */
     private var isHome = false
@@ -121,6 +127,9 @@ class HomeActivity : ComponentActivity() {
                 var settings by rememberSaveable { mutableStateOf(listOf<SettingsRoute>()) }
                 // The native widget picker, over the home (task 5.1).
                 var widgetPicker by rememberSaveable { mutableStateOf(false) }
+                val widgetPickerViewModel: WidgetPickerViewModel = hiltViewModel()
+                // One home grid cell, which sizes app widgets in the picker (task 6.2).
+                var cellSize by remember { mutableStateOf(DpSize.Unspecified) }
                 LaunchedEffect(requestedSettings) {
                     requestedSettings?.let { settings = listOf(it) }
                     requestedSettings = null
@@ -165,6 +174,7 @@ class HomeActivity : ComponentActivity() {
                             homeKeyPresses = homeKeyPresses,
                             // With a settings screen open, Home only closes it.
                             homeKeyWhileHome = homeKeyWhileHome && settings.isEmpty(),
+                            onCellSizeChanged = { cellSize = it },
                             onPageSettled = { page ->
                                 FoxLog.d("Page settled: $page")
                                 viewModel.onPageSettled(page)
@@ -249,6 +259,8 @@ class HomeActivity : ComponentActivity() {
                             null -> Unit
                         }
                         if (widgetPicker) {
+                            LaunchedEffect(Unit) { widgetPickerViewModel.reload() }
+                            val appWidgets by widgetPickerViewModel.appWidgets.collectAsStateWithLifecycle()
                             WidgetPickerSheet(
                                 specs = nativeWidgets.all,
                                 onPick = { spec ->
@@ -256,6 +268,15 @@ class HomeActivity : ComponentActivity() {
                                     viewModel.addNativeWidget(spec.kind)
                                 },
                                 onDismiss = { widgetPicker = false },
+                                appWidgets = appWidgets,
+                                cellSize = cellSize,
+                                grid = homeState.gridSpec,
+                                onPickAppWidget = { option, spans ->
+                                    widgetPicker = false
+                                    // Binding and placing it is task 6.3.
+                                    FoxLog.d("App widget picked: ${option.key} at ${spans.default}")
+                                },
+                                appWidgetPreview = { AppWidgetPreview(it, appWidgetProviders) },
                             )
                         }
                     }

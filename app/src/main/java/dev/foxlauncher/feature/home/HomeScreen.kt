@@ -69,6 +69,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
@@ -192,7 +193,7 @@ interface HomeControls {
  * that follows the finger (search lives only in the drawer). [homeKeyPresses] increments on every
  * Home press, which closes whatever is open; one made while already home ([homeKeyWhileHome]) with
  * nothing open is the HOME_KEY gesture (task 3.6). [onPageSettled] hears each page the pager
- * settles on after paging.
+ * settles on after paging. [onCellSizeChanged] hears the size of one grid cell (task 6.2: app widget sizes).
  * Long-pressing an item drags it, and so does long-pressing then moving an app in the drawer
  * ([DrawerScope]); [onDrop] receives what the drop should do (task 2.4). Removing a folder asks first.
  * Tapping a folder opens its [FolderSheet] (task 2.5); a changed title goes to [onRenameFolder].
@@ -216,6 +217,7 @@ fun HomeScreen(
     onResizeWidget: (HomeItem, CellRect) -> Unit = { _, _ -> },
     homeKeyWhileHome: Boolean = false,
     onPageSettled: (Int) -> Unit = {},
+    onCellSizeChanged: (DpSize) -> Unit = {},
     drawer: @Composable DrawerScope.() -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -233,6 +235,7 @@ fun HomeScreen(
         derivedStateOf { dragState.dragging?.let { dragged -> layout.pages.last().items.any { it.id != dragged.id } } == true }
     }
     val pagerState = rememberPagerState(pageCount = { layout.pages.size + if (hasExtraPage) 1 else 0 })
+    var pagerWidthPx by remember { mutableFloatStateOf(0f) }
     // While dragging, the pages shrink up from their bottom edge so no cell sits under the Remove
     // strip (Launcher3's "spring-loaded" state). They stay small until the item has settled.
     var pagerHeightPx by remember { mutableFloatStateOf(0f) }
@@ -343,6 +346,14 @@ fun HomeScreen(
 
     val density = LocalDensity.current
     val flingPx by rememberUpdatedState(with(density) { FLING_VELOCITY.toPx() })
+    val currentOnCellSizeChanged by rememberUpdatedState(onCellSizeChanged)
+    LaunchedEffect(pagerWidthPx, pagerHeightPx, state.gridSpec, density) {
+        if (pagerWidthPx > 0f && pagerHeightPx > 0f) {
+            // A page is the pager less its side padding (see HomePage).
+            val cell = with(density) { DpSize((pagerWidthPx.toDp() - GRID_PADDING * 2) / state.gridSpec.cols, pagerHeightPx.toDp() / state.gridSpec.rows) }
+            currentOnCellSizeChanged(cell)
+        }
+    }
     // Where a dragged drawer is, kept in step with each move: progress.value lags behind while snapTo
     // calls are still queued, and the last move and the lift often arrive in the same frame.
     val drawerDrag = remember { mutableFloatStateOf(0f) }
@@ -455,7 +466,10 @@ fun HomeScreen(
                 key = { it },
                 modifier = Modifier
                     .weight(1f)
-                    .onSizeChanged { pagerHeightPx = it.height.toFloat() }
+                    .onSizeChanged {
+                        pagerWidthPx = it.width.toFloat()
+                        pagerHeightPx = it.height.toFloat()
+                    }
                     .graphicsLayer {
                         scaleX = gridScale.value
                         scaleY = gridScale.value
