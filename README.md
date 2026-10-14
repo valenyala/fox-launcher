@@ -57,8 +57,8 @@ time you use such a gesture.
 
 **Hide the navigation buttons:** with [Shizuku](https://shizuku.rikka.app/) running, **Home settings → Shizuku → Hide
 navigation buttons** switches the phone to full-screen gestures, the same as the system's own navigation setting (on
-MIUI, its "Full screen gestures"). It stays after a restart, and the system's setting brings the buttons back too. On
-phones other than Xiaomi's, the open apps, Fox included, reload when the navigation changes.
+MIUI, its "Full screen gestures"). It stays after a restart, and the system's setting brings the buttons back too. The
+open apps, Fox included, reload when the navigation changes.
 
 <table>
   <tr>

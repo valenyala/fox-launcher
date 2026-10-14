@@ -41,4 +41,5 @@ Each task is independent and opt-in for the user. Do not start this phase before
 - A switch, Settings → Shizuku → "Hide navigation buttons", that turns full-screen gestures on or off through Fox's
   Shizuku shell service: MIUI's `force_fsg_nav_bar`, else Android's navigation overlay. It shows the system's state,
   read on every resume; Fox stores nothing. The Deep boost screen becomes the "Shizuku" screen holding both uses.
-- Open question from the user: hiding them per app (in front). See STATUS for the finding.
+- Asked by the user: hiding them per app in front. Not possible without relaunching that app on every switch, MIUI
+  included (PLATFORM-NOTES G, ADR-23), so not built.

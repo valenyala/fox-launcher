@@ -209,9 +209,10 @@ three-button navigation overlay, what the system's navigation setting does. No h
 is read with `Settings.Global.getInt` / `Settings.Secure.getInt("navigation_mode")` (readable to an app targeting 37,
 fox-api37), shown as it is in the system each time the screen resumes. Fox keeps no setting of its own: the phone
 keeps the mode across restarts and the system's own navigation setting changes it back. Settings → "Shizuku" holds
-both uses (Deep boost and this switch) under one status card. Accepted cost on non-MIUI phones: an overlay change
-relaunches every open activity, the home included (fox-api37: "finishDrawing of relaunch" ≈ 0.5 s); the settings
-screen survives through `rememberSaveable`, and the explainer says so.
+both uses (Deep boost and this switch) under one status card. Accepted cost, on MIUI too: the change swaps a system
+overlay, which relaunches every open activity, the home included (fox-api37 ≈ 0.5 s, POCO F3 2.1–2.5 s); the settings
+screen survives through `rememberSaveable`, and the explainer says so. For the same reason the switch is not driven
+per app in front (asked by the user): every app switch would relaunch the app just opened.
 
 ## Dependency log
 (append `- <lib> <version> — reason` when adding a dependency)

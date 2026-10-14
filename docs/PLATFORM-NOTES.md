@@ -141,7 +141,11 @@ here contradicts what you remember, trust this file unless a device proves other
   --category com.android.internal.systemui.navbar.gestural|threebutton`, ~70 ms), and the overlay change relaunches
   every open activity, the home included, in about 0.5 s (`AppCompatResourceOverlayPolicy … result: true`, then
   "finishDrawing of relaunch"); `configChanges` cannot prevent it. MIUI keeps its own switch, Settings.Global
-  `force_fsg_nav_bar` (0 buttons, 1 full-screen gestures), and ignores the overlays.
+  `force_fsg_nav_bar` (0 buttons, 1 full-screen gestures), and ignores Android's navigation overlays, but its SystemUI
+  answers the setting by toggling its own `com.android.systemui.gesture.line.overlay`: the same assets-path config
+  change (`Config changes=80000000`), `CONFIGURATION_CHANGED` to every app, and every open activity relaunched (POCO
+  F3, MIUI 14: Fox's home 2.1–2.5 s, 2026-10-14). No navigation mode can change under a running app without
+  relaunching it, so hiding the buttons per app in front is out.
 - Haptics: `View.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS / GESTURE_START / CONFIRM)`; in Compose use
   `LocalHapticFeedback`.
 

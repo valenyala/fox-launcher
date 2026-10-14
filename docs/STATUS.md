@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 9 — Power features, at the user's request before phases 7 and 8 (2026-10-14) (Phase 6 done 2026-10-14; Phase 5 done 2026-10-13, its boost checklist item passed through Deep boost 2026-10-14; Phase 4 owes three checklist items, deferred; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists)
-**Next task:** the POCO check of 9.6 and the user's answer on hiding the buttons per app, then phases 7 and 8 at the user's call (see docs/phases/09-power-features.md; 9.2 and 9.5 dropped by the user) (3.8's POCO check still owed; 2.8 still deferred; phases 7 and 8 not started)
+**Next task:** phases 7 and 8 at the user's call (phase 9 done: 9.1 and 9.6 built, 9.2 and 9.5 dropped, 9.3 and 9.4 removed) at the user's call (see docs/phases/09-power-features.md; 9.2 and 9.5 dropped by the user) (3.8's POCO check still owed; 2.8 still deferred; phases 7 and 8 not started)
 
 ## Environment facts (verified 2026-09-17)
 
@@ -124,7 +124,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [-] 9.3 Per-app gestures and macros: removed by the user 2026-10-14 after it was built (per-page gestures, macros, their tests and README paragraph gone)
 - [-] 9.4 External intent API: removed by the user 2026-10-14 after it was built (receiver, setting, screen, README section gone; ADR-22 withdrawn)
 - [-] 9.5 Extra transitions, lock-screen live wallpaper: dropped by the user (2026-10-14)
-- [ ] 9.6 Hide navigation buttons (user request 2026-10-14, ADR-23): Settings → Shizuku → "Hide navigation buttons"; fox-api37 pass (both ways, Fox relaunched by the overlay change, screen kept); UI tests 6/6 on fox-api33; **owed:** the POCO F3 check (MIUI `force_fsg_nav_bar`, left at 1), and the user's per-app question
+- [x] 9.6 Hide navigation buttons (user request 2026-10-14, ADR-23): Settings → Shizuku → "Hide navigation buttons"; fox-api37 pass (both ways); UI tests 6/6 on fox-api33; POCO F3 2026-10-14, user: turned off and on (log: shown, hidden, `force_fsg_nav_bar` back at 1). Per app: not possible without relaunching the app on every switch, MIUI included, so not built
 
 ## Blockers
 
@@ -163,6 +163,12 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-14 — 9.6 on the POCO F3: the user turned the switch off and on; the log shows "Navigation buttons shown:
+  true" then "hidden: true", and `force_fsg_nav_bar` is 1 again. MIUI's SystemUI answers the setting by toggling
+  `com.android.systemui.gesture.line.overlay`, an assets-path config change that relaunched Fox's home (2.5 s, 2.1 s)
+  and every open app. So the explainer and README now say open apps reload on every phone, and the per-app idea is
+  out: each switch would relaunch the app in front (ADR-23, PLATFORM-NOTES G).
 
 - 2026-10-14 — 9.6 switch. The Deep boost screen became Settings → "Shizuku" (`ShizukuScreen`, `ShizukuViewModel`,
   route `SHIZUKU`): one status card, then Deep boost and "Hide navigation buttons", each explained. The switch shows the
