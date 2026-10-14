@@ -170,8 +170,10 @@ Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out o
   (resumed and no settings screen), which `NavigationGestures` uses instead of `inFront`. Summary string: "In other
   apps and in Fox's settings". fox-api37: overlays 0 on the home, 4 on Home settings; three buttons: left-edge swipe
   on Wallpaper → Home settings (one step), bottom-edge swipe → home, strips down. With gesture navigation one edge
-  swipe popped two screens (system Back + Fox's), also so in other apps (PLATFORM-NOTES G). **Owed:** POCO check
-  that one swipe is one step back under MIUI's full-screen gestures.
+  swipe popped two screens (system Back + Fox's), also so in other apps (PLATFORM-NOTES G). POCO F3 (MIUI
+  full-screen gestures on): Fox's Back over settings delivered one KEYCODE_BACK down/up pair to the home, no second
+  Back from MIUI; Fox's Home → "Home pressed while home" closed settings; home gestures (swipe right → Recents,
+  two-finger down → Quick settings) unchanged.
 
 - 2026-10-14 — 9.7 done on the POCO: with the launch off the main thread, Brave's START follows "shown directly …
   applied true" by 63 ms (was 0.65–0.96 s); four rounds, hidden again on Home in 1–12 ms. Brave reopened from the
