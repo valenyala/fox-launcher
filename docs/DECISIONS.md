@@ -245,6 +245,18 @@ one key, only for the switch (the user's tap) and for the launches of the apps t
 takes milliseconds and the overlay change follows in about 0.3 s, which Fox waits for. MIUI's second change, the app
 area's new size, comes only once the app starts, so it is not waited for (PLATFORM-NOTES G).
 
+## ADR-26 Each wallpaper picture has a framing; the page parallax is gone
+The user asked (2026-10-14) to drop "Move with the pages" (task 4.7) and instead choose, per picture, which part of
+it the wallpaper shows. Each `wallpaper_entries` row keeps a `WallpaperFraming`: the image point at the screen's
+centre (fractions of the image, so any screen size works) and a zoom from 1 (the image just covers the screen) to
+3; Room v4, an auto-migration with defaults that centre it. `WallpaperGeometry` (pure, tested) turns it into the
+decode: scaled down to exactly the screen when the image has the detail, otherwise the region cut at the image's
+own size and stretched when drawn, so a zoom never decodes a photo huge. The same geometry draws the editor (a
+full-screen overlay of the wallpaper settings, opened by touching and holding a picture: drag, pinch, Reset,
+Cancel, Save), the thumbnails and the lock-screen still. The engine no longer asks for page offsets
+(`setOffsetNotificationsEnabled(false)`); the launcher still reports them for other wallpapers. Rejected: framing
+per screen size (the fractions already adapt), and keeping parallax beside framing (the user asked for it gone).
+
 ## Dependency log
 (append `- <lib> <version> — reason` when adding a dependency)
 - AGP (com.android.application) 9.4.0 — build system; built-in Kotlin, see ADR-11.

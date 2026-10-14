@@ -12,6 +12,7 @@ import dev.foxlauncher.core.data.db.WallpaperDao
 import dev.foxlauncher.core.data.db.WallpaperEntryEntity
 import dev.foxlauncher.core.data.settings.FoxSettings
 import dev.foxlauncher.core.model.RotationTrigger
+import dev.foxlauncher.core.model.WallpaperFraming
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -101,6 +102,20 @@ class RotationScheduler @Inject constructor(
         // The lock screen alone waits for the screen to go off ([catchUpLockScreen]).
         if (targets.isNotEmpty() && !StaticTargets.waitsForScreenOff(targets)) {
             StaticApplyWorker.enqueue(WorkManager.getInstance(context))
+        }
+    }
+
+    /**
+     * Keeps the part of entry [entryId] the user chose to show (ADR-26). The live wallpaper redraws
+     * it if it is on screen (it watches the entries); a still image of it is set again, the home
+     * screen's now and the lock screen's at the next screen off.
+     */
+    suspend fun setFraming(entryId: Long, framing: WallpaperFraming) {
+        mutex.withLock {
+            dao.setFraming(entryId, framing.focusX, framing.focusY, framing.zoom)
+            if (settings.lockWallpaperEntryId.first() == entryId) settings.setLockWallpaperEntry(null)
+            val showing = WallpaperPlaylist.showing(settings.activeWallpaperEntryId.first(), dao.observeRotationEntries().first().map { it.id })
+            if (showing == entryId && !LiveWallpaper.isFoxActive(context)) StaticApplyWorker.enqueue(WorkManager.getInstance(context))
         }
     }
 

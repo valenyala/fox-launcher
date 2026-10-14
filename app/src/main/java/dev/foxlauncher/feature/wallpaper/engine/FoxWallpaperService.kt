@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.RectF
 import android.service.wallpaper.WallpaperService
 import android.view.Choreographer
 import android.view.SurfaceHolder
@@ -14,6 +15,7 @@ import dev.foxlauncher.BuildConfig
 import dev.foxlauncher.core.common.FoxLog
 import dev.foxlauncher.core.common.IoDispatcher
 import dev.foxlauncher.core.data.db.WallpaperDao
+import dev.foxlauncher.core.data.db.framing
 import dev.foxlauncher.core.data.settings.FoxSettings
 import dev.foxlauncher.core.model.RotationTrigger
 import dev.foxlauncher.feature.wallpaper.RotationScheduler
@@ -21,7 +23,6 @@ import dev.foxlauncher.feature.wallpaper.TriggerPolicy
 import dev.foxlauncher.feature.wallpaper.WallpaperPlaylist
 import dev.foxlauncher.feature.wallpaper.source.WallpaperSources
 import javax.inject.Inject
-import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
@@ -42,8 +43,8 @@ import kotlinx.coroutines.withContext
  * Fox's live wallpaper (ADR-3, task 4.3): the one thing that draws the wallpaper. It shows
  * `activeWallpaperEntryId` (the first enabled entry until the rotation picks one) and crossfades
  * to each new one on a [Choreographer] loop, so a change never flashes. Images are decoded off the
- * main thread at the surface size, a little wider for parallax unless the user turned it off
- * (task 4.7). Frames go through Fox's own [WallpaperRenderer], which survives MIUI swapping the surface.
+ * main thread at the surface size, the part of each the user framed (ADR-26); the wallpaper does not
+ * move with the pages. Frames go through Fox's own [WallpaperRenderer], which survives MIUI swapping the surface.
  *
  * Memory (task 4.8): an engine holds at most two surface-sized bitmaps, the one showing and the one
  * fading in or being decoded; a fade still running when the next image is wanted ends first.
@@ -99,10 +100,10 @@ class FoxWallpaperService : WallpaperService() {
             SupervisorJob() + Dispatchers.Main.immediate + CoroutineExceptionHandler { _, e -> FoxLog.e("$name failed", e) },
         )
         private val paint = Paint(Paint.FILTER_BITMAP_FLAG)
+        private val surfaceRect = RectF()
         private var surfaceW = 0
         private var surfaceH = 0
         private var visible = false
-        private var xOffset = 0f
 
         /** The image on screen and, during a crossfade, the one fading in: never more than two. */
         private var current: Bitmap? = null
@@ -117,7 +118,6 @@ class FoxWallpaperService : WallpaperService() {
 
         /** The entry that should be showing, and the load bringing it in. */
         private var wantedId: Long? = null
-        private var parallax = true
         private var loadJob: Job? = null
 
         /** A rotation interval under 15 minutes runs here, while visible (task 4.4). */
@@ -128,19 +128,21 @@ class FoxWallpaperService : WallpaperService() {
             super.onCreate(surfaceHolder)
             engines += this
             FoxLog.d("$name created${if (isPreview) " (preview)" else ""}")
-            setOffsetNotificationsEnabled(true)
+            // The wallpaper stays still while the pages move (ADR-26). Without offsets the system also skips its own
+            // per-page snapshot of the wallpaper and its 150 ms waits for the engine (PLATFORM-NOTES W).
+            setOffsetNotificationsEnabled(false)
             scope.launch {
-                combine(settings.activeWallpaperEntryId, dao.observeRotationEntries(), settings.crossfadeMs, settings.wallpaperParallax) { active, entries, ms, parallax ->
+                combine(settings.activeWallpaperEntryId, dao.observeRotationEntries(), settings.crossfadeMs) { active, entries, ms ->
                     fadeMs = ms
-                    WallpaperPlaylist.showing(active, entries.map { it.id }) to parallax
+                    val id = WallpaperPlaylist.showing(active, entries.map { it.id })
+                    id to entries.firstOrNull { it.id == id }?.framing
                 }
                     .distinctUntilChanged()
-                    .collect { (id, parallax) ->
-                        // A new image crossfades in; the same one decoded at another width (parallax switched) just replaces it.
+                    .collect { (id, _) ->
+                        // A new image, or a new framing of the one showing, crossfades in.
                         // The first image after (re)creation appears without a fade.
-                        val animate = current != null && id != wantedId
+                        val animate = current != null
                         wantedId = id
-                        this@FoxEngine.parallax = parallax
                         load(animate)
                     }
             }
@@ -211,11 +213,6 @@ class FoxWallpaperService : WallpaperService() {
             }
         }
 
-        override fun onOffsetsChanged(xOffset: Float, yOffset: Float, xStep: Float, yStep: Float, xPixels: Int, yPixels: Int) {
-            this.xOffset = xOffset
-            if (visible && incoming == null) draw()
-        }
-
         override fun onComputeColors(): WallpaperColors? = currentColors
 
         override fun onDestroy() {
@@ -262,9 +259,8 @@ class FoxWallpaperService : WallpaperService() {
                 // Never three images at once: the fade in progress ends before the next one is decoded.
                 finishFade()
                 val entry = withContext(io) { dao.getEntry(id) } ?: return@launch
-                val width = if (parallax) (surfaceW * (1 + PARALLAX_EXTRA)).roundToInt() else surfaceW
                 val decoded = withContext(io) {
-                    loader.load(entry.uri.toUri(), width, surfaceH)?.let { it to WallpaperColors.fromBitmap(it) }
+                    loader.load(entry.uri.toUri(), surfaceW, surfaceH, entry.framing)?.let { it to WallpaperColors.fromBitmap(it) }
                 }
                 if (decoded == null) {
                     sources.reportUnreadable(id)
@@ -339,15 +335,15 @@ class FoxWallpaperService : WallpaperService() {
             }
         }
 
+        /** The image across the whole surface: it is the surface's size, or smaller when zoomed past its detail. */
         private fun drawImage(canvas: Canvas, bitmap: Bitmap, alpha: Int) {
             paint.alpha = alpha
-            canvas.drawBitmap(bitmap, WallpaperGeometry.parallaxShift(xOffset, bitmap.width, surfaceW), 0f, paint)
+            surfaceRect.set(0f, 0f, surfaceW.toFloat(), surfaceH.toFloat())
+            canvas.drawBitmap(bitmap, null, surfaceRect, paint)
         }
     }
 
     private companion object {
-        /** How much wider than the screen the image is, for the page parallax. */
-        const val PARALLAX_EXTRA = 0.2f
         const val OPAQUE = 255
         const val NANOS_PER_MS = 1_000_000f
         const val MS_PER_MINUTE = 60_000L

@@ -207,7 +207,9 @@ here contradicts what you remember, trust this file unless a device proves other
 - `Engine.onVisibilityChanged(false)` → stop all frame scheduling. `Engine.onOffsetsChanged(xOffset, yOffset, xStep, ...)`
   → parallax; the launcher calls `wallpaperManager.setWallpaperOffsets(windowToken, xOffset, 0f)` and
   `setWallpaperOffsetSteps(1f/(pageCount-1), 1f)` as the pager scrolls. Some OEMs never call `onOffsetsChanged`; treat
-  the offset as optional.
+  the offset as optional. Fox's engine has no parallax since ADR-26 and calls `setOffsetNotificationsEnabled(false)`:
+  WindowManager then neither sends it offsets nor waits for its acknowledgement, and Android 13's per-page snapshot
+  (below) runs only after a colour change, not on every page landing (per the AOSP source; POCO check pending).
 - Decode at surface size: `ImageDecoder.decodeBitmap(source) { decoder, info, _ -> decoder.setTargetSampleSize(...) }`
   or `BitmapFactory.Options.inSampleSize` from `inJustDecodeBounds`. Use `Bitmap.Config.ARGB_8888` for software canvas
   drawing; hardware bitmaps cannot be drawn to a software canvas but can to `lockHardwareCanvas`. Apply EXIF rotation.
@@ -282,6 +284,9 @@ here contradicts what you remember, trust this file unless a device proves other
 - Coil 3 reads `android.resource` URIs by resource **id** only (`ResourceUriFetcher` requires an int last segment;
   `.../raw/<name>` throws). Fox stores the built-ins by name (stable across builds) for the engine's
   `ContentResolver`, and hands Coil the resource id for thumbnails (`WallpaperSources.thumbnailModel`).
+- Coil 3's crossfade (`CrossfadePainter`) applies the request's `ContentScale` again inside the size it is drawn at:
+  with a custom scale (Fox's framed thumbnails zoom in, ADR-26) the picture came out zoomed twice and centred
+  (fox-api33, 2026-10-14). Framed thumbnails load with `crossfade(false)`.
 - The live wallpaper preview shows a "Settings…" button once `wallpaper.xml` has `settingsActivity`; it starts that
   component by name, with no action (ADR-19 for how Fox routes it).
 - WorkManager `PeriodicWorkRequest` minimum interval is 15 minutes. For shorter intervals, the engine runs its own

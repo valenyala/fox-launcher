@@ -226,14 +226,6 @@ class FoxSettings @Inject constructor(
         Unit
     }
 
-    /** Whether the wallpaper shifts a little as the home pages scroll (task 4.7). */
-    val wallpaperParallax: Flow<Boolean> = dataStore.data.map { it[Keys.WALLPAPER_PARALLAX] ?: true }
-
-    suspend fun setWallpaperParallax(enabled: Boolean) = withContext(io) {
-        dataStore.edit { it[Keys.WALLPAPER_PARALLAX] = enabled }
-        Unit
-    }
-
     /** The wallpaper rotation's mode, shuffle seed and history (task 4.2). */
     val playlistState: Flow<PlaylistState> = dataStore.data.map {
         PlaylistState(
@@ -283,7 +275,6 @@ class FoxSettings @Inject constructor(
         val ROTATE_ON_PAGE_CHANGE = booleanPreferencesKey("wallpaper_rotate_on_page_change")
         val CHANGE_LOCK_SCREEN = booleanPreferencesKey("wallpaper_change_lock_screen")
         val LOCK_WALLPAPER = longPreferencesKey("wallpaper_lock_entry")
-        val WALLPAPER_PARALLAX = booleanPreferencesKey("wallpaper_parallax")
         val PLAYLIST_MODE = stringPreferencesKey("wallpaper_playlist_mode")
         val PLAYLIST_SEED = longPreferencesKey("wallpaper_playlist_seed")
         val PLAYLIST_HISTORY = stringPreferencesKey("wallpaper_playlist_history")

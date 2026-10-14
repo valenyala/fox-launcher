@@ -80,6 +80,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] 4.7 Wallpaper settings UI (POCO F3 2026-10-13: folder, picked pictures, thumbnail tap, shuffle, crossfade, parallax, remove, preview "Settings…"; engine renderer fix)
 - [x] 4.8 Memory and performance budget (POCO F3 2026-10-13: no memory growth over 20 changes; frame work avg 1.1–1.8 ms, worst 8.7 ms accepted by the user, 0 late)
 - [x] 4.9 URI permission resilience (POCO F3 2026-10-13: test folder renamed away → no crash, folder flagged, banner, Pick again restored it; revoked grant on fox-api33)
+- [x] 4.10 Per-image framing replaces the parallax (user, 2026-10-14; ADR-26; fox-api33/37, POCO install; the user's check owed)
 - [ ] Device checklist: items 1, 3, 6 passed on POCO F3 (covered in 4.4–4.8); **owed:** 2 (15-min interval across a 16-min lock), 4b (the change seen from another app), 5 (reboot keeps the wallpaper and the rotation) — deferred by the user 2026-10-13
 
 ## Phase 5 — Memory widgets
@@ -164,6 +165,19 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-14 — 4.10 (user: "remove the move-with-pages option; for each image, let me choose which part shows").
+  ADR-26: `WallpaperFraming` (focus + zoom 1–3) per entry, Room v4 (auto-migration with defaults);
+  `WallpaperGeometry.visibleRegion/framedDecode/moved/zoomed/framedOffset` (pure, `WallpaperFramingTest` 15);
+  loader, engine, static still and thumbnails follow it; the engine stops asking for offsets. Editor: touch and hold a
+  picture in the wallpaper settings → full-screen overlay (`WallpaperFramingEditor`): drag, pinch, Reset, Cancel,
+  Save; saving goes through `RotationScheduler.setFraming` (lock screen re-set at the next screen off; static
+  fallback re-set at once). Found on fox-api33: Coil's crossfade scales a custom `ContentScale` twice, so framed
+  thumbnails load without it. Checks: unit tests; instrumented `WallpaperFramingEditorTest` 4,
+  `WallpaperSettingsContentTest` 17, `StaticWallpaperApplierTest` 4, `WallpaperRendererTest` 3 (fox-api33);
+  v3 → v4 migration kept the entries on fox-api33/37 and the POCO; fox-api33: zoomed framing on screen and in the
+  thumbnail, drag + Save re-decodes and crossfades. **Owed:** the user's check with real photos on the POCO; whether
+  the offset timeouts and per-page snapshots are gone on the POCO.
 
 - 2026-10-14 — User tests on the POCO (log read back): no freeze, every change shown. But MIUI delivered
   `ACTION_SCREEN_OFF` 0.9–2.7 s late, so with quick lock/unlocks the lock image was set after the wake, once after

@@ -8,6 +8,7 @@ import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -15,6 +16,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.foxlauncher.R
 import dev.foxlauncher.core.data.db.WallpaperSourceType
@@ -67,13 +69,12 @@ class WallpaperSettingsContentTest {
 
     @Test
     fun theLookSwitchesReportTheirNewState() {
-        setContent(WallpaperSettingsUiState(changeLockScreen = true, parallax = true))
+        setContent(WallpaperSettingsUiState(changeLockScreen = true))
 
         clickRow(R.string.wallpaper_shuffle)
-        clickRow(R.string.wallpaper_parallax)
         clickRow(R.string.wallpaper_lock_screen)
 
-        assertEquals(listOf("shuffle true", "parallax false", "lock false"), calls)
+        assertEquals(listOf("shuffle true", "lock false"), calls)
     }
 
     @Test
@@ -184,6 +185,18 @@ class WallpaperSettingsContentTest {
     }
 
     @Test
+    fun touchingAndHoldingAWallpaperOpensItsFraming() {
+        val entries = listOf(WallpaperEntryUi(7, "content://x/7", "Lake", failing = false), WallpaperEntryUi(8, "content://x/8", "Hill", failing = false))
+        setContent(WallpaperSettingsUiState(sources = listOf(builtIn), entries = entries, showingId = 7))
+
+        composeRule.onNodeWithTag(WallpaperSettingsTestTags.LIST).performScrollToNode(hasContentDescription("Hill"))
+        composeRule.onNodeWithText(string(R.string.wallpaper_pictures_hint)).assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Hill").performTouchInput { longClick() }
+
+        assertEquals(listOf("frame 8"), calls)
+    }
+
+    @Test
     fun withNoPicturesTheGridSaysWhy() {
         setContent(WallpaperSettingsUiState(sources = listOf(builtIn.copy(imageCount = 0))))
 
@@ -220,7 +233,7 @@ class WallpaperSettingsContentTest {
         override fun setOnPageChange(enabled: Boolean) { calls += "page $enabled" }
         override fun setShuffle(enabled: Boolean) { calls += "shuffle $enabled" }
         override fun setCrossfadeMs(ms: Int) { calls += "crossfade $ms" }
-        override fun setParallax(enabled: Boolean) { calls += "parallax $enabled" }
+        override fun editFraming(entryId: Long) { calls += "frame $entryId" }
         override fun setChangeLockScreen(enabled: Boolean) { calls += "lock $enabled" }
         override fun addFolder() { calls += "add folder" }
         override fun addPictures() { calls += "add pictures" }

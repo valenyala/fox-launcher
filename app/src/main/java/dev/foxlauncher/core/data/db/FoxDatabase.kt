@@ -18,6 +18,8 @@ import androidx.room.migration.AutoMigrationSpec
         AutoMigration(from = 1, to = 2, spec = FoxDatabase.DropKeyValue::class),
         // v2 → v3: wallpaper sources and entries (task 4.1), new tables only.
         AutoMigration(from = 2, to = 3),
+        // v3 → v4: each wallpaper entry's framing (ADR-26), columns with defaults.
+        AutoMigration(from = 3, to = 4),
     ],
 )
 abstract class FoxDatabase : RoomDatabase() {
@@ -31,7 +33,7 @@ abstract class FoxDatabase : RoomDatabase() {
     class DropKeyValue : AutoMigrationSpec
 
     companion object {
-        const val VERSION: Int = 3
+        const val VERSION: Int = 4
         const val NAME: String = "fox.db"
     }
 }

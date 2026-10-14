@@ -21,6 +21,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.foxlauncher.core.common.FoxLog
 import dev.foxlauncher.core.common.IoDispatcher
 import dev.foxlauncher.core.data.db.WallpaperDao
+import dev.foxlauncher.core.data.db.framing
 import dev.foxlauncher.core.data.settings.FoxSettings
 import dev.foxlauncher.feature.wallpaper.engine.WallpaperLoader
 import dev.foxlauncher.feature.wallpaper.source.WallpaperSources
@@ -53,7 +54,9 @@ class StaticWallpaperApplier @Inject constructor(
         if (targets.isEmpty()) return@withContext false
         val entry = dao.getEntry(entryId) ?: return@withContext false
         val (width, height) = screenSize()
-        val bitmap = loader.load(entry.uri.toUri(), width, height)
+        // The part the user framed (ADR-26), as the live wallpaper shows it; smaller than the screen when zoomed past
+        // its detail, which the system stretches to fill, as the live wallpaper does.
+        val bitmap = loader.load(entry.uri.toUri(), width, height, entry.framing)
         if (bitmap == null) {
             sources.reportUnreadable(entryId)
             return@withContext false

@@ -15,7 +15,7 @@ private const val SINGLE_PAGE_OFFSET = 0.5f
 /**
  * Tells the wallpaper where the pager is, for parallax (PLATFORM-NOTES W). Snapshot changes are
  * applied at most once per frame and the collector is conflated, so this runs at most at frame
- * rate. Wallpapers that ignore offsets simply do nothing with them.
+ * rate. Fox's own wallpaper stays still and does not ask for them (ADR-26); other wallpapers may.
  */
 @Composable
 fun WallpaperOffsetsEffect(pagerState: PagerState) {

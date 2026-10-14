@@ -10,9 +10,11 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.foxlauncher.core.common.FoxLog
 import dev.foxlauncher.core.data.db.WallpaperEntryEntity
 import dev.foxlauncher.core.data.db.WallpaperSourceType
+import dev.foxlauncher.core.data.db.framing
 import dev.foxlauncher.core.data.settings.FoxSettings
 import dev.foxlauncher.core.model.PlaylistMode
 import dev.foxlauncher.core.model.RotationTriggers
+import dev.foxlauncher.core.model.WallpaperFraming
 import dev.foxlauncher.feature.wallpaper.LiveWallpaper
 import dev.foxlauncher.feature.wallpaper.RotationScheduler
 import dev.foxlauncher.feature.wallpaper.WallpaperPlaylist
@@ -46,6 +48,8 @@ data class WallpaperEntryUi(
     val name: String,
     /** It failed to load too often in a row: the rotation skips it. */
     val failing: Boolean,
+    /** The part of it that shows (ADR-26). */
+    val framing: WallpaperFraming = WallpaperFraming.CENTERED,
 )
 
 @Immutable
@@ -57,7 +61,6 @@ data class WallpaperSettingsUiState(
     val changeLockScreen: Boolean = false,
     val shuffle: Boolean = false,
     val crossfadeMs: Int = FoxSettings.DEFAULT_CROSSFADE_MS,
-    val parallax: Boolean = true,
     val sources: List<WallpaperSourceUi> = emptyList(),
     /** The wallpapers of the enabled sources, in rotation order. */
     val entries: List<WallpaperEntryUi> = emptyList(),
@@ -94,19 +97,17 @@ class WallpaperSettingsViewModel @Inject constructor(
 
     val uiState: StateFlow<WallpaperSettingsUiState> = combine(
         rotationSettings,
-        settings.wallpaperParallax,
         combine(sources.sources, sources.entryCounts) { list, counts ->
             val countOf = counts.associate { it.sourceId to it.count }
             list.map { WallpaperSourceUi(it.id, it.type, it.displayName, it.enabled, it.needsReauth, countOf[it.id] ?: 0) }
         },
         sources.rotationEntries,
         settings.activeWallpaperEntryId,
-    ) { base, parallax, sourceList, entries, active ->
+    ) { base, sourceList, entries, active ->
         base.copy(
-            parallax = parallax,
             sources = sourceList,
             entries = entries.map {
-                WallpaperEntryUi(it.id, sources.thumbnailModel(it.uri), it.displayName, it.failedCount >= WallpaperEntryEntity.MAX_FAILURES)
+                WallpaperEntryUi(it.id, sources.thumbnailModel(it.uri), it.displayName, it.failedCount >= WallpaperEntryEntity.MAX_FAILURES, it.framing)
             },
             showingId = WallpaperPlaylist.showing(active, entries.map { it.id }),
         )
@@ -154,8 +155,9 @@ class WallpaperSettingsViewModel @Inject constructor(
         viewModelScope.launch { settings.setCrossfadeMs(ms) }
     }
 
-    fun setParallax(enabled: Boolean) {
-        viewModelScope.launch { settings.setWallpaperParallax(enabled) }
+    /** The part of a picture to show, chosen in the framing editor (ADR-26). */
+    fun setFraming(entryId: Long, framing: WallpaperFraming) {
+        viewModelScope.launch { rotation.setFraming(entryId, framing) }
     }
 
     fun addFolder(tree: Uri) {

@@ -1,9 +1,11 @@
 package dev.foxlauncher.core.data.db
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import dev.foxlauncher.core.model.WallpaperFraming
 
 /** Where a wallpaper source's images come from (task 4.1). */
 enum class WallpaperSourceType {
@@ -52,12 +54,19 @@ data class WallpaperEntryEntity(
     val lastShownAt: Long? = null,
     /** Failed loads in a row; the entry is skipped after [MAX_FAILURES] (task 4.9). */
     val failedCount: Int = 0,
+    /** Which part of the image shows ([WallpaperFraming], ADR-26); the defaults centre it. */
+    @ColumnInfo(defaultValue = "0.5") val focusX: Float = 0.5f,
+    @ColumnInfo(defaultValue = "0.5") val focusY: Float = 0.5f,
+    @ColumnInfo(defaultValue = "1.0") val zoom: Float = 1f,
 ) {
     companion object {
         /** Failed loads in a row after which the rotation skips an entry. */
         const val MAX_FAILURES = 3
     }
 }
+
+/** Which part of the image shows. */
+val WallpaperEntryEntity.framing: WallpaperFraming get() = WallpaperFraming(focusX, focusY, zoom)
 
 /** How many images a source has (task 4.7). */
 data class SourceEntryCount(val sourceId: Long, val count: Int)

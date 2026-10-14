@@ -8,6 +8,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Box
@@ -53,7 +54,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -65,6 +65,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import coil3.compose.LocalPlatformContext
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import dev.foxlauncher.R
 import dev.foxlauncher.core.common.FoxLog
 import dev.foxlauncher.core.data.db.WallpaperSourceType
@@ -90,7 +93,8 @@ interface WallpaperSettingsActions {
     fun setOnPageChange(enabled: Boolean)
     fun setShuffle(enabled: Boolean)
     fun setCrossfadeMs(ms: Int)
-    fun setParallax(enabled: Boolean)
+    /** Opens the framing editor for one picture (ADR-26). */
+    fun editFraming(entryId: Long)
     fun setChangeLockScreen(enabled: Boolean)
     fun addFolder()
     fun addPictures()
@@ -117,6 +121,8 @@ fun WallpaperSettingsScreen(
         tree?.let(viewModel::addFolder)
     }
     var reauthorizing by rememberSaveable { mutableStateOf<Long?>(null) }
+    /** The picture whose framing is being chosen, if any. */
+    var framingId by rememberSaveable { mutableStateOf<Long?>(null) }
     val reauthorizePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { tree ->
         val sourceId = reauthorizing
         reauthorizing = null
@@ -136,7 +142,9 @@ fun WallpaperSettingsScreen(
             override fun setOnPageChange(enabled: Boolean) = viewModel.setOnPageChange(enabled)
             override fun setShuffle(enabled: Boolean) = viewModel.setShuffle(enabled)
             override fun setCrossfadeMs(ms: Int) = viewModel.setCrossfadeMs(ms)
-            override fun setParallax(enabled: Boolean) = viewModel.setParallax(enabled)
+            override fun editFraming(entryId: Long) {
+                framingId = entryId
+            }
             override fun setChangeLockScreen(enabled: Boolean) = viewModel.setChangeLockScreen(enabled)
             override fun addFolder() = launchPicker { folderPicker.launch(null) }
             override fun addPictures() = launchPicker {
@@ -150,7 +158,21 @@ fun WallpaperSettingsScreen(
             }
         }
     }
-    WallpaperSettingsContent(state = state, actions = actions, modifier = modifier)
+    Box(modifier) {
+        WallpaperSettingsContent(state = state, actions = actions)
+        // The framing editor covers the settings, the whole screen, like the wallpaper it frames (ADR-26).
+        state.entries.firstOrNull { it.id == framingId }?.let { entry ->
+            WallpaperFramingEditor(
+                picture = entry.thumbnail,
+                initial = entry.framing,
+                onSave = {
+                    viewModel.setFraming(entry.id, it)
+                    framingId = null
+                },
+                onCancel = { framingId = null },
+            )
+        }
+    }
 }
 
 /** Some devices have no document picker (stripped builds); there is nothing to add from then. */
@@ -224,7 +246,6 @@ fun WallpaperSettingsContent(
                 item { SectionHeader(R.string.wallpaper_section_look) }
                 item { SwitchRow(R.string.wallpaper_shuffle, state.shuffle, actions::setShuffle, R.string.wallpaper_shuffle_summary) }
                 item { CrossfadeRow(state.crossfadeMs, actions::setCrossfadeMs) }
-                item { SwitchRow(R.string.wallpaper_parallax, state.parallax, actions::setParallax, R.string.wallpaper_parallax_summary) }
                 item { SwitchRow(R.string.wallpaper_lock_screen, state.changeLockScreen, actions::setChangeLockScreen, R.string.wallpaper_lock_screen_summary) }
 
                 item { SectionHeader(R.string.wallpaper_section_sources) }
@@ -246,6 +267,15 @@ fun WallpaperSettingsContent(
                 }
 
                 item { SectionHeader(R.string.wallpaper_section_pictures) }
+                if (state.entries.isNotEmpty()) {
+                    item {
+                        Text(
+                            stringResource(R.string.wallpaper_pictures_hint),
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
+                        )
+                    }
+                }
                 if (state.entries.isEmpty()) {
                     item {
                         Text(
@@ -261,7 +291,13 @@ fun WallpaperSettingsContent(
                         modifier = Modifier.padding(horizontal = GRID_PADDING, vertical = GRID_GAP / 2),
                     ) {
                         row.forEach { entry ->
-                            Thumbnail(entry, showing = entry.id == state.showingId, onClick = { actions.show(entry.id) }, modifier = Modifier.weight(1f))
+                            Thumbnail(
+                                entry,
+                                showing = entry.id == state.showingId,
+                                onClick = { actions.show(entry.id) },
+                                onLongClick = { actions.editFraming(entry.id) },
+                                modifier = Modifier.weight(1f),
+                            )
                         }
                         repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
                     }
@@ -422,9 +458,12 @@ private fun ActionRow(icon: Int, label: Int, summary: Int, onClick: () -> Unit) 
     )
 }
 
-/** One wallpaper, cropped like the screen; the one showing is outlined, one that cannot be read is dimmed. */
+/**
+ * One wallpaper, cropped to the part chosen for the screen (ADR-26); tap shows it, touch and hold
+ * frames it. The one showing is outlined, one that cannot be read is dimmed.
+ */
 @Composable
-private fun Thumbnail(entry: WallpaperEntryUi, showing: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun Thumbnail(entry: WallpaperEntryUi, showing: Boolean, onClick: () -> Unit, onLongClick: () -> Unit, modifier: Modifier = Modifier) {
     val shape = MaterialTheme.shapes.small
     Box(
         modifier
@@ -433,12 +472,20 @@ private fun Thumbnail(entry: WallpaperEntryUi, showing: Boolean, onClick: () -> 
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .then(if (showing) Modifier.border(SHOWING_BORDER, MaterialTheme.colorScheme.primary, shape) else Modifier)
             .semantics { selected = showing }
-            .clickable(onClickLabel = stringResource(R.string.wallpaper_show_now), onClick = onClick),
+            .combinedClickable(
+                onClickLabel = stringResource(R.string.wallpaper_show_now),
+                onLongClickLabel = stringResource(R.string.wallpaper_framing_title),
+                onLongClick = onLongClick,
+                onClick = onClick,
+            ),
     ) {
+        val context = LocalPlatformContext.current
         AsyncImage(
-            model = entry.thumbnail,
+            // No crossfade: Coil's crossfade scales its picture again by a custom content scale.
+            model = remember(entry.thumbnail) { ImageRequest.Builder(context).data(entry.thumbnail).crossfade(false).build() },
             contentDescription = entry.name,
-            contentScale = ContentScale.Crop,
+            contentScale = remember(entry.framing.zoom) { FramedScale(entry.framing.zoom) },
+            alignment = remember(entry.framing) { FramedAlignment(entry.framing) },
             modifier = Modifier
                 .fillMaxSize()
                 .alpha(if (entry.failing) FAILING_ALPHA else 1f),

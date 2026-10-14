@@ -33,10 +33,10 @@ Read `PLATFORM-NOTES.md` section W before starting. ADR-3 applies.
 - **Do:**
   - `feature/wallpaper/engine/FoxWallpaperService : WallpaperService`, `Engine` with its own `CoroutineScope` (cancel in `onDestroy`).
     Observes `FoxSettings.activeWallpaperEntryId` (DataStore flow) → on change, `WallpaperLoader.load(uri, surfaceW, surfaceH)`
-    on IO (EXIF-aware, sample-size decode, center-crop scale to cover `surfaceW * (1 + parallaxExtra)` × `surfaceH`) → start
+    on IO (EXIF-aware, sample-size decode, center-crop scale to cover `surfaceW * (1 + parallaxExtra)` × `surfaceH`) (parallax superseded by 4.10) → start
     a `Crossfade(from, to, durationMs)` driven by `Choreographer`. Draw path: `lockHardwareCanvas` if available else `lockCanvas`.
     First image after (re)creation draws without animation.
-  - `onOffsetsChanged` stores `xOffset`; draw translates by `-xOffset * extraWidth`. `onVisibilityChanged(false)` cancels frame
+  - `onOffsetsChanged` stores `xOffset`; draw translates by `-xOffset * extraWidth` (gone in 4.10: no offsets). `onVisibilityChanged(false)` cancels frame
     callbacks; `(true)` redraws once. `onSurfaceChanged` reloads at the new size. `onComputeColors` from current bitmap.
   - Manifest: service with `BIND_WALLPAPER`, `res/xml/wallpaper.xml` pointing `settingsActivity` to a settings deep link
     (Phase 4.7), thumbnail drawable.
@@ -75,7 +75,7 @@ Read `PLATFORM-NOTES.md` section W before starting. ADR-3 applies.
 
 - **Do:** `feature/settings/WallpaperScreen`: source list (add folder via `OpenDocumentTree`, add pictures via
   `PickMultipleVisualMedia`, toggle, remove, "needs re-authorization" state), thumbnail grid of entries (Coil, tap = set now),
-  order mode, interval, triggers toggles, transition duration (300–2000 ms), parallax on/off, lock-screen toggle, "Apply live
+  order mode, interval, triggers toggles, transition duration (300–2000 ms), parallax on/off, (parallax removed in 4.10) lock-screen toggle, "Apply live
   wallpaper" button, "Next now". This screen is also the `settingsActivity` target of `wallpaper.xml` (deep link into the app).
 - **Done when:** the whole phase is operable from the UI without adb.
 
@@ -93,6 +93,17 @@ Read `PLATFORM-NOTES.md` section W before starting. ADR-3 applies.
   `contentResolver.persistedUriPermissions` at scan time.
 - **Done when:** revoking the folder permission from system settings degrades gracefully (no crash, banner shown).
 
+## 4.10 Per-image framing (replaces the parallax, ADR-26)
+
+- **Do:** remove "Move with the pages" and the engine's parallax (no offset notifications). Store a
+  `WallpaperFraming` (focus, zoom 1–3) per entry (Room v4); decode, draw, thumbnails and the lock-screen still follow
+  it. Touch and hold a picture in the wallpaper settings → full-screen editor showing it as the wallpaper will: drag,
+  pinch, Reset, Cancel, Save. A new framing of the picture on screen crossfades in; the lock screen catches up at the
+  next screen off.
+- **Verify:** `WallpaperFramingTest` (geometry); `WallpaperFramingEditorTest`, `WallpaperSettingsContentTest`
+  (instrumented); device: frame a landscape photo to its left edge and zoomed in, save → the home screen and the
+  thumbnail show that part; swiping pages leaves the wallpaper still.
+
 ## Phase device checklist
 
 1. Add a folder with ≥ 5 images → apply live wallpaper → tap "Next now" 5 times → smooth crossfades, correct crop, no flash.
@@ -100,4 +111,4 @@ Read `PLATFORM-NOTES.md` section W before starting. ADR-3 applies.
 3. Enable unlock trigger → each unlock changes wallpaper (debounced).
 4. Two-finger swipe up → next wallpaper, also visible when switching to another app.
 5. Reboot → same wallpaper as before reboot, rotation continues.
-6. Swipe pages → parallax if enabled.
+6. Swipe pages → the wallpaper stays still (ADR-26, was: parallax if enabled). Frame a picture → that part shows.

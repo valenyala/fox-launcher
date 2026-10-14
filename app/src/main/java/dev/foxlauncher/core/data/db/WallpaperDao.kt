@@ -82,6 +82,10 @@ abstract class WallpaperDao {
     @Query("UPDATE wallpaper_entries SET failedCount = failedCount + 1 WHERE id = :id")
     abstract suspend fun markFailed(id: Long)
 
+    /** The part of the image the user chose to show (ADR-26). */
+    @Query("UPDATE wallpaper_entries SET focusX = :focusX, focusY = :focusY, zoom = :zoom WHERE id = :id")
+    abstract suspend fun setFraming(id: Long, focusX: Float, focusY: Float, zoom: Float)
+
     /** Entries that cannot be read at all (their access is gone): skipped like three failures (task 4.9). */
     @Query("UPDATE wallpaper_entries SET failedCount = :failures WHERE id IN (:ids)")
     abstract suspend fun markUnreadable(ids: List<Long>, failures: Int = WallpaperEntryEntity.MAX_FAILURES)
