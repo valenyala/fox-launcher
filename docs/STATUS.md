@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 6 — App widgets (Phase 5 done 2026-10-13, its boost checklist item blocked by MIUI until Phase 9; Phase 4 owes three checklist items, deferred; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists)
-**Next task:** 3.8's POCO check (added at the user's request, see docs/phases/03-gestures.md), then 6.1 (see docs/phases/06-app-widgets.md) (2.8 still deferred)
+**Next task:** 6.2 (see docs/phases/06-app-widgets.md) (3.8's POCO check still owed, the user went on to phase 6 first; 2.8 still deferred)
 
 ## Environment facts (verified 2026-09-17)
 
@@ -91,7 +91,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [ ] Device checklist: POCO F3 2026-10-13 — widgets added from the home menu, resized, moved, figures right; **owed:** 5.4 "boost reduces used memory on API ≤ 33", blocked by MIUI until Shizuku (Phase 9); the 34+ caption passed on fox-api37
 
 ## Phase 6 — App widgets
-- [ ] 6.1 AppWidgetHost lifecycle
+- [x] 6.1 AppWidgetHost lifecycle (fox-api33/37: one host, listening only while home is started, kept across config changes)
 - [ ] 6.2 Widget picker
 - [ ] 6.3 Bind + configure flow
 - [ ] 6.4 Render, size, resize, touch coexistence
@@ -161,6 +161,15 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-13 — 6.1. `FoxAppWidgetHost` (`feature/widgets/app`), `HOST_ID` 0x0F0C (3852, never change). A Hilt `@Singleton`
+  (one host per process, PLATFORM-NOTES AW) injected into `HomeActivity`, which drives it: `startListening` from
+  `onStart`, `stopListening` from `onStop` (counted per started instance, like `HomeVisibility`, for the ADR-19
+  hand-over), `clearViews` from the home instance's `onDestroy` (the views hold the activity). A binder-size error from
+  `startListening` is logged, not thrown (as Launcher3). `LocalAppWidgetHost` (null by default, for tests) provided
+  next to `LocalNativeWidgets`; nothing reads it until 6.4. fox-api33/37, `dumpsys appwidget`: one Fox host (hostId
+  3852) with callbacks at home; gone while Settings is in front (no widgets yet, so the service drops it), back on
+  return; dark mode, density and font-scale changes keep the same `ActivityRecord`, pid and callbacks proxy.
 
 - 2026-10-13 — 3.8 checkpoint (user request: full-screen navigation in other apps). Swipe in from the left or right
   edge = Back, up from the bottom = Home, up and hold = Recents, through three invisible `TYPE_ACCESSIBILITY_OVERLAY`

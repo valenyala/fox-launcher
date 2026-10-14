@@ -50,6 +50,8 @@ import dev.foxlauncher.feature.settings.SettingsRoute
 import dev.foxlauncher.feature.widgets.LocalNativeWidgets
 import dev.foxlauncher.feature.widgets.NativeWidgetRegistry
 import dev.foxlauncher.feature.widgets.WidgetPickerSheet
+import dev.foxlauncher.feature.widgets.app.FoxAppWidgetHost
+import dev.foxlauncher.feature.widgets.app.LocalAppWidgetHost
 import dev.foxlauncher.feature.settings.WallpaperSettingsScreen
 import dev.foxlauncher.feature.wallpaper.LiveWallpaper
 import dev.foxlauncher.feature.wallpaper.LiveWallpaperPromptDialog
@@ -68,6 +70,11 @@ class HomeActivity : ComponentActivity() {
     @Inject lateinit var nativeWidgets: NativeWidgetRegistry
 
     @Inject lateinit var homeVisibility: HomeVisibility
+
+    @Inject lateinit var appWidgetHost: FoxAppWidgetHost
+
+    /** This instance is the home, not the hand-over of an alias intent that finishes in [onCreate] (ADR-19). */
+    private var isHome = false
 
     /** 120 Hz while touched; MIUI would otherwise hold Fox at 60 Hz (see [HighRefreshRate]). */
     private val refreshRate = HighRefreshRate(this)
@@ -96,6 +103,7 @@ class HomeActivity : ComponentActivity() {
             finish()
             return
         }
+        isHome = true
         enableEdgeToEdge()
         // A launcher has nowhere to go back to. Unhandled, Back on a root launcher activity makes Android 12+
         // move the home task behind the last app, which then shows (task 3.6). Added first, so the drawer's,
@@ -147,6 +155,7 @@ class HomeActivity : ComponentActivity() {
                     LocalIconCache provides iconCache,
                     LocalIconGeneration provides iconGeneration,
                     LocalNativeWidgets provides nativeWidgets,
+                    LocalAppWidgetHost provides appWidgetHost,
                 ) {
                     HomeRoot(
                         isDefaultLauncher = isDefault,
@@ -321,6 +330,11 @@ class HomeActivity : ComponentActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        appWidgetHost.onHomeStarted()
+    }
+
     override fun onResume() {
         super.onResume()
         homeVisibility.onResumed()
@@ -330,6 +344,16 @@ class HomeActivity : ComponentActivity() {
         super.onPause()
         homeVisibility.onPaused()
         refreshRate.releaseNow()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        appWidgetHost.onHomeStopped()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (isHome) appWidgetHost.clearViews()
     }
 
     private companion object {
