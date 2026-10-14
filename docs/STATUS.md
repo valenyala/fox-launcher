@@ -2,8 +2,8 @@
 
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
-**Current phase:** 9 — Power features, at the user's request before phases 7 and 8 (2026-10-14) (Phase 6 done 2026-10-14; Phase 5 done 2026-10-13, its boost checklist item blocked by MIUI until Phase 9; Phase 4 owes three checklist items, deferred; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists)
-**Next task:** finish 9.6 (user request: "Hide navigation buttons" switch; backend in the checkpoint commit, the switch on a "Shizuku" settings screen, strings, ADR-23, tests and POCO check still to do), then the POCO checks of 9.1, 9.3 and 9.4, then phases 7 and 8 at the user's call (see docs/phases/09-power-features.md; 9.2 and 9.5 dropped by the user) (3.8's POCO check still owed; 2.8 still deferred; phases 7 and 8 not started)
+**Current phase:** 9 — Power features, at the user's request before phases 7 and 8 (2026-10-14) (Phase 6 done 2026-10-14; Phase 5 done 2026-10-13, its boost checklist item passed through Deep boost 2026-10-14; Phase 4 owes three checklist items, deferred; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists)
+**Next task:** finish 9.6 (user request: "Hide navigation buttons" switch; backend in the checkpoint commit, the switch on a "Shizuku" settings screen, strings, ADR-23, tests and POCO check still to do), then phases 7 and 8 at the user's call (see docs/phases/09-power-features.md; 9.2 and 9.5 dropped by the user) (3.8's POCO check still owed; 2.8 still deferred; phases 7 and 8 not started)
 
 ## Environment facts (verified 2026-09-17)
 
@@ -88,7 +88,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] 5.3 RAM gauge, boost and detail widgets (POCO F3 2026-10-13: gauge and details read right, Boost placed, moved and tapped; recent apps verified on emulators only, usage access not granted on the phone)
 - [x] 5.4 BoostStrategy per API level (POCO F3 2026-10-13: "Limited on MIUI", self trim measured 4 MB; MIUI blocks closing other apps, see PLATFORM-NOTES M)
 - [x] 5.5 (stretch) AppWidgetProvider export (fox-api37 in Pixel Launcher, 2026-10-13; the phone checks it when Fox hosts app widgets, phase 6)
-- [ ] Device checklist: POCO F3 2026-10-13 — widgets added from the home menu, resized, moved, figures right; **owed:** 5.4 "boost reduces used memory on API ≤ 33", blocked by MIUI until Shizuku (Phase 9); the 34+ caption passed on fox-api37
+- [x] Device checklist: POCO F3 2026-10-13 — widgets added from the home menu, resized, moved, figures right; 5.4 "boost reduces used memory on API ≤ 33" passed through Deep boost (9.1) on the POCO F3, 2026-10-14; the 34+ caption passed on fox-api37
 
 ## Phase 6 — App widgets
 - [x] 6.1 AppWidgetHost lifecycle (fox-api33/37: one host, listening only while home is started, kept across config changes; POCO F3: host with its widgets after a reboot)
@@ -119,10 +119,10 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [ ] 8.6 Crash reporting decision
 
 ## Phase 9 — Power features (optional)
-- [ ] 9.1 Shizuku boost strategy: fox-api33/37 pass (Shizuku 13.6.0; status steps, permission, opt-in, boost through the shell; on API 37 it closed an app Android 14+ refuses to apps); **owed:** the POCO F3 (MIUI), and 5.4's boost checklist item with it
+- [x] 9.1 Shizuku boost strategy: fox-api33/37 pass (Shizuku 13.6.0; status steps, permission, opt-in, boost through the shell; on API 37 it closed an app Android 14+ refuses to apps); POCO F3 (MIUI) 2026-10-14, user: "works well", and 5.4's boost checklist item with it
 - [-] 9.2 Online wallpaper sources: dropped by the user (2026-10-14)
-- [ ] 9.3 Per-app gestures and macros: fox-api33/37 pass (page 1's own double tap, a macro with a 1 s wait, a macro stopped by the live wallpaper prompt); **owed:** the POCO F3. Home pages only (no drawer or folder contexts)
-- [ ] 9.4 External intent API: fox-api37 pass (off: ignored "off"; on: next wallpaper "no live wallpaper", boost "freed 8 MB"; an implicit broadcast does not arrive); **owed:** the POCO F3. No signature permission (ADR-22)
+- [x] 9.3 Per-app gestures and macros: fox-api33/37 pass (page 1's own double tap, a macro with a 1 s wait, a macro stopped by the live wallpaper prompt); POCO F3 check waived by the user 2026-10-14. Home pages only (no drawer or folder contexts)
+- [x] 9.4 External intent API: fox-api37 pass (off: ignored "off"; on: next wallpaper "no live wallpaper", boost "freed 8 MB"; an implicit broadcast does not arrive); POCO F3 check waived by the user 2026-10-14. No signature permission (ADR-22)
 - [-] 9.5 Extra transitions, lock-screen live wallpaper: dropped by the user (2026-10-14)
 - [ ] 9.6 Hide navigation buttons (user request 2026-10-14, after `force_fsg_nav_bar 1` over adb hid the POCO's buttons): checkpoint — Shizuku classes moved to `feature/shizuku`, pure `ShellCommands` (+ tests), `IFoxShell.setNavigationButtonsHidden`, `NavigationButtons`; **to do:** the switch (Deep boost screen → "Shizuku" screen), strings, ADR-23 (widens ADR-9), UI tests, emulator (fox-api37 only: nav-mode switches hung fox-api33 before) and POCO checks. The POCO is left in full-screen gestures (`force_fsg_nav_bar` 1)
 
@@ -163,6 +163,9 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-14 — POCO F3: 9.1 Deep boost passed (user: "works well"), closing Phase 5's boost checklist item;
+  the user waived the POCO checks of 9.3 and 9.4. 9.6 still to finish.
 
 - 2026-10-14 — 9.4. `AutomationReceiver` (exported, actions `dev.foxlauncher.NEXT_WALLPAPER`, `PREV_WALLPAPER`, `BOOST`; Hilt
   entry point, `goAsync` on the application scope) acts only while the new `automation` setting is on, else answers
