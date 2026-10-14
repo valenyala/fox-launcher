@@ -2,8 +2,8 @@
 
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
-**Current phase:** 9 — Power features, at the user's request before phases 7 and 8 (2026-10-14) (Phase 6 done 2026-10-14; Phase 5 done 2026-10-13, its boost checklist item passed through Deep boost 2026-10-14; Phase 4 owes three checklist items, deferred; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists)
-**Next task:** phases 7 and 8 at the user's call; phase 9 is done (9.1, 9.6, 9.7 built; 9.2 and 9.5 dropped; 9.3 and 9.4 removed). Still owed: 3.8's POCO check; 2.8 deferred
+**Current phase:** 7 — Polish & personalization (started 2026-10-14; phase 9 done first at the user's request; Phase 6 done 2026-10-14; Phase 5 done 2026-10-13; Phase 4 owes three checklist items, deferred; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists; phase 8 not started)
+**Next task:** 7.1's POCO check (the user needs an icon pack installed), then 7.2. Still owed: 3.8's POCO check; 2.8 deferred
 
 ## Environment facts (verified 2026-09-17)
 
@@ -100,7 +100,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] Device checklist passed on: POCO F3 (MIUI 14, Android 13), 2026-10-14, user: "seems ok", reboot keeps the widgets
 
 ## Phase 7 — Polish & personalization
-- [ ] 7.1 Icon packs and icon options
+- [ ] 7.1 Icon packs and icon options: fox-api37 pass (Arcticons 15.3.2 from F-Droid on home and dock; themed icons, recoloured by a palette change; Camera without a monochrome layer keeps its own); **owed:** the POCO F3 with a pack of the user's
 - [ ] 7.2 Dynamic color and theming
 - [ ] 7.3 Notification dots
 - [ ] 7.4 Animations
@@ -164,6 +164,23 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-14 — 7.1 (phase 7 started at the user's call). Pure `AppFilter` (core/apps/iconpack: `ComponentInfo{}` with
+  short classes, first entry wins, package fallback, `iconback`/`iconmask`/`iconupon` `img1…`, `scale`; 6 JVM tests)
+  fed by `IconPacks` (ADW, Nova, Go, Apex actions in the manifest's new `<queries>`; `res/xml/appfilter.xml` or
+  `assets/appfilter.xml`; drawables by name, drawable then mipmap; one loaded pack kept; `changed` on its update or
+  removal). `IconCache`: config dir now `<size>-<shape>[-p<pack hash>][-t<fg><bg>]`, key includes it; pack drawing,
+  else the pack's frame around the app's icon, else themed (`AdaptiveIconDrawable.monochrome`, API 33, accent colors
+  re-read on every configuration change), else the app's own; the chosen pack's update redraws all. `FoxSettings`:
+  `iconPack`, `themedIcons`, setters for shape, size (48–64, clamped) and home labels. Settings → Icons: preview of five
+  apps, pack picker dialog, shape radios, size slider (4 dp steps), labels, themed (33+). `IconsContentTest` 4.
+  **Found on fox-api37:** choosing a pack crashed the home: Android's ICU regex rejects the bare `}` the JVM accepted
+  in `ComponentInfo\{…}`; escaped, plus `AppFilterOnDeviceTest` so the device's engine is tested, and `IconPacks.read`
+  now catches any `RuntimeException` from another app's resources.
+  Arcticons maps 49,453 entries: read whole it took 577 ms and ~12 MB of Java heap (fox-api33); now the tags stream
+  through `AppFilter.parse(keep)` and only installed packages' items stay (260, 544 ms, heap 29 → 20 MB); an app
+  installed later re-reads the pack once (`LoadedIconPack.covers`). fox-api33: same pack via the UI. Full instrumented
+  suite 195/195 on fox-api33.
 
 - 2026-10-14 — User request: Fox's navigation gestures (3.8) over Fox's settings screens too. `HomeVisibility` gets
   `onSettingsOpen` (from the home's composition, the settings stack non-empty) and exposes `homeGesturesInFront`

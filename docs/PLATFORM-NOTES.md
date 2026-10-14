@@ -52,6 +52,15 @@ here contradicts what you remember, trust this file unless a device proves other
 - Icons: `LauncherActivityInfo.getIcon(densityDpi)` returns an `AdaptiveIconDrawable` on most apps. Render to a bitmap
   once at a fixed px size (icon size × 1.0, no extra padding) with the chosen mask path, cache to disk keyed by
   `component|userSerial|versionCode|iconConfigHash`. Themed (monochrome) icons: `AdaptiveIconDrawable.monochrome` (API 33).
+- Icon packs (task 7.1): ADW / Nova packs declare `org.adw.launcher.THEMES` or `com.novalauncher.THEME` (Go and Apex
+  actions too); on Android 11+ the manifest must name those actions in `<queries>` or `queryIntentActivities` finds
+  none. The map is `res/xml/appfilter.xml` (`Resources.getIdentifier("appfilter", "xml", pkg)` on
+  `getResourcesForApplication(pkg)`), older packs `assets/appfilter.xml`; drawables by name with `getIdentifier(name,
+  "drawable"|"mipmap", pkg)` (lint `DiscouragedApi`, suppressed: names are the format). Components in it may use a
+  short class (`.Main`). Unmapped apps: `iconback`/`iconmask`/`iconupon` (`img1…`) and `scale factor`, mask applied
+  with `DST_OUT`. Themed icons' colors: `system_accent1_700` on `system_accent1_100` (light), `system_accent1_200` on
+  `system_neutral1_800` (dark); a palette change is a configuration change (Fox handles `assetsPaths`), on which they
+  are read again and the icon cache redrawn.
 - `UserHandle` is not stable across reboots as an object; persist `UserManager.getSerialNumberForUser(user)` and resolve
   back with `getUserForSerialNumber`.
 - App shortcuts (static/dynamic/pinned) need `launcherApps.hasShortcutHostPermission()`, true only while we are the

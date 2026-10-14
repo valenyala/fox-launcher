@@ -44,8 +44,34 @@ class FoxSettings @Inject constructor(
     /** Mask shape id for adaptive icons (`IconShape.id`); unknown ids fall back to the default shape. */
     val iconShapeId: Flow<String?> = dataStore.data.map { it[Keys.ICON_SHAPE] }
 
-    /** Icon edge length in dp, shared by home and drawer. */
-    val iconSizeDp: Flow<Int> = dataStore.data.map { it[Keys.ICON_SIZE_DP] ?: DEFAULT_ICON_SIZE_DP }
+    suspend fun setIconShape(shapeId: String) = withContext(io) {
+        dataStore.edit { it[Keys.ICON_SHAPE] = shapeId }
+        Unit
+    }
+
+    /** Icon edge length in dp, shared by home and drawer, within [ICON_SIZES_DP]. */
+    val iconSizeDp: Flow<Int> = dataStore.data.map { it[Keys.ICON_SIZE_DP]?.coerceIn(ICON_SIZES_DP) ?: DEFAULT_ICON_SIZE_DP }
+
+    suspend fun setIconSize(sizeDp: Int) = withContext(io) {
+        dataStore.edit { it[Keys.ICON_SIZE_DP] = sizeDp.coerceIn(ICON_SIZES_DP) }
+        Unit
+    }
+
+    /** The icon pack's package (task 7.1), or null for the apps' own icons. */
+    val iconPack: Flow<String?> = dataStore.data.map { it[Keys.ICON_PACK] }
+
+    suspend fun setIconPack(packageName: String?) = withContext(io) {
+        dataStore.edit { if (packageName == null) it.remove(Keys.ICON_PACK) else it[Keys.ICON_PACK] = packageName }
+        Unit
+    }
+
+    /** Themed icons (task 7.1): apps' monochrome icons in the wallpaper's colors, Android 13+. */
+    val themedIcons: Flow<Boolean> = dataStore.data.map { it[Keys.THEMED_ICONS] ?: false }
+
+    suspend fun setThemedIcons(themed: Boolean) = withContext(io) {
+        dataStore.edit { it[Keys.THEMED_ICONS] = themed }
+        Unit
+    }
 
     /** Columns in the app drawer grid. */
     val drawerColumns: Flow<Int> = dataStore.data.map { it[Keys.DRAWER_COLUMNS] ?: DEFAULT_DRAWER_COLUMNS }
@@ -61,6 +87,11 @@ class FoxSettings @Inject constructor(
 
     /** Whether home and dock items show their label under the icon. */
     val showHomeLabels: Flow<Boolean> = dataStore.data.map { it[Keys.SHOW_HOME_LABELS] ?: DEFAULT_SHOW_HOME_LABELS }
+
+    suspend fun setShowHomeLabels(show: Boolean) = withContext(io) {
+        dataStore.edit { it[Keys.SHOW_HOME_LABELS] = show }
+        Unit
+    }
 
     /** Apps hidden from the drawer, as `AppEntry.key` (`component|serial`). */
     val hiddenApps: Flow<Set<String>> = dataStore.data.map { it[Keys.HIDDEN_APPS].orEmpty() }
@@ -223,6 +254,8 @@ class FoxSettings @Inject constructor(
         val IS_FIRST_RUN = booleanPreferencesKey("is_first_run")
         val ICON_SHAPE = stringPreferencesKey("icon_shape")
         val ICON_SIZE_DP = intPreferencesKey("icon_size_dp")
+        val ICON_PACK = stringPreferencesKey("icon_pack")
+        val THEMED_ICONS = booleanPreferencesKey("themed_icons")
         val DRAWER_COLUMNS = intPreferencesKey("drawer_columns")
         val HIDDEN_APPS = stringSetPreferencesKey("hidden_apps")
         val BUTTON_APPS = stringSetPreferencesKey("button_apps")
@@ -250,6 +283,9 @@ class FoxSettings @Inject constructor(
     companion object {
         const val DEFAULT_IS_FIRST_RUN: Boolean = true
         const val DEFAULT_ICON_SIZE_DP: Int = 56
+
+        /** What the icon size setting allows (task 7.1). */
+        val ICON_SIZES_DP: IntRange = 48..64
         const val DEFAULT_DRAWER_COLUMNS: Int = 5
         const val DEFAULT_HOME_COLUMNS: Int = 5
         const val DEFAULT_HOME_ROWS: Int = 6

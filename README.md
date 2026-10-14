@@ -139,12 +139,15 @@ home screen.
 - Long-press an app in the drawer and choose **Hide** to keep it out of the drawer. Hidden apps still show up when you
   type their full name in search, and **Home settings → Hidden apps** brings them back.
 - Colors follow your wallpaper (Material You) on Android 12 and higher.
+- **Home settings → Icons**: an icon pack (any pack made for ADW or Nova Launcher), the shape of adaptive icons, the
+  icon size (48–64 dp, home and drawer), labels on the home screen, and on Android 13+ themed icons (apps' monochrome
+  icons in your wallpaper's colors).
 
 <img src="docs/media/drag-and-folders.gif" width="250" alt="Moving Gmail by drag and drop, dropping Calendar on it to make a folder, and opening the folder">
 
 ### Not done yet
 
-- Icon packs, notification dots, backup and restore, and search beyond apps are planned.
+- Notification dots, backup and restore, and search beyond apps are planned.
 - **Page overview** (the default for pinch in) does nothing yet.
 - **Add to home screen** in the drawer's long-press menu is not wired up yet. Drag the app onto the home screen instead.
 - Fox runs in portrait only, by design.

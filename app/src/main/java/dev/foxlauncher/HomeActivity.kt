@@ -51,6 +51,7 @@ import dev.foxlauncher.feature.settings.ButtonAppsScreen
 import dev.foxlauncher.feature.settings.GesturesScreen
 import dev.foxlauncher.feature.settings.HiddenAppsScreen
 import dev.foxlauncher.feature.settings.HomeSettingsScreen
+import dev.foxlauncher.feature.settings.IconsScreen
 import dev.foxlauncher.feature.settings.SettingsRoute
 import dev.foxlauncher.feature.settings.ShizukuScreen
 import dev.foxlauncher.feature.widgets.LocalNativeWidgets
@@ -300,6 +301,7 @@ class HomeActivity : ComponentActivity() {
                                 onOpenButtonApps = { settings = settings + SettingsRoute.BUTTON_APPS },
                             )
                             SettingsRoute.BUTTON_APPS -> ButtonAppsScreen(hiltViewModel(), onBack = closeSettings)
+                            SettingsRoute.ICONS -> IconsScreen(hiltViewModel(), onBack = closeSettings)
                             null -> Unit
                         }
                         if (widgetPicker) {

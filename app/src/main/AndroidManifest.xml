@@ -22,6 +22,22 @@
     <!-- Uninstall from the app popup. -->
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
 
+    <!-- Icon packs (task 7.1) are found by the actions they declare; Android 11+ shows Fox only what it names here. -->
+    <queries>
+        <intent>
+            <action android:name="org.adw.launcher.THEMES" />
+        </intent>
+        <intent>
+            <action android:name="com.novalauncher.THEME" />
+        </intent>
+        <intent>
+            <action android:name="com.gau.go.launcherex.theme" />
+        </intent>
+        <intent>
+            <action android:name="com.anddoes.launcher.THEME" />
+        </intent>
+    </queries>
+
     <application
         android:name=".FoxApp"
         android:allowBackup="false"

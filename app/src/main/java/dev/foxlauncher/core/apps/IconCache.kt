@@ -1,12 +1,16 @@
 package dev.foxlauncher.core.apps
 
+import android.content.ComponentCallbacks
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.LauncherApps
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
+import android.graphics.drawable.Drawable
+import android.os.Build
 import android.os.SystemClock
 import android.util.DisplayMetrics
 import android.util.LruCache
@@ -16,6 +20,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toDrawable
 import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.foxlauncher.core.apps.iconpack.IconPacks
+import dev.foxlauncher.core.apps.iconpack.LoadedIconPack
 import dev.foxlauncher.core.common.ApplicationScope
 import dev.foxlauncher.core.common.FoxLog
 import dev.foxlauncher.core.common.IoDispatcher
@@ -47,10 +53,13 @@ import kotlinx.coroutines.withContext
  * App icons rendered once, off the main thread, and cached in memory and on disk. Icon loading is
  * the classic launcher jank source, so composition only ever sees finished [ImageBitmap]s.
  *
- * Disk files live under `filesDir/icons/<sizePx>-<shape>/` as `<package>@<serial>@<hash>.png`, where
- * the hash covers `component|serial|versionCode|sizePx|shape`. The package/serial prefix is what lets
- * [invalidate] find a package's files; the per-config directory is what lets a settings change drop
- * every stale icon at once.
+ * Disk files live under `filesDir/icons/<config>/` as `<package>@<serial>@<hash>.png`, where the
+ * config names the size, shape, icon pack and themed colors (task 7.1) and the hash covers
+ * `component|serial|versionCode|config`. The package/serial prefix is what lets [invalidate] find a
+ * package's files; the per-config directory is what lets a settings change drop every stale icon at once.
+ *
+ * Which icon an app gets: the icon pack's own drawing of it; else, when the pack has a frame, the
+ * app's icon in it; else its themed (monochrome) icon when themed icons are on; else its own icon.
  */
 @Singleton
 class IconCache @Inject constructor(
@@ -58,10 +67,19 @@ class IconCache @Inject constructor(
     @param:IoDispatcher private val io: CoroutineDispatcher,
     @param:ApplicationScope private val scope: CoroutineScope,
     private val appRepository: AppRepository,
+    private val iconPacks: IconPacks,
     settings: FoxSettings,
 ) {
-    private data class Config(val sizePx: Int, val shape: IconShape) {
-        val dirName: String get() = "$sizePx-${shape.id}"
+    /** Themed icons' colors from the wallpaper palette (task 7.1). */
+    private data class ThemeColors(val foreground: Int, val background: Int)
+
+    private data class Config(val sizePx: Int, val shape: IconShape, val pack: String? = null, val themed: ThemeColors? = null) {
+        val dirName: String
+            get() = buildString {
+                append("$sizePx-${shape.id}")
+                pack?.let { append("-p").append(sha1(it)) }
+                themed?.let { append("-t%08x%08x".format(it.foreground, it.background)) }
+            }
     }
 
     private val launcherApps = context.getSystemService(LauncherApps::class.java)
@@ -86,14 +104,32 @@ class IconCache @Inject constructor(
      */
     val generation: StateFlow<Long> = _generation.asStateFlow()
 
+    /** The palette's colors for themed icons, read again on every configuration change (a new palette is one). */
+    private val themeColors = MutableStateFlow(readThemeColors())
+
     init {
+        context.registerComponentCallbacks(
+            object : ComponentCallbacks {
+                override fun onConfigurationChanged(newConfig: Configuration) {
+                    themeColors.value = readThemeColors()
+                }
+
+                @Deprecated("Deprecated in Java")
+                override fun onLowMemory() = Unit
+            },
+        )
         scope.launch {
-            combine(settings.iconSizeDp, settings.iconShapeId) { sizeDp, shapeId ->
-                Config(dpToPx(sizeDp), IconShape.fromId(shapeId))
+            combine(settings.iconSizeDp, settings.iconShapeId, settings.iconPack, settings.themedIcons, themeColors) {
+                    sizeDp, shapeId, pack, themed, colors ->
+                Config(dpToPx(sizeDp), IconShape.fromId(shapeId), pack, colors.takeIf { themed })
             }.distinctUntilChanged().collect(::applyConfig)
         }
         scope.launch {
             appRepository.packageChanges.collect { invalidate(it.packageName, it.userSerial) }
+        }
+        scope.launch {
+            // The chosen pack was updated or removed: every icon it drew may have changed.
+            iconPacks.changed.collect { packageName -> if (packageName == config.pack) redrawAll() }
         }
     }
 
@@ -164,7 +200,13 @@ class IconCache @Inject constructor(
         _generation.update { it + 1 }
     }
 
-    private fun load(entry: AppEntry, cfg: Config, key: String): ImageBitmap {
+    private suspend fun redrawAll() {
+        clearMemory()
+        withContext(io) { File(rootDir, config.dirName).deleteRecursively() }
+        _generation.update { it + 1 }
+    }
+
+    private suspend fun load(entry: AppEntry, cfg: Config, key: String): ImageBitmap {
         val start = SystemClock.elapsedRealtimeNanos()
         val file = File(File(rootDir, cfg.dirName), filePrefix(entry.packageName, entry.userSerial) + sha1(key) + ".png")
         val fromDisk = if (file.exists()) BitmapFactory.decodeFile(file.path) else null
@@ -176,7 +218,7 @@ class IconCache @Inject constructor(
         return image
     }
 
-    private fun render(entry: AppEntry, cfg: Config): Bitmap {
+    private suspend fun render(entry: AppEntry, cfg: Config): Bitmap {
         val user = appRepository.userFor(entry.userSerial)
         val component = ComponentName.unflattenFromString(entry.component)
         val info = if (user != null && component != null) {
@@ -188,7 +230,10 @@ class IconCache @Inject constructor(
             null
         }
         val drawable = info?.getIcon(densityDpi) ?: context.packageManager.defaultActivityIcon
-        val bitmap = IconRenderer.render(drawable, cfg.sizePx, cfg.shape)
+        val pack = cfg.pack?.let { iconPacks.load(it, entry.packageName) }
+        val bitmap = pack?.let { packIcon(it, entry, drawable, cfg) }
+            ?: themedIcon(drawable, cfg)
+            ?: IconRenderer.render(drawable, cfg.sizePx, cfg.shape)
         if (!entry.isWorkProfile || user == null) return bitmap
 
         // Badged icons come back as a drawable of the same bounds with the briefcase drawn on top.
@@ -196,6 +241,37 @@ class IconCache @Inject constructor(
         return createBitmap(cfg.sizePx, cfg.sizePx).also { out ->
             badged.setBounds(0, 0, cfg.sizePx, cfg.sizePx)
             badged.draw(Canvas(out))
+        }
+    }
+
+    /** [pack]'s drawing of [entry], or [own] in the pack's frame; null when the pack has neither. */
+    private fun packIcon(pack: LoadedIconPack, entry: AppEntry, own: Drawable, cfg: Config): Bitmap? {
+        val filter = pack.filter
+        filter.drawableFor(entry.component)?.let { name ->
+            pack.drawable(name, densityDpi)?.let { return IconRenderer.renderPackIcon(it, cfg.sizePx, cfg.shape) }
+        }
+        if (!filter.framesOthers) return null
+        // Packs with several backs spread them over the apps; the same app always gets the same one.
+        fun pick(names: List<String>) = names.takeIf { it.isNotEmpty() }
+            ?.let { pack.drawable(it[Math.floorMod(entry.component.hashCode(), it.size)], densityDpi) }
+        val icon = IconRenderer.render(own, cfg.sizePx, cfg.shape)
+        return IconRenderer.renderFramed(icon, pick(filter.backs), pick(filter.masks), pick(filter.upons), filter.scale, cfg.sizePx)
+    }
+
+    private fun themedIcon(drawable: Drawable, cfg: Config): Bitmap? {
+        val colors = cfg.themed ?: return null
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return null
+        return IconRenderer.renderThemed(drawable, cfg.sizePx, cfg.shape, colors.foreground, colors.background)
+    }
+
+    /** Light: dark accent on a pale accent tint; dark: pale accent on a dark neutral, as Android's own themed icons. */
+    private fun readThemeColors(): ThemeColors? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return null
+        val night = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
+        return if (night) {
+            ThemeColors(context.getColor(android.R.color.system_accent1_200), context.getColor(android.R.color.system_neutral1_800))
+        } else {
+            ThemeColors(context.getColor(android.R.color.system_accent1_700), context.getColor(android.R.color.system_accent1_100))
         }
     }
 
@@ -226,8 +302,7 @@ class IconCache @Inject constructor(
             entry.component,
             entry.userSerial,
             entry.versionCode,
-            cfg.sizePx,
-            cfg.shape.id,
+            cfg.dirName,
         ).joinToString(KEY_SEPARATOR)
 
         fun filePrefix(packageName: String, userSerial: Long) = "$packageName@$userSerial@"
