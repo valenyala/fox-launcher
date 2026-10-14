@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 9 — Power features, at the user's request before phases 7 and 8 (2026-10-14) (Phase 6 done 2026-10-14; Phase 5 done 2026-10-13, its boost checklist item passed through Deep boost 2026-10-14; Phase 4 owes three checklist items, deferred; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists)
-**Next task:** then phases 7 and 8 at the user's call (phase 9: 9.1 and 9.6 done, 9.2 and 9.5 dropped, 9.3 and 9.4 removed) at the user's call (see docs/phases/09-power-features.md; 9.2 and 9.5 dropped by the user) (3.8's POCO check still owed; 2.8 still deferred; phases 7 and 8 not started)
+**Next task:** phases 7 and 8 at the user's call; phase 9 is done (9.1, 9.6, 9.7 built; 9.2 and 9.5 dropped; 9.3 and 9.4 removed). Still owed: 3.8's POCO check; 2.8 deferred
 
 ## Environment facts (verified 2026-09-17)
 
