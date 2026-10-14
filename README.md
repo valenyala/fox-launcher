@@ -51,10 +51,6 @@ any app shortcut (for example "New event" in Calendar).
 
 Single-finger left and right swipes turn pages, so they are only free for an action where there is no page to turn to.
 
-**Per page:** choose a page under **Pages** at the top of the list to give that page its own actions; everything it
-does not change follows **All pages**. **Macro…** runs several actions in a row, each after a wait you choose (0 to
-5 seconds), for example "next wallpaper, then open the drawer a second later".
-
 System actions (marked with a shield in the settings) go through Fox's accessibility service, **Fox gestures**. Fox
 uses it only to perform those actions; it does not read what is on your screen. Fox asks you to turn it on the first
 time you use such a gesture.

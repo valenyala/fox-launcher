@@ -3,8 +3,6 @@ package dev.foxlauncher.core.data.settings
 import dev.foxlauncher.core.model.DEFAULT_GESTURE_MAP
 import dev.foxlauncher.core.model.GestureAction
 import dev.foxlauncher.core.model.GestureType
-import dev.foxlauncher.core.model.MacroStep
-import dev.foxlauncher.core.model.Macros
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import org.junit.Test
@@ -133,55 +131,5 @@ class GestureMapJsonTest {
 
         assertTrue(system.all { it.requiresAccessibility })
         assertTrue(others.none { it.requiresAccessibility })
-    }
-
-    // --- macros and pages (task 9.3) ---
-
-    private val macro = GestureAction.Macro(
-        listOf(MacroStep(GestureAction.NextWallpaper), MacroStep(GestureAction.OpenApp("com.maps/.Main", 0), delayMs = 1_000)),
-    )
-
-    @Test
-    fun aMacroSurvivesARoundTrip() {
-        val changes = mapOf(GestureType.PINCH_OUT to macro)
-
-        assertEquals(changes, GestureMapJson.decodeChanges(GestureMapJson.encodeChanges(changes)))
-    }
-
-    @Test
-    fun aStoredMacroIsCleanedUpOnReading() {
-        // As a newer or hand-edited store could hold: a nested macro and an out-of-range wait.
-        val stored = """{"PINCH_OUT":{"type":"macro","steps":[{"action":{"type":"macro","steps":[]}},{"action":{"type":"lock_screen"},"delayMs":99999}]}}"""
-
-        assertEquals(
-            GestureAction.Macro(listOf(MacroStep(GestureAction.LockScreen, delayMs = Macros.MAX_DELAY_MS))),
-            GestureMapJson.decodeChanges(stored)[GestureType.PINCH_OUT],
-        )
-    }
-
-    @Test
-    fun pagesSurviveARoundTrip() {
-        val pages = mapOf(
-            0 to mapOf(GestureType.DOUBLE_TAP to GestureAction.NextWallpaper),
-            2 to mapOf(GestureType.SWIPE_DOWN to GestureAction.QuickSettings, GestureType.PINCH_OUT to macro),
-        )
-
-        assertEquals(pages, GestureMapJson.decodePages(GestureMapJson.encodePages(pages)))
-    }
-
-    @Test
-    fun pagesForgiveWhatTheyCannotRead() {
-        assertEquals(emptyMap(), GestureMapJson.decodePages(null))
-        assertEquals(emptyMap(), GestureMapJson.decodePages("not json"))
-        assertEquals(
-            mapOf(1 to mapOf(GestureType.DOUBLE_TAP to GestureAction.LockScreen)),
-            GestureMapJson.decodePages("""{"x":{"DOUBLE_TAP":{"type":"lock_screen"}},"-1":{},"1":{"DOUBLE_TAP":{"type":"lock_screen"},"NO_SUCH":{}},"2":{}}"""),
-            "a key that is no page, a page with nothing readable, an unknown gesture",
-        )
-    }
-
-    @Test
-    fun emptyPagesAreNotStored() {
-        assertEquals("{}", GestureMapJson.encodePages(mapOf(3 to emptyMap())))
     }
 }

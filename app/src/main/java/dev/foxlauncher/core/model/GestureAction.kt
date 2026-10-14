@@ -85,39 +85,4 @@ sealed interface GestureAction {
         val userSerial: Long,
         val label: String = "",
     ) : GestureAction
-
-    /**
-     * Runs [steps] in order, each after its own delay (task 9.3). A step is never a macro itself;
-     * [Macros.sanitize] drops one that is, and caps the number of steps and the delays.
-     */
-    @Serializable @SerialName("macro")
-    data class Macro(val steps: List<MacroStep>) : GestureAction {
-        override val requiresAccessibility: Boolean get() = steps.any { it.action.requiresAccessibility }
-    }
-}
-
-/** One step of a [GestureAction.Macro]: wait [delayMs], then run [action]. */
-@Immutable
-@Serializable
-data class MacroStep(val action: GestureAction, val delayMs: Long = 0)
-
-/** What a macro may hold (task 9.3). Pure, so it is unit tested. */
-object Macros {
-
-    const val MAX_STEPS = 8
-    const val MAX_DELAY_MS = 10_000L
-
-    /** The delays a step can wait, in the order the settings cycle through them. */
-    val DELAYS_MS: List<Long> = listOf(0L, 500L, 1_000L, 2_000L, 5_000L)
-
-    /** [macro] as it may run: no nested macros and no empty steps, at most [MAX_STEPS], delays within 0..[MAX_DELAY_MS]. */
-    fun sanitize(macro: GestureAction.Macro): GestureAction.Macro = GestureAction.Macro(
-        macro.steps
-            .filter { it.action !is GestureAction.Macro && it.action != GestureAction.None }
-            .take(MAX_STEPS)
-            .map { it.copy(delayMs = it.delayMs.coerceIn(0L, MAX_DELAY_MS)) },
-    )
-
-    /** The delay after [delayMs] in [DELAYS_MS], back to the first after the last. */
-    fun nextDelay(delayMs: Long): Long = DELAYS_MS.getOrNull(DELAYS_MS.indexOf(delayMs) + 1) ?: DELAYS_MS.first()
 }

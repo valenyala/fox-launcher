@@ -11,7 +11,6 @@ import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
-import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -23,14 +22,12 @@ import dev.foxlauncher.core.model.AppEntry
 import dev.foxlauncher.core.model.AppShortcut
 import dev.foxlauncher.core.model.GestureAction
 import dev.foxlauncher.core.model.GestureType
-import dev.foxlauncher.core.model.MacroStep
 import dev.foxlauncher.core.ui.theme.FoxTheme
 import dev.foxlauncher.feature.gestures.AccessibilityStatus
 import dev.foxlauncher.feature.gestures.system.ACCESSIBILITY_DISCLOSURE_TAG
 import kotlin.test.assertEquals
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
-import kotlinx.collections.immutable.toImmutableMap
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -58,9 +55,6 @@ class GesturesContentTest {
 
     /** The fake store's navigation gestures switch; null until the screen writes it. */
     private var navigationGestures: Boolean? = null
-
-    /** What the screen wrote to the fake store's per-page gestures (task 9.3); null clears. */
-    private val pageWrites = mutableListOf<Triple<Int, GestureType, GestureAction?>>()
 
     @Test
     fun choosingLockScreenForDoubleTapWritesIt() {
@@ -217,62 +211,11 @@ class GesturesContentTest {
         composeRule.onNodeWithTag(ACCESSIBILITY_DISCLOSURE_TAG).assertIsDisplayed()
     }
 
-    // --- pages and macros (task 9.3) ---
-
-    @Test
-    fun onAPageAGestureGetsItsOwnActionAndAllPagesAreLeftAlone() {
-        setContent(pageCount = 2)
-
-        composeRule.onNodeWithTag(GesturesTestTags.PAGE_SCOPE).performScrollTo().performClick()
-        composeRule.onNodeWithText(composeRule.activity.getString(R.string.gestures_page, 2)).performClick()
-        val inherited = composeRule.activity.getString(R.string.gestures_same_as_all_pages, string(R.string.action_none))
-        composeRule.onAllNodesWithText(inherited)[0].assertExists()
-        composeRule.onNodeWithText(string(R.string.gesture_double_tap)).performScrollTo().performClick()
-        composeRule.onNodeWithText(string(R.string.action_lock_screen)).performScrollTo().performClick()
-
-        assertEquals(listOf(Triple(1, GestureType.DOUBLE_TAP, GestureAction.LockScreen as GestureAction?)), pageWrites)
-        assertEquals(GestureAction.None, store[GestureType.DOUBLE_TAP], "all pages untouched")
-    }
-
-    @Test
-    fun sameAsAllPagesClearsAPagesOwnAction() {
-        setContent(pages = mapOf(1 to mapOf(GestureType.DOUBLE_TAP to GestureAction.NextWallpaper)), pageCount = 2)
-
-        composeRule.onNodeWithTag(GesturesTestTags.PAGE_SCOPE).performScrollTo().performClick()
-        composeRule.onNodeWithText(composeRule.activity.getString(R.string.gestures_page, 2)).performClick()
-        composeRule.onNodeWithText(string(R.string.action_next_wallpaper)).performScrollTo().performClick()
-        composeRule.onNodeWithText(string(R.string.gestures_inherit)).performClick()
-
-        assertEquals(listOf(Triple(1, GestureType.DOUBLE_TAP, null as GestureAction?)), pageWrites)
-    }
-
-    @Test
-    fun aMacroIsBuiltStepByStepWithItsWaits() {
-        setContent()
-
-        composeRule.onNodeWithText(string(R.string.gesture_pinch_out)).performScrollTo().performClick()
-        composeRule.onNodeWithText(string(R.string.action_macro_pick)).performScrollTo().performClick()
-        composeRule.onNodeWithText(string(R.string.macro_add_step)).performClick()
-        composeRule.onNodeWithText(string(R.string.action_next_wallpaper)).performScrollTo().performClick()
-        composeRule.onNodeWithText(string(R.string.macro_add_step)).performClick()
-        composeRule.onNodeWithText(string(R.string.action_open_app_pick)).performScrollTo().performClick()
-        composeRule.onNodeWithText("Camera").performClick()
-        composeRule.onNodeWithTag(GesturesTestTags.macroDelay(1)).performClick()
-        composeRule.onNodeWithText(string(R.string.macro_save)).performClick()
-
-        assertEquals(
-            GestureAction.Macro(listOf(MacroStep(GestureAction.NextWallpaper), MacroStep(GestureAction.OpenApp(camera.component, 0), delayMs = 500))),
-            store[GestureType.PINCH_OUT],
-        )
-    }
-
     private fun setContent(
         accessibility: AccessibilityStatus = AccessibilityStatus.ON,
         autoRestart: Boolean = false,
         miuiLockHint: Boolean = false,
         navigation: Boolean = false,
-        pages: Map<Int, Map<GestureType, GestureAction>> = emptyMap(),
-        pageCount: Int = 1,
     ) {
         composeRule.setContent {
             FoxTheme {
@@ -286,8 +229,6 @@ class GesturesContentTest {
                         autoRestart = autoRestart,
                         showMiuiLockHint = miuiLockHint,
                         navigationGestures = navigation,
-                        pageGestures = pages.toImmutableMap(),
-                        pageCount = pageCount,
                     ),
                     onSetGesture = { type, action -> store[type] = action },
                     onReset = { resets++ },
@@ -296,7 +237,6 @@ class GesturesContentTest {
                     onBack = {},
                     onRestartService = { restarts++ },
                     onSetNavigationGestures = { navigationGestures = it },
-                    onSetPageGesture = { page, type, action -> pageWrites += Triple(page, type, action) },
                     iconContent = { Box(Modifier.size(40.dp)) },
                 )
             }

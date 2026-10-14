@@ -19,6 +19,7 @@ Each task is independent and opt-in for the user. Do not start this phase before
   constraint in WorkManager.
 
 ## 9.3 Per-app gestures and macros
+**Removed by the user, 2026-10-14, after it was built (194040e): not to be rebuilt.**
 - Gesture map keyed additionally by "context" (home page N, drawer, folder); actions that run a list of actions with delays.
 - As built (2026-10-14): contexts are the home pages only; the drawer and folders have no gesture surface (their
   swipes scroll), so they keep none. Macro steps are the fixed actions and apps, not shortcuts.

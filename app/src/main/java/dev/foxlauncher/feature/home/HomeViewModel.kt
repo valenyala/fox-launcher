@@ -16,7 +16,6 @@ import dev.foxlauncher.core.model.AppEntry
 import dev.foxlauncher.core.model.AppShortcut
 import dev.foxlauncher.core.model.DEFAULT_GESTURE_MAP
 import dev.foxlauncher.core.model.GestureAction
-import dev.foxlauncher.core.model.GestureMaps
 import dev.foxlauncher.core.model.GestureType
 import dev.foxlauncher.core.model.HomeItem
 import dev.foxlauncher.core.model.RotationTrigger
@@ -69,8 +68,6 @@ data class HomeUiState(
     val shortcutIcons: ImmutableMap<String, ImageBitmap> = persistentMapOf(),
     /** What each gesture does (task 3.1); the home screen reads it to know which swipes drag the drawer (task 3.7). */
     val gestureMap: ImmutableMap<GestureType, GestureAction> = DEFAULT_GESTURE_MAP.toImmutableMap(),
-    /** Each page's own gestures (task 9.3), by page index. */
-    val pageGestureMap: ImmutableMap<Int, Map<GestureType, GestureAction>> = persistentMapOf(),
 )
 
 @HiltViewModel
@@ -90,8 +87,6 @@ class HomeViewModel @Inject constructor(
     private val appsByKey = appRepository.apps.map { apps -> apps.associateBy { it.key }.toImmutableMap() }
 
     private val gestureMap = settings.gestureMap.stateIn(viewModelScope, SharingStarted.Eagerly, DEFAULT_GESTURE_MAP)
-
-    private val pageGestures = settings.gesturePageMap.stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
     private val gridSpec = settings.homeGrid.map { (cols, rows, dock) -> GridSpec(cols, rows, dock) }
 
@@ -118,11 +113,11 @@ class HomeViewModel @Inject constructor(
         settings.isFirstRun,
         homeRepository.layout,
         appsByKey,
-        combine(look, gestureMap, pageGestures, ::Triple),
+        combine(look, gestureMap, ::Pair),
         shortcutIcons,
-    ) { isFirstRun, layout, apps, (look, gestures, pages), icons ->
+    ) { isFirstRun, layout, apps, (look, gestures), icons ->
         val (spec, iconSizeDp, showLabels) = look
-        HomeUiState(isFirstRun, layout, apps, spec, iconSizeDp, showLabels, icons, gestures.toImmutableMap(), pages.toImmutableMap())
+        HomeUiState(isFirstRun, layout, apps, spec, iconSizeDp, showLabels, icons, gestures.toImmutableMap())
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
@@ -139,17 +134,8 @@ class HomeViewModel @Inject constructor(
 
     /** A home gesture was recognized (task 3.3): run the action it is mapped to (task 3.4). */
     fun onGesture(type: GestureType, context: ExecContext) {
-        // The page in view may have its own action for it (task 9.3).
-        val action = GestureMaps.actionFor(type, currentPage, gestureMap.value, pageGestures.value)
-        if (action is GestureAction.Macro) {
-            // Its steps wait: off the gesture's call. Once the user has fixed what stopped it, they repeat the gesture.
-            viewModelScope.launch { onResult(type, action, actionExecutor.perform(action, context), context, retry = false) }
-        } else {
-            onResult(type, action, actionExecutor.execute(action, context), context, retry = true)
-        }
-    }
-
-    private fun onResult(type: GestureType, action: GestureAction, result: ActionResult, context: ExecContext, retry: Boolean) {
+        val action = gestureMap.value[type] ?: GestureAction.None
+        val result = actionExecutor.execute(action, context)
         FoxLog.d("Gesture $type -> $action: $result")
         when (result) {
             ActionResult.NEEDS_ACCESSIBILITY, ActionResult.ACCESSIBILITY_STOPPED -> {
@@ -162,7 +148,7 @@ class HomeViewModel @Inject constructor(
                 }
                 viewModelScope.launch {
                     if (accessibilityRepair.repairIfStopped()) {
-                        if (retry) FoxLog.d("Gesture $type -> $action after restarting the service: ${actionExecutor.execute(action, context)}")
+                        FoxLog.d("Gesture $type -> $action after restarting the service: ${actionExecutor.execute(action, context)}")
                     } else {
                         _accessibilityPrompt.value = AccessibilityStatus.STOPPED
                     }
