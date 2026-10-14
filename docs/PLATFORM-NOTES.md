@@ -151,6 +151,7 @@ here contradicts what you remember, trust this file unless a device proves other
 - Over the open drawer the strips are up as well (2026-10-14, user request): Back closes the drawer through the home's
   `BackHandler`, Home closes it, and they go down at once when it closes (fox-api37, three buttons). The right strip
   covers the outer 12 dp of the drawer's 28 dp A–Z rail: a touch starting there goes to the strip, not the rail.
+  Accepted by the user (2026-10-14): the rail stays where it is.
 - Emulator trap (fox-api33, 2026-10-14): the strips stayed down in every app while `dumpsys window policy` showed
   `KeyguardServiceDelegate showingAndNotOccluded=true` with `isKeyguardShowing=false` and the home on screen, so
   `KeyguardManager.isKeyguardLocked` read true. Power off/on and `wm dismiss-keyguard` did not clear it.

@@ -172,7 +172,7 @@ Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out o
   the home, 4 with the drawer open, 0 once closed by swipe or Back; three buttons: left- and right-edge swipe close
   the drawer (one Fox BACK each), bottom swipe = HOME closes it; switched back to gesture navigation after.
   fox-api33: strips down in every app (stale keyguard state, PLATFORM-NOTES G), so only its UI tests count there.
-  Trade-off: the right strip takes the outer 12 dp of the A–Z rail. **Owed:** the POCO check.
+  Trade-off: the right strip takes the outer 12 dp of the A–Z rail (user: leave it as is). **Owed:** the POCO check.
 
 - 2026-10-14 — User: "the full screen gestures are gone on the poco?" MIUI's `force_fsg_nav_bar` was still 1, but
   `enabled_accessibility_services` was empty: Fox's service off, so its edge gestures gone. Cause: `AccessibilityRepair`
