@@ -225,8 +225,12 @@ here contradicts what you remember, trust this file unless a device proves other
   MIUI 14 takes the palette from the lock wallpaper (`color_source: lock_wallpaper`), so Fox's lock-screen image
   restyled every app within a second of each change, and Fox (dynamic colour, `assetsPaths` handled in place)
   recomposed and re-measured everything: 450–630 ms frames in a debug build, landing on the first swipe after "Next
-  wallpaper now" and losing the fling. With its live wallpaper applied, Fox sets the lock-screen image at
-  `ACTION_SCREEN_OFF` only (runtime receiver, a protected broadcast), when the lock screen is behind the home screen.
+  wallpaper now" and losing the fling. With its live wallpaper applied, Fox sets the lock-screen image only with the
+  screen off, when the lock screen is behind the home screen. MIUI delivers `ACTION_SCREEN_OFF` 0.9–2.7 s late (after
+  a quick wake, even after the unlock), so Fox starts when its wallpaper engine goes hidden with
+  `PowerManager.isInteractive` false (0.2–0.3 s after "Going to sleep"), keeps the broadcast as a fallback, and asks
+  `isInteractive` again right before `setStream`: back on, it skips and waits for the next screen off. The palette
+  applied at screen off still reaches Fox as a configuration change when it shows again after the unlock.
 - Android 13 as first released (POCO F3's TKQ1 build) runs `WallpaperService.Engine`'s own local-colour pass even
   when nobody asked for local colours: when the offset lands on a page whose snapshot is over a minute old, or was
   reset by `notifyColorsChanged`, it copies the wallpaper surface with a synchronous `PixelCopy` on the engine's

@@ -15,7 +15,6 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import androidx.work.workDataOf
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -46,8 +45,11 @@ class StaticWallpaperApplier @Inject constructor(
     private val sources: WallpaperSources,
     @param:IoDispatcher private val io: CoroutineDispatcher,
 ) {
-    /** Sets entry [entryId] as the static wallpaper of [targets], in one write; true when it was set. */
-    suspend fun apply(entryId: Long, targets: Set<StaticTarget>): Boolean = withContext(io) {
+    /**
+     * Sets entry [entryId] as the static wallpaper of [targets], in one write; true when it was set.
+     * [stillWanted] is asked right before the write, once the image is ready: false leaves it unset.
+     */
+    suspend fun apply(entryId: Long, targets: Set<StaticTarget>, stillWanted: () -> Boolean = { true }): Boolean = withContext(io) {
         if (targets.isEmpty()) return@withContext false
         val entry = dao.getEntry(entryId) ?: return@withContext false
         val (width, height) = screenSize()
@@ -61,6 +63,10 @@ class StaticWallpaperApplier @Inject constructor(
             out.toByteArray()
         }
         bitmap.recycle()
+        if (!stillWanted()) {
+            FoxLog.d("Static wallpaper not set: entry $entryId on $targets, no longer wanted")
+            return@withContext false
+        }
         try {
             WallpaperManager.getInstance(context).setStream(ByteArrayInputStream(jpeg), null, true, flags(targets))
             FoxLog.d("Static wallpaper set: entry $entryId (${width}x$height) on $targets")
@@ -113,9 +119,9 @@ class StaticApplyWorker @AssistedInject constructor(
         val targets = StaticTargets.of(
             foxLiveActive = LiveWallpaper.isFoxActive(applicationContext),
             changeLockScreen = settings.changeLockScreen.first(),
-            lockOnly = inputData.getBoolean(KEY_LOCK_ONLY, false),
         )
-        if (targets.isEmpty()) return Result.success()
+        // The lock screen alone waits for the screen to go off ([RotationScheduler.catchUpLockScreen]).
+        if (targets.isEmpty() || StaticTargets.waitsForScreenOff(targets)) return Result.success()
         // The same entry the live wallpaper shows, so the lock screen matches the home screen.
         val entryId = WallpaperPlaylist.showing(settings.activeWallpaperEntryId.first(), dao.observeRotationEntries().first().map { it.id })
         if (entryId != null && applier.apply(entryId, targets) && StaticTarget.LOCK in targets) settings.setLockWallpaperEntry(entryId)
@@ -123,21 +129,11 @@ class StaticApplyWorker @AssistedInject constructor(
     }
 
     companion object {
-        private const val KEY_LOCK_ONLY = "lock_only"
         private const val WORK = "wallpaper_static_apply"
 
         /** After a change of wallpaper: replaces any pending run, which would set an older image. */
         fun enqueue(workManager: WorkManager) {
             workManager.enqueueUniqueWork(WORK, ExistingWorkPolicy.REPLACE, OneTimeWorkRequestBuilder<StaticApplyWorker>().build())
-        }
-
-        /**
-         * The lock screen catches up with the home screen (at screen off, [RotationScheduler.catchUpLockScreen]). A pending
-         * run is kept: it reads the setting when it runs, so it covers the lock screen too.
-         */
-        fun enqueueLockOnly(workManager: WorkManager) {
-            val request = OneTimeWorkRequestBuilder<StaticApplyWorker>().setInputData(workDataOf(KEY_LOCK_ONLY to true)).build()
-            workManager.enqueueUniqueWork(WORK, ExistingWorkPolicy.KEEP, request)
         }
     }
 }

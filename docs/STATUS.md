@@ -165,6 +165,14 @@ Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out o
 
 ## Session notes
 
+- 2026-10-14 — User tests on the POCO (log read back): no freeze, every change shown. But MIUI delivered
+  `ACTION_SCREEN_OFF` 0.9–2.7 s late, so with quick lock/unlocks the lock image was set after the wake, once after
+  the unlock: the immediate restyle came back (`Configuration changed`, 401 ms input stall during page swipes).
+  Fix: the catch-up starts when the wallpaper engine goes hidden with the screen off, writes directly (no WorkManager),
+  and checks `PowerManager.isInteractive` again right before `setStream` (skips if back on; next screen off retries);
+  the worker leaves lock-only writes to it. fox-api33: normal screen off sets `[LOCK]` 70 ms after the engine hides;
+  a 0.3 s off/on writes nothing; the next screen off catches up. **Owed:** the user's lock/unlock tests again.
+
 - 2026-10-14 — User, after the fix below: "the wallpaper change is broken". The POCO showed the same picture for
   15 min while the engine logged six changes: `OpenGLRenderer: The surface had destroyed before draw` on every frame,
   only Fox's wallpaper layer composed, its buffer stale. The MIUI surface freeze of 4.7, this time in Fox's own

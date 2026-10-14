@@ -1,6 +1,7 @@
 package dev.foxlauncher.feature.wallpaper
 
 import android.content.Context
+import android.os.PowerManager
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
@@ -36,6 +37,7 @@ class RotationScheduler @Inject constructor(
     private val settings: FoxSettings,
     private val dao: WallpaperDao,
     @param:ApplicationScope private val scope: CoroutineScope,
+    private val applier: StaticWallpaperApplier,
 ) : WallpaperAdvancer {
 
     private val mutex = Mutex()
@@ -110,14 +112,21 @@ class RotationScheduler @Inject constructor(
     }
 
     /**
-     * At screen off: the lock screen gets the image the home screen shows, if it is behind. Not
-     * sooner, because a still image set in front of the user restyles every app at once
-     * ([StaticTargets.waitsForScreenOff]).
+     * With the screen off: the lock screen gets the image the home screen shows, if it is behind,
+     * and only while the screen stays off. A still image set in front of the user restyles every app
+     * at once ([StaticTargets.waitsForScreenOff]); the next screen off tries again. Called when the
+     * live wallpaper goes out of sight with the screen off, and on `ACTION_SCREEN_OFF`, which MIUI
+     * delivers one to three seconds late (PLATFORM-NOTES W).
      */
     suspend fun catchUpLockScreen() {
-        val showing = WallpaperPlaylist.showing(settings.activeWallpaperEntryId.first(), dao.observeRotationEntries().first().map { it.id })
-        if (StaticTargets.lockScreenBehind(settings.changeLockScreen.first(), settings.lockWallpaperEntryId.first(), showing)) {
-            StaticApplyWorker.enqueueLockOnly(WorkManager.getInstance(context))
+        val power = context.getSystemService(PowerManager::class.java)
+        if (power.isInteractive) return
+        mutex.withLock {
+            val changeLockScreen = settings.changeLockScreen.first()
+            val showing = WallpaperPlaylist.showing(settings.activeWallpaperEntryId.first(), dao.observeRotationEntries().first().map { it.id })
+            if (showing == null || !StaticTargets.lockScreenBehind(changeLockScreen, settings.lockWallpaperEntryId.first(), showing)) return
+            val targets = StaticTargets.of(LiveWallpaper.isFoxActive(context), changeLockScreen, lockOnly = true)
+            if (applier.apply(showing, targets) { !power.isInteractive }) settings.setLockWallpaperEntry(showing)
         }
     }
 

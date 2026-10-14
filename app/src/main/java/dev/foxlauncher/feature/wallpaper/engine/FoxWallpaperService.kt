@@ -205,6 +205,9 @@ class FoxWallpaperService : WallpaperService() {
                 // Nothing animates while hidden; a fade in progress ends at once.
                 Choreographer.getInstance().removeFrameCallback(this)
                 finishFade()
+                // Hidden by the screen going off (nothing happens otherwise): the lock screen catches up now, a
+                // second or more before MIUI delivers ACTION_SCREEN_OFF.
+                if (!isPreview) scope.launch { rotation.catchUpLockScreen() }
             }
         }
 

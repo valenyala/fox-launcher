@@ -76,8 +76,9 @@ class FoxApp : Application(), Configuration.Provider, SingletonImageLoader.Facto
     }
 
     /**
-     * The lock screen's still image is set while nobody looks (task 4.6, PLATFORM-NOTES W).
-     * `ACTION_SCREEN_OFF` also reaches only runtime receivers; it is a protected broadcast too.
+     * The lock screen's still image is set while nobody looks (task 4.6, PLATFORM-NOTES W). The live
+     * wallpaper going out of sight usually starts it first: MIUI delivers `ACTION_SCREEN_OFF` one to three
+     * seconds late. It also reaches only runtime receivers, and is a protected broadcast too.
      */
     private val screenOffReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
