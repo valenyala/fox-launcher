@@ -173,6 +173,7 @@ Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out o
   yet), Shizuku in the permissions table. fox-api37: off → "off" and "Ignored BOOST"; on → NEXT_WALLPAPER "no live
   wallpaper" (not applied there), BOOST `RESULT_OK` "freed 8 MB" through the deep boost; without `-p` nothing arrives.
   Right after an install the package is stopped and gets no broadcasts until opened (a launcher always is).
+  Full instrumented suite after 9.3 and 9.4: 189/189 on fox-api33.
 
 - 2026-10-14 — 9.3. Per-page gestures: a page may override any gesture (`GestureMaps.actionFor`: the page's own, else all
   pages'; `withPageAction` sets or clears), stored under `gesture_page_map` as `{"<page index>":{changes}}` by
