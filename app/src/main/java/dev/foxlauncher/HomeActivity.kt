@@ -8,6 +8,7 @@ import android.provider.Settings
 import android.view.MotionEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.addCallback
+import androidx.activity.viewModels
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -52,10 +53,15 @@ import dev.foxlauncher.feature.widgets.LocalNativeWidgets
 import dev.foxlauncher.feature.widgets.NativeWidgetRegistry
 import dev.foxlauncher.feature.widgets.WidgetPickerSheet
 import dev.foxlauncher.feature.widgets.WidgetPickerViewModel
+import dev.foxlauncher.feature.widgets.app.AppWidgetBindFlow
+import dev.foxlauncher.feature.widgets.app.AppWidgetBinder
 import dev.foxlauncher.feature.widgets.app.AppWidgetPreview
 import dev.foxlauncher.feature.widgets.app.AppWidgetProviders
 import dev.foxlauncher.feature.widgets.app.FoxAppWidgetHost
 import dev.foxlauncher.feature.widgets.app.LocalAppWidgetHost
+import dev.foxlauncher.feature.widgets.app.BindStep
+import dev.foxlauncher.feature.widgets.app.PendingAppWidget
+import dev.foxlauncher.feature.home.grid.Span
 import dev.foxlauncher.feature.settings.WallpaperSettingsScreen
 import dev.foxlauncher.feature.wallpaper.LiveWallpaper
 import dev.foxlauncher.feature.wallpaper.LiveWallpaperPromptDialog
@@ -79,6 +85,20 @@ class HomeActivity : ComponentActivity() {
 
     @Inject lateinit var appWidgetProviders: AppWidgetProviders
 
+    @Inject lateinit var appWidgetBinder: AppWidgetBinder
+
+    // The same instance as hiltViewModel() in the composition: same store, same default key.
+    private val homeViewModel: HomeViewModel by viewModels()
+
+    private val appWidgetFlow by lazy { AppWidgetBindFlow(appWidgetBinder) }
+
+    /** An app widget waiting on the bind dialog or its configuration activity (task 6.3); survives process death. */
+    private var pendingAppWidget: PendingAppWidget? = null
+
+    private val bindAppWidget = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        pendingAppWidget?.let { follow(appWidgetFlow.onBindResult(it, bound = result.resultCode == RESULT_OK)) }
+    }
+
     /** This instance is the home, not the hand-over of an alias intent that finishes in [onCreate] (ADR-19). */
     private var isHome = false
 
@@ -96,6 +116,7 @@ class HomeActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        pendingAppWidget = savedInstanceState?.pendingAppWidget()
         if (intent?.component?.className == WALLPAPER_SETTINGS_ALIAS) {
             // Opened through the alias while no Fox home was running: this instance sits in an ordinary task (seen on
             // API 37). The home instance takes the request; a launcher must not run twice.
@@ -273,8 +294,7 @@ class HomeActivity : ComponentActivity() {
                                 grid = homeState.gridSpec,
                                 onPickAppWidget = { option, spans ->
                                     widgetPicker = false
-                                    // Binding and placing it is task 6.3.
-                                    FoxLog.d("App widget picked: ${option.key} at ${spans.default}")
+                                    follow(appWidgetFlow.start(option.provider, option.userSerial, spans.default))
                                 },
                                 appWidgetPreview = { AppWidgetPreview(it, appWidgetProviders) },
                             )
@@ -307,6 +327,48 @@ class HomeActivity : ComponentActivity() {
             refreshRate.onInteractionEnd()
             homeKeyPresses++
         }
+    }
+
+    /** Carries out one step of adding an app widget (task 6.3). */
+    private fun follow(step: BindStep) {
+        pendingAppWidget = step.pending.takeIf { step is BindStep.AskToBind || step is BindStep.Configure }
+        when (step) {
+            is BindStep.AskToBind -> try {
+                bindAppWidget.launch(appWidgetBinder.bindIntent(step.pending))
+            } catch (e: ActivityNotFoundException) {
+                FoxLog.e("No screen to allow widgets", e)
+                follow(appWidgetFlow.onBindResult(step.pending, bound = false))
+            }
+            is BindStep.Configure -> try {
+                appWidgetHost.startAppWidgetConfigureActivityForResult(this, step.pending.appWidgetId, 0, REQUEST_CONFIGURE_APP_WIDGET, null)
+            } catch (e: ActivityNotFoundException) {
+                configurationFailed(step.pending, e)
+            } catch (e: SecurityException) {
+                configurationFailed(step.pending, e)
+            }
+            is BindStep.Place -> homeViewModel.addAppWidget(step.pending)
+            is BindStep.Cancelled -> FoxLog.d("App widget ${step.pending.provider} not added")
+        }
+    }
+
+    private fun configurationFailed(pending: PendingAppWidget, e: Exception) {
+        FoxLog.e("Cannot configure ${pending.provider}", e)
+        follow(appWidgetFlow.onConfigureResult(pending, configured = false))
+    }
+
+    @Deprecated("Deprecated in Java")
+    // AppWidgetHost.startAppWidgetConfigureActivityForResult answers only here; there is no ActivityResult contract for it.
+    @Suppress("DEPRECATION")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQUEST_CONFIGURE_APP_WIDGET) {
+            pendingAppWidget?.let { follow(appWidgetFlow.onConfigureResult(it, configured = resultCode == RESULT_OK)) }
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        pendingAppWidget?.let { outState.putPendingAppWidget(it) }
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -381,5 +443,26 @@ class HomeActivity : ComponentActivity() {
         /** The activity-alias in the manifest, and `settingsActivity` in `res/xml/wallpaper.xml`. */
         const val WALLPAPER_SETTINGS_ALIAS = "dev.foxlauncher.WallpaperSettings"
         const val EXTRA_OPEN_SETTINGS = "dev.foxlauncher.extra.OPEN_SETTINGS"
+
+        /** Below the request codes the ActivityResultRegistry generates (0x10000 and up). */
+        const val REQUEST_CONFIGURE_APP_WIDGET = 0x0F06
+
+        const val KEY_PENDING_ID = "pending_app_widget_id"
+        const val KEY_PENDING_PROVIDER = "pending_app_widget_provider"
+        const val KEY_PENDING_SERIAL = "pending_app_widget_serial"
+        const val KEY_PENDING_SPAN = "pending_app_widget_span"
+
+        fun Bundle.putPendingAppWidget(pending: PendingAppWidget) {
+            putInt(KEY_PENDING_ID, pending.appWidgetId)
+            putString(KEY_PENDING_PROVIDER, pending.provider)
+            putLong(KEY_PENDING_SERIAL, pending.userSerial)
+            putIntArray(KEY_PENDING_SPAN, intArrayOf(pending.span.x, pending.span.y))
+        }
+
+        fun Bundle.pendingAppWidget(): PendingAppWidget? {
+            val provider = getString(KEY_PENDING_PROVIDER) ?: return null
+            val span = getIntArray(KEY_PENDING_SPAN)?.takeIf { it.size == 2 } ?: return null
+            return PendingAppWidget(getInt(KEY_PENDING_ID), provider, getLong(KEY_PENDING_SERIAL), Span(span[0], span[1]))
+        }
     }
 }

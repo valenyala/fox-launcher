@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 6 — App widgets (Phase 5 done 2026-10-13, its boost checklist item blocked by MIUI until Phase 9; Phase 4 owes three checklist items, deferred; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists)
-**Next task:** 6.3 (see docs/phases/06-app-widgets.md) (3.8's POCO check still owed, the user went on to phase 6 first; 2.8 still deferred)
+**Next task:** 6.4 (see docs/phases/06-app-widgets.md) (6.1–6.3 owe their POCO check; 3.8's POCO check still owed, the user went on to phase 6 first; 2.8 still deferred)
 
 ## Environment facts (verified 2026-09-17)
 
@@ -91,9 +91,9 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [ ] Device checklist: POCO F3 2026-10-13 — widgets added from the home menu, resized, moved, figures right; **owed:** 5.4 "boost reduces used memory on API ≤ 33", blocked by MIUI until Shizuku (Phase 9); the 34+ caption passed on fox-api37
 
 ## Phase 6 — App widgets
-- [x] 6.1 AppWidgetHost lifecycle (fox-api33/37: one host, listening only while home is started, kept across config changes)
-- [x] 6.2 Widget picker (fox-api33/37: App widgets tab, 27 / 34 providers grouped by app, preview layouts and images; a pick only logs until 6.3)
-- [ ] 6.3 Bind + configure flow
+- [ ] 6.1 AppWidgetHost lifecycle: fox-api33/37 pass (one host, listening only while home is started, kept across config changes); **owed:** the POCO F3 (`dumpsys appwidget`)
+- [ ] 6.2 Widget picker: fox-api33/37 pass (App widgets tab, 27 / 34 providers grouped by app, preview layouts and images); **owed:** the POCO F3
+- [ ] 6.3 Bind + configure flow: fox-api33/37 pass (bind dialog, Cancel, Create, Always allow, configure, Back out of configure); **owed:** the POCO F3
 - [ ] 6.4 Render, size, resize, touch coexistence
 - [ ] 6.5 Persistence and provider removal
 - [ ] Device checklist passed on: —
@@ -161,6 +161,20 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-13 — 6.3. Pure `AppWidgetBindFlow` (allocate → bind if allowed, else `AskToBind` → `Configure` when needed →
+  `Place`; a refusal, a failed bind or a cancelled configuration frees the id: 7 tests) on `AppWidgetBindPort`, which
+  `AppWidgetBinder` implements on the host (`bindAppWidgetIdIfAllowed`, the `ACTION_APPWIDGET_BIND` intent with profile,
+  configuration skipped only when reconfigurable and optional, Launcher3's rule). `HomeActivity` carries the steps out:
+  bind dialog through an `ActivityResultLauncher`, configuration through
+  `startAppWidgetConfigureActivityForResult` + `onActivityResult` (no contract exists for it), the pending widget saved
+  in the instance state. `HomeItem.AppWidget` now keeps `provider` and `userSerial` (the existing `component` and
+  `userSerial` columns, no schema change); `HomeRepository.addAppWidget` places it as native widgets are placed. No size
+  options at bind: 6.4 sends sizes once the view has its cell. fox-api37: Analog clock → bind dialog → Cancel left no
+  id; Create → its "Select a Clock Face" configuration → placed 3 × 2 at 0,4; Always allow + Create → Back from the
+  configuration left no id; Calendar month view then bound without a dialog and went to page 1 (4 × 4 did not fit
+  page 0). fox-api33: dialog → Create → configuration → placed. Placed widgets draw as the placeholder until 6.4.
+  6.1 and 6.2 unticked again: tasks are ticked only after the POCO check.
 
 - 2026-10-13 — 6.2. Picker gets tabs, Fox (native, as before) and App widgets. `AppWidgetProviders` (`@Singleton`, IO)
   reads `getInstalledProvidersForProfile` for every profile, skipping keyguard-only and `WIDGET_FEATURE_HIDE_FROM_PICKER`

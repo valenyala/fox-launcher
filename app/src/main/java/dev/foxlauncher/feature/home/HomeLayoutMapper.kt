@@ -62,7 +62,12 @@ object HomeLayoutMapper {
                 title = item.title,
             )
             is HomeItem.Folder -> base.copy(type = HomeItemType.FOLDER, folderId = item.folderId, title = item.title)
-            is HomeItem.AppWidget -> base.copy(type = HomeItemType.APP_WIDGET, appWidgetId = item.appWidgetId)
+            is HomeItem.AppWidget -> base.copy(
+                type = HomeItemType.APP_WIDGET,
+                appWidgetId = item.appWidgetId,
+                component = item.provider,
+                userSerial = item.userSerial,
+            )
             is HomeItem.NativeWidget -> base.copy(type = HomeItemType.NATIVE_WIDGET, nativeWidgetKind = item.kind)
         }
     }
@@ -85,7 +90,12 @@ object HomeLayoutMapper {
                     items = children[folderId].orEmpty().toImmutableList(),
                 )
             }
-            HomeItemType.APP_WIDGET -> row.appWidgetId?.let { HomeItem.AppWidget(row.id, position, it) }
+            HomeItemType.APP_WIDGET -> {
+                val appWidgetId = row.appWidgetId ?: return null
+                val provider = row.component ?: return null
+                val serial = row.userSerial ?: return null
+                HomeItem.AppWidget(row.id, position, appWidgetId, provider, serial)
+            }
             HomeItemType.NATIVE_WIDGET -> row.nativeWidgetKind?.let { HomeItem.NativeWidget(row.id, position, it) }
         }
     }

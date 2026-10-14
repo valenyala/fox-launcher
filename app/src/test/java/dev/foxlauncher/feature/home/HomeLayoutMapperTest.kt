@@ -86,7 +86,7 @@ class HomeLayoutMapperTest {
         val items = listOf(
             HomeItem.App(1, pos, "com.a/.Main", 0),
             HomeItem.Shortcut(2, pos.copy(col = 0), "com.b", "compose", 10, "New message"),
-            HomeItem.AppWidget(3, pos.copy(row = 0), 42),
+            HomeItem.AppWidget(3, pos.copy(row = 0), 42, "com.c/.ClockWidget", 10),
             HomeItem.NativeWidget(4, pos.copy(row = 1, col = 0), "ram_gauge"),
         )
         val layout = HomeLayoutMapper.toLayout(items.map { HomeLayoutMapper.toEntity(it, createdAt = 5) }, emptyList())

@@ -29,6 +29,7 @@ import dev.foxlauncher.feature.wallpaper.RotationScheduler
 import dev.foxlauncher.feature.home.grid.CellRect
 import dev.foxlauncher.feature.home.grid.GridSpec
 import dev.foxlauncher.feature.widgets.NativeWidgetRegistry
+import dev.foxlauncher.feature.widgets.app.PendingAppWidget
 import javax.inject.Inject
 import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.persistentMapOf
@@ -258,6 +259,21 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             val position = homeRepository.addNativeWidget(kind, spec.defaultSpan, currentPage, uiState.value.gridSpec)
             FoxLog.d("Widget $kind placed on page ${position.page} at ${position.col},${position.row}")
+        }
+    }
+
+    /** Places an app widget that is bound, and configured if it had to be (task 6.3). */
+    fun addAppWidget(pending: PendingAppWidget) {
+        viewModelScope.launch {
+            val position = homeRepository.addAppWidget(
+                pending.appWidgetId,
+                pending.provider,
+                pending.userSerial,
+                pending.span,
+                currentPage,
+                uiState.value.gridSpec,
+            )
+            FoxLog.d("App widget ${pending.appWidgetId} placed on page ${position.page} at ${position.col},${position.row}")
         }
     }
 

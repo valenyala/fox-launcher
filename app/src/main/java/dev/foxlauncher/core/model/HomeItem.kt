@@ -54,10 +54,13 @@ sealed interface HomeItem {
         val items: ImmutableList<HomeItem>,
     ) : HomeItem
 
+    /** A third-party widget (phase 6): its id with Fox's `AppWidgetHost`, and its provider, kept as apps are. */
     data class AppWidget(
         override val id: Long,
         override val position: HomePosition,
         val appWidgetId: Int,
+        val provider: String,
+        val userSerial: Long,
     ) : HomeItem
 
     data class NativeWidget(
