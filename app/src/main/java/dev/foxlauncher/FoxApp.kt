@@ -82,6 +82,8 @@ class FoxApp : Application(), Configuration.Provider, SingletonImageLoader.Facto
         // A new process may be one the system killed with Fox's accessibility service in it, which then
         // stays stopped (PLATFORM-NOTES G). Give an ordinary rebind its moment first.
         scope.launch {
+            // A restart of Fox's own cut short by this process's death left the service off: back on first.
+            accessibilityRepair.finishInterruptedRepair()
             delay(ACCESSIBILITY_REPAIR_DELAY_MS)
             accessibilityRepair.repairIfStopped()
         }

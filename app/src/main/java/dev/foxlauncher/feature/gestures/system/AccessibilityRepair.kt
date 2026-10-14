@@ -10,6 +10,7 @@ import dev.foxlauncher.core.common.FoxLog
 import dev.foxlauncher.core.common.IoDispatcher
 import dev.foxlauncher.feature.gestures.AccessibilityStatus
 import dev.foxlauncher.feature.gestures.SystemActions
+import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
@@ -43,7 +44,8 @@ internal object EnabledAccessibilityServices {
  * Restarts Fox's accessibility service when the system has left it stopped (PLATFORM-NOTES G) by
  * turning it off and on in the secure settings, as the user would. Possible only after the user
  * granted WRITE_SECURE_SETTINGS over adb (ADR-18). It only ever touches Fox's own entry, and only
- * while the user has it turned on: it never turns the service on by itself.
+ * while the user has it turned on: it never turns the service on by itself, except to finish a
+ * restart of its own that was cut short ([finishInterruptedRepair]).
  */
 @Singleton
 class AccessibilityRepair @Inject constructor(
@@ -54,6 +56,13 @@ class AccessibilityRepair @Inject constructor(
     private val component = ComponentName(context, FoxAccessibilityService::class.java)
     private val mutex = Mutex()
 
+    /**
+     * Exists from just before the restart turns the service off until it is on again. Fox killed in
+     * between (a force stop, an update, MIUI clearing recent apps) left the user's service off for
+     * good, as if they had turned it off; the next start finds this and turns it back on.
+     */
+    private val pending = File(context.noBackupFilesDir, PENDING_FILE)
+
     /** True while a restart is under way: meanwhile the service is briefly listed as off. */
     @Volatile
     var isRepairing: Boolean = false
@@ -63,8 +72,30 @@ class AccessibilityRepair @Inject constructor(
     val isAvailable: Boolean
         get() = context.checkSelfPermission(Manifest.permission.WRITE_SECURE_SETTINGS) == PackageManager.PERMISSION_GRANTED
 
+    /**
+     * Turns the service back on if a restart of Fox's own was cut short between "off" and "on". From
+     * `FoxApp.onCreate`, and before every restart.
+     */
+    suspend fun finishInterruptedRepair() = mutex.withLock { finishInterrupted() }
+
+    private suspend fun finishInterrupted() = withContext(io) {
+        if (!pending.exists()) return@withContext
+        try {
+            val services = EnabledAccessibilityServices.read(context)
+            if (component !in services && isAvailable) {
+                EnabledAccessibilityServices.write(context, services + component)
+                Settings.Secure.putInt(context.contentResolver, Settings.Secure.ACCESSIBILITY_ENABLED, 1)
+                FoxLog.i("Accessibility service: an interrupted restart left it off; turned it back on")
+            }
+        } catch (e: SecurityException) {
+            FoxLog.w("WRITE_SECURE_SETTINGS was revoked", e)
+        }
+        pending.delete()
+    }
+
     /** Restarts the service if it is stopped and Fox may; true when it is running afterwards. */
     suspend fun repairIfStopped(): Boolean = mutex.withLock {
+        finishInterrupted()
         when (systemActions.status) {
             AccessibilityStatus.ON -> return true
             AccessibilityStatus.OFF -> return false
@@ -74,12 +105,16 @@ class AccessibilityRepair @Inject constructor(
         isRepairing = true
         try {
             val others = withContext(io) { EnabledAccessibilityServices.read(context).filterNot { it == component } }
-            withContext(io) { EnabledAccessibilityServices.write(context, others) }
+            withContext(io) {
+                pending.createNewFile()
+                EnabledAccessibilityServices.write(context, others)
+            }
             // The system reacts to each change of the setting: it must see "off" before "on".
             delay(TOGGLE_GAP_MS)
             withContext(io) {
                 EnabledAccessibilityServices.write(context, others + component)
                 Settings.Secure.putInt(context.contentResolver, Settings.Secure.ACCESSIBILITY_ENABLED, 1)
+                pending.delete()
             }
             val running = withTimeoutOrNull(CONNECT_TIMEOUT_MS) { FoxAccessibilityService.connected.first { it } } != null
             FoxLog.i("Accessibility service ${if (running) "restarted" else "did not come back"}")
@@ -95,5 +130,6 @@ class AccessibilityRepair @Inject constructor(
     private companion object {
         const val TOGGLE_GAP_MS = 500L
         const val CONNECT_TIMEOUT_MS = 3_000L
+        const val PENDING_FILE = "accessibility-repair-pending"
     }
 }

@@ -165,6 +165,13 @@ Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out o
 
 ## Session notes
 
+- 2026-10-14 — User: "the full screen gestures are gone on the poco?" MIUI's `force_fsg_nav_bar` was still 1, but
+  `enabled_accessibility_services` was empty: Fox's service off, so its edge gestures gone. Cause: `AccessibilityRepair`
+  writes "off", waits 500 ms, writes "on"; a death in between (8.1/8.2's force stops and reinstalls; MIUI clearing
+  recents too) lost the entry for good. Restored over adb. Fix: a marker file (`noBackupFilesDir`) from before "off"
+  until "on"; `finishInterruptedRepair()` (FoxApp start, and before each restart) turns the service back on when the
+  marker is there and Fox's entry is not. Gate only; **owed:** a device check (kill Fox mid-repair on an emulator).
+
 - 2026-10-14 — 8.2 (user: go ahead; the POCO driven with the user's go-ahead). Tools: `-PcomposeReports` (Compose
   compiler reports; strong skipping on, so unstable parameters only cost when the instance changes: `HomePage(items)`,
   `Dock(items)`, none hot); the profiling build is `profileable` and carries runtime-tracing + tracing-perfetto(-binary)
