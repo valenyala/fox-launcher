@@ -31,7 +31,7 @@ data class AppCheckRow(val entry: AppEntry, val checked: Boolean)
 
 /**
  * Every app with a checkbox under an explanation: the hidden apps (task 2.x) and the apps opened
- * without navigation buttons (task 9.7).
+ * with the navigation buttons (task 9.7).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

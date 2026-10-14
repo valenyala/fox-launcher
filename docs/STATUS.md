@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 9 — Power features, at the user's request before phases 7 and 8 (2026-10-14) (Phase 6 done 2026-10-14; Phase 5 done 2026-10-13, its boost checklist item passed through Deep boost 2026-10-14; Phase 4 owes three checklist items, deferred; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists)
-**Next task:** the POCO check of 9.7, then phases 7 and 8 at the user's call (phase 9: 9.1 and 9.6 done, 9.2 and 9.5 dropped, 9.3 and 9.4 removed) at the user's call (see docs/phases/09-power-features.md; 9.2 and 9.5 dropped by the user) (3.8's POCO check still owed; 2.8 still deferred; phases 7 and 8 not started)
+**Next task:** the POCO check of 9.7 (reversed) and the user's choice on its speed, then phases 7 and 8 at the user's call (phase 9: 9.1 and 9.6 done, 9.2 and 9.5 dropped, 9.3 and 9.4 removed) at the user's call (see docs/phases/09-power-features.md; 9.2 and 9.5 dropped by the user) (3.8's POCO check still owed; 2.8 still deferred; phases 7 and 8 not started)
 
 ## Environment facts (verified 2026-09-17)
 
@@ -125,7 +125,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [-] 9.4 External intent API: removed by the user 2026-10-14 after it was built (receiver, setting, screen, README section gone; ADR-22 withdrawn)
 - [-] 9.5 Extra transitions, lock-screen live wallpaper: dropped by the user (2026-10-14)
 - [x] 9.6 Hide navigation buttons (user request 2026-10-14, ADR-23): Settings → Shizuku → "Hide navigation buttons"; fox-api37 pass (both ways); UI tests 6/6 on fox-api33; POCO F3 2026-10-14, user: turned off and on (log: shown, hidden, `force_fsg_nav_bar` back at 1); Fox no longer reloads on a switch (`assetsPaths`; POCO F3 2026-10-14, user: "it doesn't reload")
-- [ ] 9.7 Apps without navigation buttons (user request 2026-10-14, ADR-24): fox-api37 pass (Clock listed, three buttons: opened from the drawer without buttons, no relaunch, ~0.6 s; Home → buttons back; reopened from the background the same); **owed:** the POCO F3 check
+- [ ] 9.7 Apps with navigation buttons (user request 2026-10-14, reversed the same day, ADR-24): fox-api37 pass (gestures, Clock listed: opened from the drawer with three buttons, no relaunch, ~0.6 s; Home → gestures again); POCO F3 tested the first direction (works, ~2.0 s per switch, 1.6 s of it starting Fox's shell service); **owed:** the POCO check of the reversed list, and the user's choice on speed
 
 ## Blockers
 
@@ -164,6 +164,16 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-14 — 9.7 reversed (user: "make hide nav buttons the default, and make a list that does have nav buttons").
+  The user had tried the first direction on the POCO: works; log "hidden: true, applied true in 1974 ms", of which
+  1.64 s Shizuku starting `FoxShellService`'s process, ~60 ms the command, ~180 ms MIUI's overlay. Renamed throughout
+  (`ButtonApps`, `ButtonAppLaunches`, `button_apps`, `buttons_shown_by_fox`, "Apps with buttons"); the logic now shows
+  the buttons before a listed launch and hides them on the home's `onStart`. The old `buttonless_apps` key is left
+  unread. fox-api37 (gestures, Clock listed): drawer → Clock with three buttons, "shown: true, applied true in 617 ms",
+  no relaunch; Home → "hidden: true in 575 ms", gestures. Fox holds the adb-granted WRITE_SECURE_SETTINGS on the POCO
+  (ADR-18), which would let it write `force_fsg_nav_bar` itself in milliseconds, without Shizuku; not used, as ADR-18
+  and CLAUDE.md limit it to the accessibility repair: asked the user.
 
 - 2026-10-14 — 9.7 (user: "build for 1", Fox's own launches only). The user confirmed on the POCO that Fox no longer
   reloads on a switch. `ButtonlessLaunches` wraps every Fox launch (Home/Drawer view models, `RepositoryAppLauncher`):

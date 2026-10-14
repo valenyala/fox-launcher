@@ -38,7 +38,7 @@ import dev.foxlauncher.feature.drawer.DrawerScreen
 import dev.foxlauncher.feature.drawer.DrawerViewModel
 import dev.foxlauncher.feature.gestures.AccessibilityStatus
 import dev.foxlauncher.feature.gestures.ExecContext
-import dev.foxlauncher.feature.gestures.navigation.ButtonlessLaunches
+import dev.foxlauncher.feature.gestures.navigation.ButtonAppLaunches
 import dev.foxlauncher.feature.gestures.system.AccessibilityDisclosureDialog
 import dev.foxlauncher.feature.home.HomeRoot
 import dev.foxlauncher.feature.home.HomeScreen
@@ -47,7 +47,7 @@ import dev.foxlauncher.feature.home.HomeVisibility
 import dev.foxlauncher.feature.home.isDefaultLauncher
 import dev.foxlauncher.feature.shizuku.ShizukuAccess
 import dev.foxlauncher.feature.home.requestDefaultLauncherRole
-import dev.foxlauncher.feature.settings.ButtonlessAppsScreen
+import dev.foxlauncher.feature.settings.ButtonAppsScreen
 import dev.foxlauncher.feature.settings.GesturesScreen
 import dev.foxlauncher.feature.settings.HiddenAppsScreen
 import dev.foxlauncher.feature.settings.HomeSettingsScreen
@@ -96,7 +96,7 @@ class HomeActivity : ComponentActivity() {
 
     @Inject lateinit var shizukuAccess: ShizukuAccess
 
-    @Inject lateinit var buttonlessLaunches: ButtonlessLaunches
+    @Inject lateinit var buttonAppLaunches: ButtonAppLaunches
 
     // The same instance as hiltViewModel() in the composition: same store, same default key.
     private val homeViewModel: HomeViewModel by viewModels()
@@ -294,9 +294,9 @@ class HomeActivity : ComponentActivity() {
                             SettingsRoute.SHIZUKU -> ShizukuScreen(
                                 hiltViewModel(),
                                 onBack = closeSettings,
-                                onOpenButtonlessApps = { settings = settings + SettingsRoute.BUTTONLESS_APPS },
+                                onOpenButtonApps = { settings = settings + SettingsRoute.BUTTON_APPS },
                             )
-                            SettingsRoute.BUTTONLESS_APPS -> ButtonlessAppsScreen(hiltViewModel(), onBack = closeSettings)
+                            SettingsRoute.BUTTON_APPS -> ButtonAppsScreen(hiltViewModel(), onBack = closeSettings)
                             null -> Unit
                         }
                         if (widgetPicker) {
@@ -436,7 +436,7 @@ class HomeActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         appWidgetHost.onHomeStarted()
-        buttonlessLaunches.onHomeShown()
+        buttonAppLaunches.onHomeShown()
     }
 
     override fun onResume() {

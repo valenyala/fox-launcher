@@ -84,14 +84,14 @@
     <string name="navigation_buttons_title">Navigation buttons</string>
     <string name="navigation_buttons_explainer">Hides Back, Home and Recents by switching the phone to full-screen gestures, as the system\'s own navigation setting does: swipe up from the bottom to go home, in from either side to go back. The phone keeps it after a restart, and the system\'s navigation setting turns the buttons back on too. Other apps that are open reload when it changes.</string>
     <string name="navigation_buttons_switch">Hide navigation buttons</string>
-    <string name="buttonless_apps_title">Apps without buttons</string>
-    <string name="buttonless_apps_none">None. Open some apps without the buttons</string>
-    <plurals name="buttonless_apps_count">
-        <item quantity="one">%1$d app opens from Fox without the buttons</item>
-        <item quantity="other">%1$d apps open from Fox without the buttons</item>
+    <string name="button_apps_title">Apps with buttons</string>
+    <string name="button_apps_none">None. Keep the buttons in some apps</string>
+    <plurals name="button_apps_count">
+        <item quantity="one">%1$d app opens from Fox with the buttons</item>
+        <item quantity="other">%1$d apps open from Fox with the buttons</item>
     </plurals>
-    <string name="buttonless_apps_everywhere">The buttons are hidden everywhere now, so these apps change nothing</string>
-    <string name="buttonless_apps_explainer">When you open one of these apps from Fox, from the home screen, a folder, the drawer or a gesture, Fox hides the navigation buttons first and shows them again when you come back to Fox. Opened another way, from a notification, Recents or a link, an app keeps the buttons as they are. An app still open from before reloads once as it opens. Needs Shizuku running and allowing Fox.</string>
+    <string name="button_apps_everywhere">The buttons show everywhere now, so these apps change nothing</string>
+    <string name="button_apps_explainer">While the navigation buttons are hidden, these apps keep them. When you open one from Fox, from the home screen, a folder, the drawer or a gesture, Fox shows the buttons first and hides them again when you come back to Fox. Opened another way, from a notification, Recents or a link, an app gets the navigation as it is. An app still open from before reloads once as it opens. Needs Shizuku running and allowing Fox.</string>
     <string name="navigation_buttons_needs_shizuku">Needs Shizuku running and allowing Fox</string>
     <string name="navigation_buttons_unknown">Fox cannot read this phone\'s navigation setting</string>
     <string name="navigation_buttons_failed">Shizuku could not change the navigation</string>

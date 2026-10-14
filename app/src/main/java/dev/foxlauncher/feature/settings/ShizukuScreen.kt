@@ -38,7 +38,7 @@ import dev.foxlauncher.R
 import dev.foxlauncher.core.apps.AppRepository
 import dev.foxlauncher.core.common.FoxLog
 import dev.foxlauncher.core.data.settings.FoxSettings
-import dev.foxlauncher.feature.gestures.navigation.ButtonlessLaunches
+import dev.foxlauncher.feature.gestures.navigation.ButtonAppLaunches
 import dev.foxlauncher.feature.gestures.navigation.NavigationButtons
 import dev.foxlauncher.feature.memory.DeepBoost
 import dev.foxlauncher.feature.memory.DeepBoostState
@@ -59,7 +59,7 @@ object ShizukuTestTags {
     const val STATUS = "shizuku_status"
     const val ACTION = "shizuku_action"
     const val NAVIGATION_SWITCH = "navigation_buttons_switch"
-    const val BUTTONLESS_APPS = "buttonless_apps"
+    const val BUTTON_APPS = "button_apps"
 }
 
 /**
@@ -75,15 +75,15 @@ class ShizukuViewModel @Inject constructor(
     private val boost: DeepBoost,
     private val shizuku: ShizukuAccess,
     private val navigationButtons: NavigationButtons,
-    private val buttonless: ButtonlessLaunches,
+    private val buttonApps: ButtonAppLaunches,
     appRepository: AppRepository,
     settings: FoxSettings,
 ) : ViewModel() {
 
     val deepBoost: StateFlow<DeepBoostState> = boost.state
 
-    /** How many installed apps open without buttons (task 9.7); uninstalled ones still listed do not count. */
-    val buttonlessCount: StateFlow<Int> = combine(appRepository.apps, settings.buttonlessApps) { apps, listed ->
+    /** How many installed apps open with the buttons (task 9.7); uninstalled ones still listed do not count. */
+    val buttonAppsCount: StateFlow<Int> = combine(appRepository.apps, settings.buttonApps) { apps, listed ->
         apps.count { it.key in listed }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), 0)
 
@@ -109,8 +109,8 @@ class ShizukuViewModel @Inject constructor(
     fun setNavigationButtonsHidden(hidden: Boolean) {
         if (_navigation.value.busy) return
         _navigation.update { it.copy(busy = true, failed = false) }
-        // The user's own choice: home no longer brings back buttons Fox hid for an app (task 9.7).
-        buttonless.forget()
+        // The user's own choice: home no longer hides buttons Fox showed for an app (task 9.7).
+        buttonApps.forget()
         viewModelScope.launch {
             val done = navigationButtons.setHidden(hidden)
             // Android's navigation mode follows its overlay a moment later, so a success shows what was asked.
@@ -136,10 +136,10 @@ class ShizukuViewModel @Inject constructor(
 }
 
 @Composable
-fun ShizukuScreen(viewModel: ShizukuViewModel, onBack: () -> Unit, onOpenButtonlessApps: () -> Unit, modifier: Modifier = Modifier) {
+fun ShizukuScreen(viewModel: ShizukuViewModel, onBack: () -> Unit, onOpenButtonApps: () -> Unit, modifier: Modifier = Modifier) {
     val deepBoost by viewModel.deepBoost.collectAsStateWithLifecycle()
     val navigation by viewModel.navigation.collectAsStateWithLifecycle()
-    val buttonlessCount by viewModel.buttonlessCount.collectAsStateWithLifecycle()
+    val buttonAppsCount by viewModel.buttonAppsCount.collectAsStateWithLifecycle()
     BackHandler(onBack = onBack)
     LifecycleResumeEffect(Unit) {
         viewModel.refresh()
@@ -148,11 +148,11 @@ fun ShizukuScreen(viewModel: ShizukuViewModel, onBack: () -> Unit, onOpenButtonl
     ShizukuContent(
         deepBoost = deepBoost,
         navigation = navigation,
-        buttonlessCount = buttonlessCount,
+        buttonAppsCount = buttonAppsCount,
         onBack = onBack,
         onDeepBoostChange = viewModel::setDeepBoost,
         onNavigationButtonsHiddenChange = viewModel::setNavigationButtonsHidden,
-        onOpenButtonlessApps = onOpenButtonlessApps,
+        onOpenButtonApps = onOpenButtonApps,
         onRequestPermission = viewModel::requestPermission,
         onOpenShizuku = viewModel::openShizuku,
         modifier = modifier,
@@ -170,11 +170,11 @@ fun ShizukuScreen(viewModel: ShizukuViewModel, onBack: () -> Unit, onOpenButtonl
 fun ShizukuContent(
     deepBoost: DeepBoostState,
     navigation: NavigationButtonsState,
-    buttonlessCount: Int,
+    buttonAppsCount: Int,
     onBack: () -> Unit,
     onDeepBoostChange: (Boolean) -> Unit,
     onNavigationButtonsHiddenChange: (Boolean) -> Unit,
-    onOpenButtonlessApps: () -> Unit,
+    onOpenButtonApps: () -> Unit,
     onRequestPermission: () -> Unit,
     onOpenShizuku: () -> Unit,
     modifier: Modifier = Modifier,
@@ -259,19 +259,19 @@ fun ShizukuContent(
             )
             // Per app (task 9.7): what each app does is on its own screen; here how many and whether it matters now.
             ListItem(
-                headlineContent = { Text(stringResource(R.string.buttonless_apps_title)) },
+                headlineContent = { Text(stringResource(R.string.button_apps_title)) },
                 supportingContent = {
                     Text(
                         when {
-                            buttonlessCount > 0 && hidden -> stringResource(R.string.buttonless_apps_everywhere)
-                            buttonlessCount > 0 -> pluralStringResource(R.plurals.buttonless_apps_count, buttonlessCount, buttonlessCount)
-                            else -> stringResource(R.string.buttonless_apps_none)
+                            buttonAppsCount > 0 && navigation.hidden == false -> stringResource(R.string.button_apps_everywhere)
+                            buttonAppsCount > 0 -> pluralStringResource(R.plurals.button_apps_count, buttonAppsCount, buttonAppsCount)
+                            else -> stringResource(R.string.button_apps_none)
                         },
                     )
                 },
                 modifier = Modifier
-                    .clickable(onClick = onOpenButtonlessApps)
-                    .testTag(ShizukuTestTags.BUTTONLESS_APPS),
+                    .clickable(onClick = onOpenButtonApps)
+                    .testTag(ShizukuTestTags.BUTTON_APPS),
             )
         }
     }

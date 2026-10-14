@@ -23,20 +23,20 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-/** The apps Fox opens without navigation buttons (task 9.7): every app, checked when listed. */
+/** The apps Fox opens with the navigation buttons (task 9.7): every app, checked when listed. */
 @HiltViewModel
-class ButtonlessAppsViewModel @Inject constructor(
+class ButtonAppsViewModel @Inject constructor(
     appRepository: AppRepository,
     private val settings: FoxSettings,
 ) : ViewModel() {
 
     val rows: StateFlow<ImmutableList<AppCheckRow>> =
-        combine(appRepository.apps, settings.buttonlessApps) { apps, listed ->
+        combine(appRepository.apps, settings.buttonApps) { apps, listed ->
             apps.map { AppCheckRow(it, it.key in listed) }.toImmutableList()
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), persistentListOf())
 
-    fun onCheckedChange(entry: AppEntry, buttonless: Boolean) {
-        viewModelScope.launch { settings.setButtonless(entry.key, buttonless) }
+    fun onCheckedChange(entry: AppEntry, withButtons: Boolean) {
+        viewModelScope.launch { settings.setButtonApp(entry.key, withButtons) }
     }
 
     private companion object {
@@ -45,12 +45,12 @@ class ButtonlessAppsViewModel @Inject constructor(
 }
 
 @Composable
-fun ButtonlessAppsScreen(viewModel: ButtonlessAppsViewModel, onBack: () -> Unit, modifier: Modifier = Modifier) {
+fun ButtonAppsScreen(viewModel: ButtonAppsViewModel, onBack: () -> Unit, modifier: Modifier = Modifier) {
     val rows by viewModel.rows.collectAsStateWithLifecycle()
     BackHandler(onBack = onBack)
     AppChecklistContent(
-        title = stringResource(R.string.buttonless_apps_title),
-        explainer = stringResource(R.string.buttonless_apps_explainer),
+        title = stringResource(R.string.button_apps_title),
+        explainer = stringResource(R.string.button_apps_explainer),
         rows = rows,
         onCheckedChange = viewModel::onCheckedChange,
         onBack = onBack,

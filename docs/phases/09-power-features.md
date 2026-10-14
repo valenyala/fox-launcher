@@ -44,7 +44,8 @@ Each task is independent and opt-in for the user. Do not start this phase before
 - Asked by the user: hiding them per app in front. Not possible without relaunching that app on every switch, MIUI
   included (PLATFORM-NOTES G, ADR-23); built instead as 9.7.
 
-## 9.7 Apps without navigation buttons (user request, 2026-10-14, ADR-24)
-- A list of apps, Settings → Shizuku → "Apps without buttons". Opening one from Fox hides the buttons first (waiting
-  for the overlay to apply, so the app starts in the new mode); the home's `onStart` shows them again. Apps opened any
-  other way are left alone. Pure `ButtonlessApps` (matching, when to hide, when to show) unit tested.
+## 9.7 Apps with navigation buttons (user request, 2026-10-14, ADR-24)
+- Full-screen gestures by default (9.6's switch on) and a list of apps, Settings → Shizuku → "Apps with buttons".
+  Opening one from Fox shows the buttons first (waiting for the overlay to apply, so the app starts in the new mode);
+  the home's `onStart` hides them again. Apps opened any other way are left alone. Pure `ButtonApps` (matching, when
+  to show, when to hide) unit tested. First built the other way round (apps without buttons), reversed by the user.

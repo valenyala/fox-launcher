@@ -14,7 +14,7 @@ import dev.foxlauncher.core.apps.applyHidden
 import dev.foxlauncher.core.common.DefaultDispatcher
 import dev.foxlauncher.core.data.settings.FoxSettings
 import dev.foxlauncher.core.model.AppEntry
-import dev.foxlauncher.feature.gestures.navigation.ButtonlessLaunches
+import dev.foxlauncher.feature.gestures.navigation.ButtonAppLaunches
 import javax.inject.Inject
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -53,7 +53,7 @@ class DrawerViewModel @Inject constructor(
     private val appRepository: AppRepository,
     private val settings: FoxSettings,
     @param:DefaultDispatcher private val default: CoroutineDispatcher,
-    private val buttonless: ButtonlessLaunches,
+    private val buttonApps: ButtonAppLaunches,
 ) : ViewModel() {
 
     /**
@@ -132,7 +132,7 @@ class DrawerViewModel @Inject constructor(
 
     fun onAppClick(entry: AppEntry, sourceBounds: Rect?, options: Bundle?) {
         popup.value = null
-        buttonless.open(entry.packageName, entry.userSerial) { appRepository.launch(entry, sourceBounds, options) }
+        buttonApps.open(entry.packageName, entry.userSerial) { appRepository.launch(entry, sourceBounds, options) }
     }
 
     fun onAppLongClick(entry: AppEntry) {

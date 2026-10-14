@@ -24,7 +24,7 @@ import dev.foxlauncher.feature.gestures.AccessibilityStatus
 import dev.foxlauncher.feature.gestures.ActionExecutor
 import dev.foxlauncher.feature.gestures.ActionResult
 import dev.foxlauncher.feature.gestures.ExecContext
-import dev.foxlauncher.feature.gestures.navigation.ButtonlessLaunches
+import dev.foxlauncher.feature.gestures.navigation.ButtonAppLaunches
 import dev.foxlauncher.feature.gestures.system.AccessibilityRepair
 import dev.foxlauncher.feature.home.drag.DropAction
 import dev.foxlauncher.feature.wallpaper.RotationScheduler
@@ -83,7 +83,7 @@ class HomeViewModel @Inject constructor(
     private val nativeWidgets: NativeWidgetRegistry,
     private val appWidgetHost: FoxAppWidgetHost,
     private val appWidgetBinder: AppWidgetBinder,
-    private val buttonless: ButtonlessLaunches,
+    private val buttonApps: ButtonAppLaunches,
 ) : ViewModel() {
 
     private val appsByKey = appRepository.apps.map { apps -> apps.associateBy { it.key }.toImmutableMap() }
@@ -202,9 +202,9 @@ class HomeViewModel @Inject constructor(
     fun onItemClick(item: HomeItem, sourceBounds: Rect?, options: Bundle?) {
         when (item) {
             is HomeItem.App -> uiState.value.apps[item.appKey]?.let { entry ->
-                buttonless.open(entry.packageName, entry.userSerial) { appRepository.launch(entry, sourceBounds, options) }
+                buttonApps.open(entry.packageName, entry.userSerial) { appRepository.launch(entry, sourceBounds, options) }
             }
-            is HomeItem.Shortcut -> buttonless.open(item.packageName, item.userSerial) {
+            is HomeItem.Shortcut -> buttonApps.open(item.packageName, item.userSerial) {
                 appRepository.startShortcut(item.packageName, item.shortcutId, item.userSerial, sourceBounds, options)
             }
             is HomeItem.Folder -> Unit // HomeScreen opens its sheet.

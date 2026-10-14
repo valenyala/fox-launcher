@@ -35,7 +35,7 @@ class ShizukuContentTest {
     private val calls = mutableListOf<String>()
     private var deepBoost by mutableStateOf(DeepBoostState(ShizukuStatus.NOT_INSTALLED, enabled = false))
     private var navigation by mutableStateOf(NavigationButtonsState(hidden = false))
-    private var buttonlessCount by mutableStateOf(0)
+    private var buttonAppsCount by mutableStateOf(0)
 
     private fun show() {
         composeRule.setContent {
@@ -43,11 +43,11 @@ class ShizukuContentTest {
                 ShizukuContent(
                     deepBoost = deepBoost,
                     navigation = navigation,
-                    buttonlessCount = buttonlessCount,
+                    buttonAppsCount = buttonAppsCount,
                     onBack = { calls += "back" },
                     onDeepBoostChange = { calls += "deep boost $it" },
                     onNavigationButtonsHiddenChange = { calls += "hidden $it" },
-                    onOpenButtonlessApps = { calls += "buttonless apps" },
+                    onOpenButtonApps = { calls += "button apps" },
                     onRequestPermission = { calls += "permission" },
                     onOpenShizuku = { calls += "open" },
                 )
@@ -142,18 +142,19 @@ class ShizukuContentTest {
     @Test
     fun theAppsWithoutButtonsRowSaysHowManyAndWhetherTheyMatterNow() {
         deepBoost = DeepBoostState(ShizukuStatus.READY, enabled = false)
+        navigation = NavigationButtonsState(hidden = true)
         show()
 
-        composeRule.onNodeWithText(context.getString(R.string.buttonless_apps_none)).performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText(context.getString(R.string.button_apps_none)).performScrollTo().assertIsDisplayed()
 
-        buttonlessCount = 2
-        val two = context.resources.getQuantityString(R.plurals.buttonless_apps_count, 2, 2)
+        buttonAppsCount = 2
+        val two = context.resources.getQuantityString(R.plurals.button_apps_count, 2, 2)
         composeRule.onNodeWithText(two).performScrollTo().assertIsDisplayed()
 
-        navigation = NavigationButtonsState(hidden = true)
-        composeRule.onNodeWithText(context.getString(R.string.buttonless_apps_everywhere)).performScrollTo().assertIsDisplayed()
+        navigation = NavigationButtonsState(hidden = false)
+        composeRule.onNodeWithText(context.getString(R.string.button_apps_everywhere)).performScrollTo().assertIsDisplayed()
 
-        composeRule.onNodeWithTag(ShizukuTestTags.BUTTONLESS_APPS).performClick()
-        assertEquals(listOf("buttonless apps"), calls)
+        composeRule.onNodeWithTag(ShizukuTestTags.BUTTON_APPS).performClick()
+        assertEquals(listOf("button apps"), calls)
     }
 }

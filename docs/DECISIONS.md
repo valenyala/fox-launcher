@@ -214,21 +214,22 @@ overlay, which relaunches every other open activity (the explainer says so). The
 in `configChanges`, so it takes the new resources in place instead of relaunching (it had taken 2.1–2.5 s on the POCO
 F3); its colours follow the system palette the same way, through `FoxTheme` re-reading them on the new configuration.
 
-## ADR-24 Apps without navigation buttons switch the mode around Fox's own launches
-The user asked (2026-10-14, task 9.7) for the buttons to hide in some apps and come back on leaving them. Any change
-of navigation mode swaps an overlay and relaunches the activities that do not declare `assetsPaths` (ADR-23), so the
-mode must change while the app is not on screen. Fox therefore switches only around its own launches: before
-opening a listed app (home, dock, folders, drawer, a gesture's "open app" or shortcut), `ButtonlessLaunches` hides the
-buttons through Shizuku and waits until the change has reached Fox's own configuration (an application
-`ComponentCallbacks`, 1.5 s at most) before calling `LauncherApps`, so the app starts in full-screen gestures; it
-records `buttons_hidden_by_fox`, and the home's `onStart` shows the buttons again and clears it (retrying on the next
-start while Shizuku is down). Listed apps are `AppEntry.key`s (`buttonless_apps`), matched by package and profile, so
-shortcuts count. The user's switch clears the record (their choice wins); with the buttons hidden everywhere the list
-changes nothing. Rejected: following the app in front through the accessibility service's window events, which the
+## ADR-24 Apps with navigation buttons switch the mode around Fox's own launches
+The user asked (2026-10-14, task 9.7) for full-screen gestures by default and a list of apps that keep the buttons
+(first built the other way round, a list of apps without them; the user reversed it the same day). Any change of
+navigation mode swaps an overlay and relaunches the activities that do not declare `assetsPaths` (ADR-23), so the mode
+must change while the app is not on screen. Fox therefore switches only around its own launches: before opening a
+listed app (home, dock, folders, drawer, a gesture's "open app" or shortcut) while the buttons are hidden,
+`ButtonAppLaunches` shows them through Shizuku and waits until the change has reached Fox's own configuration (an
+application `ComponentCallbacks`, 1.5 s at most) before calling `LauncherApps`, so the app starts with the buttons;
+it records `buttons_shown_by_fox`, and the home's `onStart` hides them again and clears it (retrying on the next start
+while Shizuku is down). Listed apps are `AppEntry.key`s (`button_apps`), matched by package and profile, so shortcuts
+count. The user's switch clears the record (their choice wins); with the buttons showing everywhere the list changes
+nothing. Rejected: following the app in front through the accessibility service's window events, which the
 disclosure rules out (ADR-20) and which could only switch after the app is shown, relaunching it in front of the user.
-Accepted: an app opened another way keeps the current mode; an app still in the background from a launch made in the
-other mode relaunches as it is shown again; a listed app opens about 0.6 s later (fox-api37: binding Fox's shell
-service in Shizuku, the command, the overlay).
+Accepted: an app opened another way gets the mode as it is; an app still in the background from a launch made in the
+other mode relaunches as it is shown again; a listed app opens later, by the time Shizuku takes to start Fox's shell
+service plus the switch (fox-api37 ≈ 0.6 s; POCO F3 ≈ 2.0 s, of which 1.6 s starting the service process).
 
 ## Dependency log
 (append `- <lib> <version> — reason` when adding a dependency)
