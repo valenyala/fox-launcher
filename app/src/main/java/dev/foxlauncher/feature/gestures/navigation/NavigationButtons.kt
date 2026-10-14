@@ -1,7 +1,10 @@
 package dev.foxlauncher.feature.gestures.navigation
 
+import android.content.ComponentCallbacks
 import android.content.Context
+import android.content.res.Configuration
 import android.os.Build
+import android.os.SystemClock
 import android.provider.Settings
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.foxlauncher.core.common.FoxLog
@@ -10,8 +13,10 @@ import dev.foxlauncher.feature.shizuku.ShellCommands
 import dev.foxlauncher.feature.shizuku.ShizukuAccess
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * The system's navigation buttons (task 9.6, user request, ADR-23): whether they are hidden, read
@@ -38,11 +43,39 @@ class NavigationButtons @Inject constructor(
         )
     }
 
-    /** True when the shell did it; false when Shizuku is not ready or the command failed. */
-    suspend fun setHidden(hidden: Boolean): Boolean {
-        val done = shizuku.withShell { it.setNavigationButtonsHidden(hidden, miui) } == true
-        FoxLog.i("Navigation buttons ${if (hidden) "hidden" else "shown"}: $done")
-        return done
+    /**
+     * True when the shell did it; false when Shizuku is not ready or the command failed. With
+     * [awaitApplied], it returns only once the change has reached Fox's own configuration (the
+     * system swaps an overlay for it), or after [APPLY_TIMEOUT_MS]: an app opened before that
+     * would start in the old mode and relaunch in front of the user (task 9.7).
+     */
+    suspend fun setHidden(hidden: Boolean, awaitApplied: Boolean = false): Boolean {
+        val start = SystemClock.elapsedRealtime()
+        val applied = CompletableDeferred<Unit>()
+        val callbacks = object : ComponentCallbacks {
+            override fun onConfigurationChanged(newConfig: Configuration) {
+                applied.complete(Unit)
+            }
+
+            @Deprecated("Deprecated in Java")
+            override fun onLowMemory() = Unit
+        }
+        if (awaitApplied) context.registerComponentCallbacks(callbacks)
+        try {
+            val done = shizuku.withShell { it.setNavigationButtonsHidden(hidden, miui) } == true
+            val seen = done && awaitApplied && withTimeoutOrNull(APPLY_TIMEOUT_MS) { applied.await() } != null
+            FoxLog.i(
+                "Navigation buttons ${if (hidden) "hidden" else "shown"}: $done" +
+                    (if (awaitApplied) ", applied $seen" else "") + " in ${SystemClock.elapsedRealtime() - start} ms",
+            )
+            return done
+        } finally {
+            if (awaitApplied) context.unregisterComponentCallbacks(callbacks)
+        }
+    }
+
+    private companion object {
+        const val APPLY_TIMEOUT_MS = 1_500L
     }
 
     private inline fun read(get: () -> Int): Int? = try {

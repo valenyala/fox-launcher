@@ -60,6 +60,11 @@ navigation buttons** switches the phone to full-screen gestures, the same as the
 MIUI, its "Full screen gestures"). It stays after a restart, and the system's setting brings the buttons back too. Other
 open apps reload when the navigation changes; Fox does not.
 
+**Only in some apps:** with the buttons showing, **Home settings → Shizuku → Apps without buttons** lists apps that
+open without them. Opening one from Fox (home screen, folder, drawer or a gesture) hides the buttons first, so the app
+starts in full-screen gestures, and coming back to Fox shows them again. Opened another way (a notification, Recents,
+a link), an app keeps the buttons as they are, and an app still open from before reloads once as it opens.
+
 <table>
   <tr>
     <td align="center"><img src="docs/media/gestures.gif" width="250" alt="Swipe down opens the notification shade; a long press opens Home settings"></td>

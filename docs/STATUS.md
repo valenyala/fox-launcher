@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 9 — Power features, at the user's request before phases 7 and 8 (2026-10-14) (Phase 6 done 2026-10-14; Phase 5 done 2026-10-13, its boost checklist item passed through Deep boost 2026-10-14; Phase 4 owes three checklist items, deferred; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists)
-**Next task:** phases 7 and 8 at the user's call (phase 9 done: 9.1 and 9.6 built, 9.2 and 9.5 dropped, 9.3 and 9.4 removed) at the user's call (see docs/phases/09-power-features.md; 9.2 and 9.5 dropped by the user) (3.8's POCO check still owed; 2.8 still deferred; phases 7 and 8 not started)
+**Next task:** the POCO check of 9.7, then phases 7 and 8 at the user's call (phase 9: 9.1 and 9.6 done, 9.2 and 9.5 dropped, 9.3 and 9.4 removed) at the user's call (see docs/phases/09-power-features.md; 9.2 and 9.5 dropped by the user) (3.8's POCO check still owed; 2.8 still deferred; phases 7 and 8 not started)
 
 ## Environment facts (verified 2026-09-17)
 
@@ -124,7 +124,8 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [-] 9.3 Per-app gestures and macros: removed by the user 2026-10-14 after it was built (per-page gestures, macros, their tests and README paragraph gone)
 - [-] 9.4 External intent API: removed by the user 2026-10-14 after it was built (receiver, setting, screen, README section gone; ADR-22 withdrawn)
 - [-] 9.5 Extra transitions, lock-screen live wallpaper: dropped by the user (2026-10-14)
-- [x] 9.6 Hide navigation buttons (user request 2026-10-14, ADR-23): Settings → Shizuku → "Hide navigation buttons"; fox-api37 pass (both ways); UI tests 6/6 on fox-api33; POCO F3 2026-10-14, user: turned off and on (log: shown, hidden, `force_fsg_nav_bar` back at 1). Per app: not possible without relaunching the app on every switch, MIUI included, so not built
+- [x] 9.6 Hide navigation buttons (user request 2026-10-14, ADR-23): Settings → Shizuku → "Hide navigation buttons"; fox-api37 pass (both ways); UI tests 6/6 on fox-api33; POCO F3 2026-10-14, user: turned off and on (log: shown, hidden, `force_fsg_nav_bar` back at 1); Fox no longer reloads on a switch (`assetsPaths`; POCO F3 2026-10-14, user: "it doesn't reload")
+- [ ] 9.7 Apps without navigation buttons (user request 2026-10-14, ADR-24): fox-api37 pass (Clock listed, three buttons: opened from the drawer without buttons, no relaunch, ~0.6 s; Home → buttons back; reopened from the background the same); **owed:** the POCO F3 check
 
 ## Blockers
 
@@ -163,6 +164,17 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-14 — 9.7 (user: "build for 1", Fox's own launches only). The user confirmed on the POCO that Fox no longer
+  reloads on a switch. `ButtonlessLaunches` wraps every Fox launch (Home/Drawer view models, `RepositoryAppLauncher`):
+  for a listed app with Shizuku ready it hides the buttons, waits for the configuration change (`NavigationButtons
+  .setHidden(awaitApplied)`, application `ComponentCallbacks`, 1.5 s cap), records `buttons_hidden_by_fox`, then opens;
+  `HomeActivity.onStart` → `onHomeShown` shows them and clears the record (kept while Shizuku is down). The switch
+  clears the record. Settings → Shizuku → "Apps without buttons" (count, or "hidden everywhere" when the switch is on)
+  → checklist screen; Hidden apps and it share `AppChecklistContent`. Unit `ButtonlessAppsTest` 5; UI
+  `ShizukuContentTest` +1. fox-api37 (three buttons, Clock listed): drawer → Clock without buttons, "applied true in 616
+  ms", Clock resumed with no relaunch; Home → "shown: true in 607 ms", three buttons; Clock again from the background
+  → same. Emulator restored to gestures. Full instrumented suite 189/189 on fox-api33.
 
 - 2026-10-14 — 9.6 follow-up: `HomeActivity` declares `assetsPaths` in `configChanges`, so an overlay change no longer
   relaunches it. fox-api33 (font overlay on/off): relaunch without the flag, none with it; fox-api37: switch off and on,

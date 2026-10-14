@@ -73,6 +73,25 @@ class FoxSettings @Inject constructor(
         Unit
     }
 
+    /** Apps Fox opens without navigation buttons (task 9.7), as `AppEntry.key` (`component|serial`). */
+    val buttonlessApps: Flow<Set<String>> = dataStore.data.map { it[Keys.BUTTONLESS_APPS].orEmpty() }
+
+    suspend fun setButtonless(appKey: String, buttonless: Boolean) = withContext(io) {
+        dataStore.edit {
+            val current = it[Keys.BUTTONLESS_APPS].orEmpty()
+            it[Keys.BUTTONLESS_APPS] = if (buttonless) current + appKey else current - appKey
+        }
+        Unit
+    }
+
+    /** Whether Fox hid the navigation buttons to open such an app, so that home shows them again. */
+    val buttonsHiddenByFox: Flow<Boolean> = dataStore.data.map { it[Keys.BUTTONS_HIDDEN_BY_FOX] ?: false }
+
+    suspend fun setButtonsHiddenByFox(hidden: Boolean) = withContext(io) {
+        dataStore.edit { it[Keys.BUTTONS_HIDDEN_BY_FOX] = hidden }
+        Unit
+    }
+
     /** What each gesture does: the defaults with the user's changes on top (task 3.1). */
     val gestureMap: Flow<Map<GestureType, GestureAction>> =
         dataStore.data.map { GestureMapJson.decode(it[Keys.GESTURE_MAP]) }
@@ -206,6 +225,8 @@ class FoxSettings @Inject constructor(
         val ICON_SIZE_DP = intPreferencesKey("icon_size_dp")
         val DRAWER_COLUMNS = intPreferencesKey("drawer_columns")
         val HIDDEN_APPS = stringSetPreferencesKey("hidden_apps")
+        val BUTTONLESS_APPS = stringSetPreferencesKey("buttonless_apps")
+        val BUTTONS_HIDDEN_BY_FOX = booleanPreferencesKey("buttons_hidden_by_fox")
         val HOME_COLUMNS = intPreferencesKey("home_columns")
         val HOME_ROWS = intPreferencesKey("home_rows")
         val DOCK_SLOTS = intPreferencesKey("dock_slots")

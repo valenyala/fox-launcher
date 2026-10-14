@@ -3,6 +3,7 @@ package dev.foxlauncher.feature.settings
 import android.content.ActivityNotFoundException
 import android.content.Context
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
@@ -33,7 +35,10 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.foxlauncher.R
+import dev.foxlauncher.core.apps.AppRepository
 import dev.foxlauncher.core.common.FoxLog
+import dev.foxlauncher.core.data.settings.FoxSettings
+import dev.foxlauncher.feature.gestures.navigation.ButtonlessLaunches
 import dev.foxlauncher.feature.gestures.navigation.NavigationButtons
 import dev.foxlauncher.feature.memory.DeepBoost
 import dev.foxlauncher.feature.memory.DeepBoostState
@@ -41,8 +46,11 @@ import dev.foxlauncher.feature.shizuku.ShizukuAccess
 import dev.foxlauncher.feature.shizuku.ShizukuStatus
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -51,6 +59,7 @@ object ShizukuTestTags {
     const val STATUS = "shizuku_status"
     const val ACTION = "shizuku_action"
     const val NAVIGATION_SWITCH = "navigation_buttons_switch"
+    const val BUTTONLESS_APPS = "buttonless_apps"
 }
 
 /**
@@ -59,16 +68,24 @@ object ShizukuTestTags {
  */
 data class NavigationButtonsState(val hidden: Boolean? = null, val busy: Boolean = false, val failed: Boolean = false)
 
-/** What Fox does through Shizuku (tasks 9.1, 9.6): the deep boost and hiding the navigation buttons. */
+/** What Fox does through Shizuku (tasks 9.1, 9.6, 9.7): the deep boost and hiding the navigation buttons. */
 @HiltViewModel
 class ShizukuViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val boost: DeepBoost,
     private val shizuku: ShizukuAccess,
     private val navigationButtons: NavigationButtons,
+    private val buttonless: ButtonlessLaunches,
+    appRepository: AppRepository,
+    settings: FoxSettings,
 ) : ViewModel() {
 
     val deepBoost: StateFlow<DeepBoostState> = boost.state
+
+    /** How many installed apps open without buttons (task 9.7); uninstalled ones still listed do not count. */
+    val buttonlessCount: StateFlow<Int> = combine(appRepository.apps, settings.buttonlessApps) { apps, listed ->
+        apps.count { it.key in listed }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), 0)
 
     private val _navigation = MutableStateFlow(NavigationButtonsState())
     val navigation: StateFlow<NavigationButtonsState> = _navigation.asStateFlow()
@@ -92,6 +109,8 @@ class ShizukuViewModel @Inject constructor(
     fun setNavigationButtonsHidden(hidden: Boolean) {
         if (_navigation.value.busy) return
         _navigation.update { it.copy(busy = true, failed = false) }
+        // The user's own choice: home no longer brings back buttons Fox hid for an app (task 9.7).
+        buttonless.forget()
         viewModelScope.launch {
             val done = navigationButtons.setHidden(hidden)
             // Android's navigation mode follows its overlay a moment later, so a success shows what was asked.
@@ -110,12 +129,17 @@ class ShizukuViewModel @Inject constructor(
             }
         }
     }
+
+    private companion object {
+        const val STOP_TIMEOUT_MS = 5_000L
+    }
 }
 
 @Composable
-fun ShizukuScreen(viewModel: ShizukuViewModel, onBack: () -> Unit, modifier: Modifier = Modifier) {
+fun ShizukuScreen(viewModel: ShizukuViewModel, onBack: () -> Unit, onOpenButtonlessApps: () -> Unit, modifier: Modifier = Modifier) {
     val deepBoost by viewModel.deepBoost.collectAsStateWithLifecycle()
     val navigation by viewModel.navigation.collectAsStateWithLifecycle()
+    val buttonlessCount by viewModel.buttonlessCount.collectAsStateWithLifecycle()
     BackHandler(onBack = onBack)
     LifecycleResumeEffect(Unit) {
         viewModel.refresh()
@@ -124,9 +148,11 @@ fun ShizukuScreen(viewModel: ShizukuViewModel, onBack: () -> Unit, modifier: Mod
     ShizukuContent(
         deepBoost = deepBoost,
         navigation = navigation,
+        buttonlessCount = buttonlessCount,
         onBack = onBack,
         onDeepBoostChange = viewModel::setDeepBoost,
         onNavigationButtonsHiddenChange = viewModel::setNavigationButtonsHidden,
+        onOpenButtonlessApps = onOpenButtonlessApps,
         onRequestPermission = viewModel::requestPermission,
         onOpenShizuku = viewModel::openShizuku,
         modifier = modifier,
@@ -144,9 +170,11 @@ fun ShizukuScreen(viewModel: ShizukuViewModel, onBack: () -> Unit, modifier: Mod
 fun ShizukuContent(
     deepBoost: DeepBoostState,
     navigation: NavigationButtonsState,
+    buttonlessCount: Int,
     onBack: () -> Unit,
     onDeepBoostChange: (Boolean) -> Unit,
     onNavigationButtonsHiddenChange: (Boolean) -> Unit,
+    onOpenButtonlessApps: () -> Unit,
     onRequestPermission: () -> Unit,
     onOpenShizuku: () -> Unit,
     modifier: Modifier = Modifier,
@@ -228,6 +256,22 @@ fun ShizukuContent(
                 modifier = Modifier
                     .toggleable(value = hidden, enabled = canChange, role = Role.Switch, onValueChange = onNavigationButtonsHiddenChange)
                     .testTag(ShizukuTestTags.NAVIGATION_SWITCH),
+            )
+            // Per app (task 9.7): what each app does is on its own screen; here how many and whether it matters now.
+            ListItem(
+                headlineContent = { Text(stringResource(R.string.buttonless_apps_title)) },
+                supportingContent = {
+                    Text(
+                        when {
+                            buttonlessCount > 0 && hidden -> stringResource(R.string.buttonless_apps_everywhere)
+                            buttonlessCount > 0 -> pluralStringResource(R.plurals.buttonless_apps_count, buttonlessCount, buttonlessCount)
+                            else -> stringResource(R.string.buttonless_apps_none)
+                        },
+                    )
+                },
+                modifier = Modifier
+                    .clickable(onClick = onOpenButtonlessApps)
+                    .testTag(ShizukuTestTags.BUTTONLESS_APPS),
             )
         }
     }

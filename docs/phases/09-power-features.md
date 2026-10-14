@@ -42,4 +42,9 @@ Each task is independent and opt-in for the user. Do not start this phase before
   Shizuku shell service: MIUI's `force_fsg_nav_bar`, else Android's navigation overlay. It shows the system's state,
   read on every resume; Fox stores nothing. The Deep boost screen becomes the "Shizuku" screen holding both uses.
 - Asked by the user: hiding them per app in front. Not possible without relaunching that app on every switch, MIUI
-  included (PLATFORM-NOTES G, ADR-23), so not built.
+  included (PLATFORM-NOTES G, ADR-23); built instead as 9.7.
+
+## 9.7 Apps without navigation buttons (user request, 2026-10-14, ADR-24)
+- A list of apps, Settings → Shizuku → "Apps without buttons". Opening one from Fox hides the buttons first (waiting
+  for the overlay to apply, so the app starts in the new mode); the home's `onStart` shows them again. Apps opened any
+  other way are left alone. Pure `ButtonlessApps` (matching, when to hide, when to show) unit tested.
