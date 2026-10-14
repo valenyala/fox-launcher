@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 9 — Power features, at the user's request before phases 7 and 8 (2026-10-14) (Phase 6 done 2026-10-14; Phase 5 done 2026-10-13, its boost checklist item passed through Deep boost 2026-10-14; Phase 4 owes three checklist items, deferred; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists)
-**Next task:** finish 9.6 (user request: "Hide navigation buttons" switch; backend in the checkpoint commit, the switch on a "Shizuku" settings screen, strings, ADR-23, tests and POCO check still to do), then phases 7 and 8 at the user's call (see docs/phases/09-power-features.md; 9.2 and 9.5 dropped by the user) (3.8's POCO check still owed; 2.8 still deferred; phases 7 and 8 not started)
+**Next task:** the POCO check of 9.6 and the user's answer on hiding the buttons per app, then phases 7 and 8 at the user's call (see docs/phases/09-power-features.md; 9.2 and 9.5 dropped by the user) (3.8's POCO check still owed; 2.8 still deferred; phases 7 and 8 not started)
 
 ## Environment facts (verified 2026-09-17)
 
@@ -124,7 +124,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [-] 9.3 Per-app gestures and macros: removed by the user 2026-10-14 after it was built (per-page gestures, macros, their tests and README paragraph gone)
 - [-] 9.4 External intent API: removed by the user 2026-10-14 after it was built (receiver, setting, screen, README section gone; ADR-22 withdrawn)
 - [-] 9.5 Extra transitions, lock-screen live wallpaper: dropped by the user (2026-10-14)
-- [ ] 9.6 Hide navigation buttons (user request 2026-10-14, after `force_fsg_nav_bar 1` over adb hid the POCO's buttons): checkpoint — Shizuku classes moved to `feature/shizuku`, pure `ShellCommands` (+ tests), `IFoxShell.setNavigationButtonsHidden`, `NavigationButtons`; **to do:** the switch (Deep boost screen → "Shizuku" screen), strings, ADR-23 (widens ADR-9), UI tests, emulator (fox-api37 only: nav-mode switches hung fox-api33 before) and POCO checks. The POCO is left in full-screen gestures (`force_fsg_nav_bar` 1)
+- [ ] 9.6 Hide navigation buttons (user request 2026-10-14, ADR-23): Settings → Shizuku → "Hide navigation buttons"; fox-api37 pass (both ways, Fox relaunched by the overlay change, screen kept); UI tests 6/6 on fox-api33; **owed:** the POCO F3 check (MIUI `force_fsg_nav_bar`, left at 1), and the user's per-app question
 
 ## Blockers
 
@@ -163,6 +163,18 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-14 — 9.6 switch. The Deep boost screen became Settings → "Shizuku" (`ShizukuScreen`, `ShizukuViewModel`,
+  route `SHIZUKU`): one status card, then Deep boost and "Hide navigation buttons", each explained. The switch shows the
+  system's state (`NavigationButtons.isHidden`, read on every resume), is enabled only while Shizuku is ready and not
+  busy, and says when the change failed or the setting cannot be read; Fox stores nothing. Strings `deep_boost_status_*`
+  etc. renamed `shizuku_*`. ADR-23; PLATFORM-NOTES G: `navigation_mode` readable at target 37, an overlay switch
+  relaunches every open activity (home included, ~0.5 s). `ShizukuContentTest` 6 (was `DeepBoostContentTest` 3).
+  fox-api37 through the UI: on (mode 2) → off: three buttons, "Navigation buttons shown: true" (bind ~450 ms) → on:
+  gestures again; the screen survived both relaunches. Full instrumented suite 188/188 on fox-api33.
+  Per-app question (user): Fox's accessibility service asks for no events today (ADR-20 disclosure); per-app hiding
+  needs window-state events (package names only), Shizuku kept bound, and is MIUI-only (elsewhere every switch
+  relaunches the app in front). Pending the POCO check of whether MIUI relayouts or relaunches.
 
 - 2026-10-14 — 9.3 removed at the user's request: per-page gestures (`gesture_page_map`, the Pages selector,
   `GestureMaps`), `GestureAction.Macro`, `Macros`, `MacroRunner`, the macro editor, their tests, strings and README

@@ -136,6 +136,12 @@ here contradicts what you remember, trust this file unless a device proves other
   display for a rotation-style screenshot, and SurfaceFlinger's RenderEngine never came back from the QEMU GL pipe
   (`rcCreateSyncKHR`); system_server then looped on watchdog restarts and had not recovered after six minutes. The
   same switch had worked twice before on that emulator and once on fox-api37. Restart the emulator when it happens.
+- Navigation mode from an app (task 9.6, ADR-23), fox-api37: `Settings.Secure.getInt("navigation_mode")` is readable
+  to an app targeting 37 (0 three buttons, 2 gestures). Switching it takes the shell (`cmd overlay enable-exclusive
+  --category com.android.internal.systemui.navbar.gestural|threebutton`, ~70 ms), and the overlay change relaunches
+  every open activity, the home included, in about 0.5 s (`AppCompatResourceOverlayPolicy … result: true`, then
+  "finishDrawing of relaunch"); `configChanges` cannot prevent it. MIUI keeps its own switch, Settings.Global
+  `force_fsg_nav_bar` (0 buttons, 1 full-screen gestures), and ignores the overlays.
 - Haptics: `View.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS / GESTURE_START / CONFIRM)`; in Compose use
   `LocalHapticFeedback`.
 

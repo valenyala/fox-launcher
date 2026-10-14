@@ -198,6 +198,21 @@ force-stops), so the cost of any app sending them while the user has the switch 
 (Android 8+ drops implicit ones for manifest receivers): senders set the package `dev.foxlauncher`. The action strings
 are public API (README) and never change.
 
+## ADR-23 Shizuku may also hide the navigation buttons (widens ADR-9)
+The user asked (2026-10-14, task 9.6) for a switch to hide the system's navigation buttons, after
+`settings put global force_fsg_nav_bar 1` over adb had done it on the POCO F3. ADR-9 kept Shizuku to the boost; this
+widens it to one more opt-in use, still never required for anything else. Fox's shell service (ADR-21) gets one more
+call, `setNavigationButtonsHidden`, which runs a fixed command from the pure `ShellCommands`: on MIUI (manufacturer
+Xiaomi) `settings put global force_fsg_nav_bar 1|0`, MIUI's own "Full screen gestures" setting, since MIUI ignores
+Android's navigation overlays; elsewhere `cmd overlay enable-exclusive --category` with Android's gestural or
+three-button navigation overlay, what the system's navigation setting does. No hidden API in Fox's process: the state
+is read with `Settings.Global.getInt` / `Settings.Secure.getInt("navigation_mode")` (readable to an app targeting 37,
+fox-api37), shown as it is in the system each time the screen resumes. Fox keeps no setting of its own: the phone
+keeps the mode across restarts and the system's own navigation setting changes it back. Settings → "Shizuku" holds
+both uses (Deep boost and this switch) under one status card. Accepted cost on non-MIUI phones: an overlay change
+relaunches every open activity, the home included (fox-api37: "finishDrawing of relaunch" ≈ 0.5 s); the settings
+screen survives through `rememberSaveable`, and the explainer says so.
+
 ## Dependency log
 (append `- <lib> <version> — reason` when adding a dependency)
 - AGP (com.android.application) 9.4.0 — build system; built-in Kotlin, see ADR-11.

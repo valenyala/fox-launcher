@@ -28,9 +28,9 @@ import kotlinx.coroutines.withTimeoutOrNull
 import rikka.shizuku.Shizuku
 
 /**
- * Fox's link to Shizuku for the deep boost (task 9.1, ADR-9, ADR-21): whether it is installed,
- * running and allows Fox ([status]), asking it for permission, and running code in Fox's shell
- * service ([withShell]). Nothing else in Fox uses Shizuku.
+ * Fox's link to Shizuku for the deep boost and the navigation buttons (tasks 9.1 and 9.6, ADR-9,
+ * ADR-21, ADR-23): whether it is installed, running and allows Fox ([status]), asking it for
+ * permission, and running code in Fox's shell service ([withShell]). Nothing else in Fox uses Shizuku.
  */
 @Singleton
 class ShizukuAccess @Inject constructor(

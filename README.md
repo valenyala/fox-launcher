@@ -55,6 +55,11 @@ System actions (marked with a shield in the settings) go through Fox's accessibi
 uses it only to perform those actions; it does not read what is on your screen. Fox asks you to turn it on the first
 time you use such a gesture.
 
+**Hide the navigation buttons:** with [Shizuku](https://shizuku.rikka.app/) running, **Home settings → Shizuku → Hide
+navigation buttons** switches the phone to full-screen gestures, the same as the system's own navigation setting (on
+MIUI, its "Full screen gestures"). It stays after a restart, and the system's setting brings the buttons back too. On
+phones other than Xiaomi's, the open apps, Fox included, reload when the navigation changes.
+
 <table>
   <tr>
     <td align="center"><img src="docs/media/gestures.gif" width="250" alt="Swipe down opens the notification shade; a long press opens Home settings"></td>
@@ -108,7 +113,7 @@ The memory widgets only poll while they are on screen.
 | Android 13 and lower | Frees what Fox holds and asks Android to close other apps' background processes. It leaves alone the app you were using, your keyboard, phone and SMS apps, accessibility services, the live wallpaper, and anything with a foreground service, such as music playing |
 | Android 14 and higher | Android no longer lets an app close other apps, so Boost frees only what Fox holds; the widget says "Limited on Android 14+" |
 | MIUI (Xiaomi, POCO, Redmi) | MIUI ignores the request to close other apps, so Boost works as on Android 14+ and says "Limited on MIUI" |
-| Any, with Deep boost | With [Shizuku](https://shizuku.rikka.app/) running and **Home settings → Deep boost** on, Boost closes other apps' background processes through the shell, on Android 14+ and MIUI too, sparing the same apps as above. It never force-stops anything |
+| Any, with Deep boost | With [Shizuku](https://shizuku.rikka.app/) running and **Home settings → Shizuku → Use Shizuku for Boost** on, Boost closes other apps' background processes through the shell, on Android 14+ and MIUI too, sparing the same apps as above. It never force-stops anything |
 
 In every case the number shown is the measured change in available memory, never an estimate. Tap the ⓘ on the widget
 for the explanation. The RAM gauge is also available as a regular app widget, so you can put it on another launcher's
@@ -208,7 +213,7 @@ Fox has **no internet permission**. Nothing leaves your phone.
 | Request uninstall | The **Uninstall** item in an app's menu |
 | Write secure settings (only via adb) | Restart Fox's own accessibility service; never granted by a normal install |
 | Accessibility service (you turn it on) | Perform system actions for gestures; it does not read screen content |
-| Shizuku (you allow it in Shizuku, optional) | Deep boost only: close other apps' background processes as the shell |
+| Shizuku (you allow it in Shizuku, optional) | Deep boost: close other apps' background processes as the shell. Hide navigation buttons: switch the phone to full-screen gestures |
 
 WorkManager, which runs the wallpaper timer, adds the wake-lock, start-at-boot, foreground-service and network-state
 permissions.

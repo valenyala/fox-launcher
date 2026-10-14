@@ -36,3 +36,9 @@ Each task is independent and opt-in for the user. Do not start this phase before
 - Ken Burns (slow zoom/pan between transitions), blur-through crossfade, per-source transition; investigate lock-screen live
   wallpaper on API 34+ (`WallpaperManager.setWallpaperComponentWithFlags` is system-only; the user must pick "Lock screen" in the
   system live-wallpaper preview) and document exact steps per OEM in PLATFORM-NOTES W.
+
+## 9.6 Hide navigation buttons (user request, 2026-10-14, ADR-23)
+- A switch, Settings → Shizuku → "Hide navigation buttons", that turns full-screen gestures on or off through Fox's
+  Shizuku shell service: MIUI's `force_fsg_nav_bar`, else Android's navigation overlay. It shows the system's state,
+  read on every resume; Fox stores nothing. The Deep boost screen becomes the "Shizuku" screen holding both uses.
+- Open question from the user: hiding them per app (in front). See STATUS for the finding.

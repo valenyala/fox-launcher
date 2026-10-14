@@ -104,8 +104,8 @@
                 android:resource="@xml/wallpaper" />
         </service>
 
-        <!-- Shizuku hands Fox its binder through this provider (task 9.1, ADR-9, ADR-21). Shizuku's own
-             permission guards it; deep boost is opt-in and nothing else uses Shizuku. -->
+        <!-- Shizuku hands Fox its binder through this provider (tasks 9.1 and 9.6, ADR-9, ADR-21, ADR-23). Shizuku's
+             own permission guards it; only the opt-in deep boost and the navigation buttons' switch use Shizuku. -->
         <provider
             android:name="rikka.shizuku.ShizukuProvider"
             android:authorities="${applicationId}.shizuku"

@@ -314,7 +314,7 @@ private fun Banner(text: String, warning: Boolean, action: String?, onAction: ()
 }
 
 @Composable
-private fun SectionHeader(text: Int) {
+internal fun SectionHeader(text: Int) {
     Text(
         text = stringResource(text),
         style = MaterialTheme.typography.titleSmall,
