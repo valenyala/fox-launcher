@@ -166,6 +166,14 @@ Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out o
 
 ## Session notes
 
+- 2026-10-14 — 3.8 change (user: "recent apps gesture: only trigger it when releasing the hold"). The bottom
+  swipe-and-hold no longer opens Recents when the hold completes: `NavGestureClassifier.onTimer` reports
+  `NavResult.Held` (long-press buzz, full ring, square glyph) and the lift performs `RECENTS`; dragging back below the
+  Home distance cancels and needs a new hold. `NavGestureClassifierTest` updated (6 new hold/lift cases).
+  fox-api37 (three buttons for the check, then back to gestures), injected over Settings: a 1.5 s hold left Settings
+  in front and `RECENTS` logged 36 ms after the release; hold then back down: nothing; quick swipe: Home. fox-api33
+  skipped (its navigation-mode switch hung it before, PLATFORM-NOTES G). Installed on the POCO; **owed:** the user's check.
+
 - 2026-10-14 — 4.10 (user: "remove the move-with-pages option; for each image, let me choose which part shows").
   ADR-26: `WallpaperFraming` (focus + zoom 1–3) per entry, Room v4 (auto-migration with defaults);
   `WallpaperGeometry.visibleRegion/framedDecode/moved/zoomed/framedOffset` (pure, `WallpaperFramingTest` 15);

@@ -17,11 +17,11 @@ class NavGestureConfig(
     val touchSlopPx: Float,
     /** A side swipe this far inwards is Back when it lifts. */
     val backDistancePx: Float,
-    /** A bottom swipe this far up is Home when it lifts, or Recents once it holds still. */
+    /** A bottom swipe this far up is Home when it lifts, or Recents when it held still first. */
     val homeDistancePx: Float,
     /** A shorter swipe, past slop, still counts when it lifts at least this fast its way. */
     val flingVelocityPxPerS: Float,
-    /** How long a bottom swipe past [homeDistancePx] must stay within slop to be Recents. */
+    /** How long a bottom swipe past [homeDistancePx] must stay within slop for its lift to be Recents. */
     val holdMs: Long,
 )
 
@@ -31,6 +31,9 @@ sealed interface NavResult {
 
     /** The swipe just went far enough that lifting performs it (once per crossing): a haptic tick. */
     data object Armed : NavResult
+
+    /** A bottom swipe held still long enough that lifting opens Recents instead of Home. */
+    data object Held : NavResult
 
     data class Recognized(val action: NavAction) : NavResult
 }
@@ -44,11 +47,12 @@ sealed interface NavResult {
  * - **Home** ([NavEdge.BOTTOM]): a swipe up within 45° of vertical, decided the same way with
  *   [NavGestureConfig.homeDistancePx].
  * - **Recents** ([NavEdge.BOTTOM]): past the Home distance, the finger stays within slop for
- *   [NavGestureConfig.holdMs]; the overlay drives [onTimer] at [holdDeadline]. It fires while the
- *   finger is still down, and the lift that follows does nothing.
+ *   [NavGestureConfig.holdMs]; the overlay drives [onTimer] at [holdDeadline], which reports
+ *   [NavResult.Held]. Recents fires only when that finger lifts, still past the Home distance;
+ *   dragging back below it cancels, as for Home, and a later hold is needed again.
  *
- * One finger: a second one going down drops the gesture. [progress] and [isArmed] describe the
- * gesture as it runs, for the overlay's visual feedback.
+ * One finger: a second one going down drops the gesture. [progress], [isArmed] and [isHeld] describe
+ * the gesture as it runs, for the overlay's visual feedback.
  */
 class NavGestureClassifier(private val edge: NavEdge, private val config: NavGestureConfig) {
 
@@ -57,9 +61,12 @@ class NavGestureClassifier(private val edge: NavEdge, private val config: NavGes
     /** The finger being followed; null between gestures. */
     private var pointerId: Int? = null
 
-    /** A second finger came, or Recents already fired: the rest of the gesture does nothing. */
+    /** A second finger came: the rest of the gesture does nothing. */
     private var finished = false
     private var armed = false
+
+    /** The armed bottom swipe held still: its lift is Recents. */
+    private var held = false
     private var startX = 0f
     private var startY = 0f
     private var lastX = 0f
@@ -97,14 +104,14 @@ class NavGestureClassifier(private val edge: NavEdge, private val config: NavGes
 
     /**
      * When [onTimer] should run to see a held bottom swipe: [NavGestureConfig.holdMs] after the
-     * finger last moved, while it is past the Home distance. Null when nothing is pending.
+     * finger last moved, while it is past the Home distance and not yet held. Null when nothing is pending.
      */
     fun holdDeadline(): Long? =
-        if (pointerId != null && !finished && armed && edge == NavEdge.BOTTOM) anchorMs + config.holdMs else null
+        if (isArmed && !held && edge == NavEdge.BOTTOM) anchorMs + config.holdMs else null
 
     /**
      * How far the running swipe has gone towards its action: 0 at the edge or off its axis, 1 at the
-     * distance that arms it, more beyond. Null when no gesture runs, or it was dropped or already fired.
+     * distance that arms it, more beyond. Null when no gesture runs, or it was dropped.
      */
     fun progress(): Float? {
         if (pointerId == null || finished) return null
@@ -116,17 +123,22 @@ class NavGestureClassifier(private val edge: NavEdge, private val config: NavGes
     val isArmed: Boolean
         get() = pointerId != null && !finished && armed
 
+    /** The running bottom swipe held still: lifting now opens Recents. */
+    val isHeld: Boolean
+        get() = isArmed && held
+
     fun onTimer(nowMs: Long): NavResult {
         val deadline = holdDeadline() ?: return NavResult.None
         if (nowMs < deadline) return NavResult.None
-        finished = true
-        return NavResult.Recognized(NavAction.RECENTS)
+        held = true
+        return NavResult.Held
     }
 
     private fun start(sample: PointerSample) {
         pointerId = sample.pointerId
         finished = false
         armed = false
+        held = false
         startX = sample.x
         startY = sample.y
         lastX = sample.x
@@ -142,6 +154,7 @@ class NavGestureClassifier(private val edge: NavEdge, private val config: NavGes
         if (finished) return NavResult.None
         val wasArmed = armed
         armed = travel(sample.x, sample.y) >= distance() && isOnAxis(sample.x, sample.y)
+        if (!armed) held = false
         return when {
             armed && !wasArmed -> {
                 anchor(sample)
@@ -162,7 +175,13 @@ class NavGestureClassifier(private val edge: NavEdge, private val config: NavGes
         val travel = travel(sample.x, sample.y)
         val fast = travel > config.touchSlopPx && inwardVelocity() >= config.flingVelocityPxPerS
         if (travel < distance() && !fast) return NavResult.None
-        return NavResult.Recognized(if (edge == NavEdge.BOTTOM) NavAction.HOME else NavAction.BACK)
+        return NavResult.Recognized(
+            when {
+                edge != NavEdge.BOTTOM -> NavAction.BACK
+                held && travel >= distance() -> NavAction.RECENTS
+                else -> NavAction.HOME
+            },
+        )
     }
 
     private fun anchor(sample: PointerSample) {

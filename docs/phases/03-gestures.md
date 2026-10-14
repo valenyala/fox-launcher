@@ -106,7 +106,8 @@ Read `PLATFORM-NOTES.md` section G before starting. `DECISIONS.md` ADR-4 and ADR
 - **Do:**
   - `feature/gestures/navigation/NavGestureClassifier` (pure): per edge, Back on a mostly horizontal swipe inwards past
     a distance or fast; Home on a swipe up within 45°, same rule; Recents when a bottom swipe past the Home distance
-    holds within slop for `holdMs` (fires while the finger is down; the lift then does nothing). One finger only.
+    holds within slop for `holdMs`, performed only when that finger lifts (user, 2026-10-14; the hold itself only
+    buzzes and turns the bubble to Recents' square; dragging back below the Home distance cancels). One finger only.
   - `NavigationOverlay`: three `TYPE_ACCESSIBILITY_OVERLAY` strips added by `FoxAccessibilityService` (PLATFORM-NOTES G).
   - `NavigationGestures`: strips up only while the setting is on, Fox's home is not in front (`HomeVisibility`, fed
     by `HomeActivity.onResume/onPause`) and the screen is on and unlocked.

@@ -18,9 +18,10 @@ import android.view.animation.DecelerateInterpolator
 /**
  * What a navigation gesture looks like while it runs (task 3.8): a bubble slides in from the edge
  * the swipe started on, level with the finger, carrying the action's glyph: an arrow for Back, a
- * circle for Home, a square once Recents opens. It takes the accent colour once lifting would perform
- * the action, and on the bottom edge a ring fills while a hold counts towards Recents. When the
- * action fires the bubble swells and fades; let go short of it and the bubble slides back out.
+ * circle for Home, a square once a hold makes the lift open Recents. It takes the accent colour once
+ * lifting would perform the action, and on the bottom edge a ring fills while a hold counts towards
+ * Recents. When the action fires the bubble swells and fades; let go short of it and the bubble
+ * slides back out.
  *
  * It is the root of a window that takes no touches, and it hides that window ([View.INVISIBLE])
  * whenever no gesture runs, so it costs nothing in between.
@@ -54,6 +55,9 @@ internal class NavFeedbackView(context: Context, private val holdMs: Long) : Vie
     private var armed = false
     private var holdDeadline: Long? = null
 
+    /** The bottom swipe held still: the ring is full and the glyph is Recents' square. */
+    private var held = false
+
     /** Between [begin] and [end]: the bubble follows the finger. */
     private var active = false
 
@@ -79,18 +83,28 @@ internal class NavFeedbackView(context: Context, private val holdMs: Long) : Vie
         progress = 0f
         armed = false
         holdDeadline = null
+        held = false
         visibility = VISIBLE
         invalidate()
     }
 
     /** The finger is at ([x], [y]) on the screen; the rest comes from [NavGestureClassifier]. */
-    fun update(x: Float, y: Float, progress: Float, armed: Boolean, holdDeadline: Long?) {
+    fun update(x: Float, y: Float, progress: Float, armed: Boolean, holdDeadline: Long?, held: Boolean) {
         if (!active) return
         fingerX = x
         fingerY = y
         this.progress = progress
         this.armed = armed
         this.holdDeadline = holdDeadline
+        this.held = held
+        invalidate()
+    }
+
+    /** The finger held still long enough: lifting it now opens Recents. */
+    fun hold() {
+        if (!active) return
+        held = true
+        holdDeadline = null
         invalidate()
     }
 
@@ -172,24 +186,28 @@ internal class NavFeedbackView(context: Context, private val holdMs: Long) : Vie
                 path.lineTo(cx - towards * g * 0.4f, cy + g)
                 canvas.drawPath(path, stroke)
             }
-            performed == NavAction.RECENTS ->
+            performed == NavAction.RECENTS || (held && performed == null) ->
                 canvas.drawRoundRect(cx - g * 0.8f, cy - g * 0.8f, cx + g * 0.8f, cy + g * 0.8f, g * 0.3f, g * 0.3f, stroke)
             else -> canvas.drawCircle(cx, cy, g * 0.8f, stroke)
         }
     }
 
-    /** Around the Home bubble, while the finger holds still towards Recents. */
+    /** Around the Home bubble, while the finger holds still towards Recents; full once it has. */
     private fun drawHoldRing(canvas: Canvas, cx: Float, cy: Float, color: Int, opacity: Int) {
-        val deadline = holdDeadline ?: return
         if (!active || edge != NavEdge.BOTTOM) return
-        val held = 1f - (deadline - SystemClock.uptimeMillis()).toFloat() / holdMs
+        val deadline = holdDeadline
+        val filled = when {
+            held -> 1f
+            deadline != null -> 1f - (deadline - SystemClock.uptimeMillis()).toFloat() / holdMs
+            else -> return
+        }
         val r = radius + RING_GAP_DP * density
         arc.set(cx - r, cy - r, cx + r, cy + r)
         ring.color = color
         ring.alpha = opacity
-        canvas.drawArc(arc, -90f, 360f * held.coerceIn(0f, 1f), false, ring)
-        // A still finger sends no events: keep the ring turning by itself until Recents fires.
-        if (held < 1f) postInvalidateOnAnimation()
+        canvas.drawArc(arc, -90f, 360f * filled.coerceIn(0f, 1f), false, ring)
+        // A still finger sends no events: keep the ring turning by itself until the hold is done.
+        if (filled < 1f) postInvalidateOnAnimation()
     }
 
     private class Colors(val surface: Int, val onSurface: Int, val accent: Int, val onAccent: Int)

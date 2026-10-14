@@ -172,7 +172,8 @@ list to step aside for the keyboard needs `canRetrieveWindowContent`, which the 
 still asks for no events and reads no content; its description and the disclosure now name the strips. Visual
 feedback (asked for the same day) is a fourth overlay window, full-screen and `FLAG_NOT_TOUCHABLE`, hidden between
 gestures: a bubble slides in from the edge with the action's glyph, takes the accent colour once lifting would act,
-fills a ring during the Recents hold, and swells away when the action fires.
+fills a ring during the Recents hold, and swells away when the action fires. Recents fires on the lift that ends the hold, not when the
+hold completes (user, 2026-10-14): the hold buzzes and shows the square, and the user can still drag back to cancel.
 
 ## ADR-21 The deep boost runs shell commands in Fox's own Shizuku user service
 Task 9.1 (user asked for phase 9 before 7 and 8, 2026-10-14) puts ADR-9's Shizuku boost into practice without any

@@ -69,13 +69,16 @@ class NavigationOverlay(private val context: Context, private val perform: (NavA
         }
     }
 
-    /** A tick as a Back swipe goes far enough, a long-press buzz as a hold opens Recents. */
+    /** A tick as a Back swipe goes far enough, a long-press buzz as a hold turns the lift into Recents. */
     private fun onResult(strip: EdgeStrip, result: NavResult) {
         when (result) {
             NavResult.None -> Unit
             NavResult.Armed -> if (strip.edge != NavEdge.BOTTOM) strip.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+            NavResult.Held -> {
+                strip.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                feedback.hold()
+            }
             is NavResult.Recognized -> {
-                if (result.action == NavAction.RECENTS) strip.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                 FoxLog.d("Navigation gesture: ${result.action}")
                 feedback.end(result.action)
                 perform(result.action)
@@ -92,7 +95,7 @@ class NavigationOverlay(private val context: Context, private val perform: (NavA
             feedback.end(null)
         } else {
             // The feedback window covers the screen from its corner, so raw coordinates are its own.
-            feedback.update(event.rawX, event.rawY, progress, classifier.isArmed, classifier.holdDeadline())
+            feedback.update(event.rawX, event.rawY, progress, classifier.isArmed, classifier.holdDeadline(), classifier.isHeld)
         }
     }
 
@@ -160,7 +163,7 @@ class NavigationOverlay(private val context: Context, private val perform: (NavA
 }
 
 /**
- * One strip: every touch on it goes to [classifier], with a timer for the hold that makes Recents;
+ * One strip: every touch on it goes to [classifier], with a timer for the hold that makes the lift Recents;
  * [onResult] hears what the classifier says, [onTouched] each event once it has been fed. It is a
  * touch zone only, so it has nothing to click and nothing for accessibility to focus.
  */

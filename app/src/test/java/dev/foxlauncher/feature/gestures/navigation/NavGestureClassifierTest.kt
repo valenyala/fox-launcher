@@ -3,6 +3,7 @@ package dev.foxlauncher.feature.gestures.navigation
 import dev.foxlauncher.feature.gestures.classifier.PointerPhase
 import dev.foxlauncher.feature.gestures.classifier.PointerSample
 import dev.foxlauncher.feature.gestures.navigation.NavResult.Armed
+import dev.foxlauncher.feature.gestures.navigation.NavResult.Held
 import dev.foxlauncher.feature.gestures.navigation.NavResult.None
 import dev.foxlauncher.feature.gestures.navigation.NavResult.Recognized
 import kotlin.test.assertEquals
@@ -129,7 +130,7 @@ class NavGestureClassifierTest {
         val results = swipe(dx = 0f, dy = -400f, durationMs = 2000, runTimers = true)
 
         assertEquals(Recognized(NavAction.HOME), results.last())
-        assertTrue(Recognized(NavAction.RECENTS) !in results)
+        assertTrue(Held !in results)
     }
 
     @Test
@@ -183,7 +184,7 @@ class NavGestureClassifierTest {
     // --- Recents ---
 
     @Test
-    fun swipingUpAndHoldingIsRecentsBeforeTheLift() {
+    fun swipingUpHoldingAndLiftingIsRecents() {
         on(NavEdge.BOTTOM)
         down(0, 500f, 30f)
         moveTo(0, 500f, -200f, durationMs = 150)
@@ -191,18 +192,96 @@ class NavGestureClassifierTest {
         val deadline = assertNotNull(classifier.holdDeadline())
         assertEquals(clock + HOLD_MS, deadline)
         assertEquals(None, classifier.onTimer(deadline - 1))
-        assertEquals(Recognized(NavAction.RECENTS), classifier.onTimer(deadline))
+        assertEquals(Held, classifier.onTimer(deadline))
+        clock = deadline + 500
+
+        assertEquals(Recognized(NavAction.RECENTS), up(0, 500f, -200f))
     }
 
     @Test
-    fun theLiftAfterRecentsDoesNothing() {
+    fun theHoldDoesNotOpenRecentsWhileTheFingerIsDown() {
+        on(NavEdge.BOTTOM)
+        down(0, 500f, 30f)
+        moveTo(0, 500f, -200f, durationMs = 150)
+        clock += HOLD_MS
+
+        val held = classifier.onTimer(clock)
+
+        assertEquals(Held, held)
+        assertTrue(classifier.isHeld)
+        assertNull(classifier.holdDeadline())
+        clock += 1000
+        assertEquals(None, classifier.onTimer(clock))
+        assertEquals(None, move(0, 505f, -205f))
+    }
+
+    @Test
+    fun movingOnUpAfterTheHoldStillLiftsToRecents() {
         on(NavEdge.BOTTOM)
         down(0, 500f, 30f)
         moveTo(0, 500f, -200f, durationMs = 150)
         clock += HOLD_MS
         classifier.onTimer(clock)
 
+        moveTo(0, 520f, -400f, durationMs = 150)
+
         assertNull(classifier.holdDeadline())
+        assertEquals(Recognized(NavAction.RECENTS), up(0, 520f, -400f))
+    }
+
+    @Test
+    fun goingBackDownAfterTheHoldCancelsRecents() {
+        on(NavEdge.BOTTOM)
+        down(0, 500f, 30f)
+        moveTo(0, 500f, -200f, durationMs = 150)
+        clock += HOLD_MS
+        classifier.onTimer(clock)
+
+        moveTo(0, 500f, 0f, durationMs = 200)
+
+        assertFalse(classifier.isHeld)
+        assertEquals(None, up(0, 500f, 0f))
+    }
+
+    @Test
+    fun comingBackUpAfterCancellingTheHoldNeedsANewHold() {
+        on(NavEdge.BOTTOM)
+        down(0, 500f, 30f)
+        moveTo(0, 500f, -200f, durationMs = 150)
+        clock += HOLD_MS
+        classifier.onTimer(clock)
+        moveTo(0, 500f, 0f, durationMs = 200)
+
+        moveTo(0, 500f, -200f, durationMs = 200)
+
+        assertNotNull(classifier.holdDeadline())
+        assertFalse(classifier.isHeld)
+        assertEquals(Recognized(NavAction.HOME), up(0, 500f, -200f))
+    }
+
+    @Test
+    fun aSecondFingerAfterTheHoldDropsRecents() {
+        on(NavEdge.BOTTOM)
+        down(0, 500f, 30f)
+        moveTo(0, 500f, -200f, durationMs = 150)
+        clock += HOLD_MS
+        classifier.onTimer(clock)
+
+        down(1, 700f, 30f)
+
+        assertFalse(classifier.isHeld)
+        assertEquals(None, up(0, 500f, -200f))
+    }
+
+    @Test
+    fun aCancelAfterTheHoldDropsRecents() {
+        on(NavEdge.BOTTOM)
+        down(0, 500f, 30f)
+        moveTo(0, 500f, -200f, durationMs = 150)
+        clock += HOLD_MS
+        classifier.onTimer(clock)
+
+        assertEquals(None, feed(0, 500f, -200f, PointerPhase.CANCEL))
         assertEquals(None, up(0, 500f, -200f))
     }
 
@@ -230,7 +309,7 @@ class NavGestureClassifierTest {
         move(0, 495f, -210f)
 
         assertEquals(deadline, classifier.holdDeadline())
-        assertEquals(Recognized(NavAction.RECENTS), classifier.onTimer(deadline))
+        assertEquals(Held, classifier.onTimer(deadline))
     }
 
     @Test
@@ -314,15 +393,20 @@ class NavGestureClassifierTest {
     }
 
     @Test
-    fun progressEndsWhenRecentsFires() {
+    fun progressGoesOnThroughTheHoldAndEndsWithTheLift() {
         on(NavEdge.BOTTOM)
         down(0, 500f, 30f)
-        moveTo(0, 500f, -200f, durationMs = 150)
+        moveTo(0, 500f, -210f, durationMs = 150)
         clock += HOLD_MS
         classifier.onTimer(clock)
 
+        assertEquals(2f, classifier.progress())
+        assertTrue(classifier.isArmed)
+
+        up(0, 500f, -210f)
         assertNull(classifier.progress())
         assertFalse(classifier.isArmed)
+        assertFalse(classifier.isHeld)
     }
 
     @Test
@@ -386,7 +470,7 @@ class NavGestureClassifierTest {
         down(0, 500f, 30f)
         moveTo(0, 500f, -200f, durationMs = 150)
         clock += HOLD_MS
-        assertEquals(Recognized(NavAction.RECENTS), classifier.onTimer(clock))
+        assertEquals(Held, classifier.onTimer(clock))
 
         assertEquals(Recognized(NavAction.HOME), swipe(dx = 0f, dy = -200f).last())
     }
