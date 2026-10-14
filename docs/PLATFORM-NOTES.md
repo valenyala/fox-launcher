@@ -148,6 +148,12 @@ here contradicts what you remember, trust this file unless a device proves other
   Android's gesture navigation on fox-api37 an edge swipe that starts on the strip fires both the system's Back and
   Fox's: two screens popped (contrary to fox-api33's single Back in ADR-20); same in other apps. MIUI's full-screen
   gestures do not: on the POCO F3 one edge swipe on a strip delivered one Back (2026-10-14).
+- Over the open drawer the strips are up as well (2026-10-14, user request): Back closes the drawer through the home's
+  `BackHandler`, Home closes it, and they go down at once when it closes (fox-api37, three buttons). The right strip
+  covers the outer 12 dp of the drawer's 28 dp A–Z rail: a touch starting there goes to the strip, not the rail.
+- Emulator trap (fox-api33, 2026-10-14): the strips stayed down in every app while `dumpsys window policy` showed
+  `KeyguardServiceDelegate showingAndNotOccluded=true` with `isKeyguardShowing=false` and the home on screen, so
+  `KeyguardManager.isKeyguardLocked` read true. Power off/on and `wm dismiss-keyguard` did not clear it.
 - Emulator trap (fox-api33, 2026-10-13): switching the navigation mode with `cmd overlay enable-exclusive` froze the
   display for a rotation-style screenshot, and SurfaceFlinger's RenderEngine never came back from the QEMU GL pipe
   (`rcCreateSyncKHR`); system_server then looped on watchdog restarts and had not recovered after six minutes. The

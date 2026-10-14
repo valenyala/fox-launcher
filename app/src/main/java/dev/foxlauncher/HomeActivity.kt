@@ -220,6 +220,8 @@ class HomeActivity : ComponentActivity() {
                             },
                             onResizeWidget = viewModel::onResizeWidget,
                             onDrawerClosed = drawerViewModel::onDrawerClosed,
+                            // Over the open drawer too, as over a settings screen.
+                            onDrawerOpenChanged = homeVisibility::onDrawerOpen,
                             state = homeState,
                             onItemClick = { item, bounds ->
                                 val source = bounds?.let { launchSource(view, it) }

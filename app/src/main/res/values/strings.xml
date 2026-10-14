@@ -207,7 +207,7 @@
     <string name="gestures_miui_lock_hint">On this phone, clearing recent apps closes Fox. To keep it running, lock it in Security → Boost speed → Lock apps.</string>
     <string name="gestures_auto_restart_command" translatable="false">adb shell pm grant dev.foxlauncher android.permission.WRITE_SECURE_SETTINGS</string>
     <string name="gestures_navigation">Navigation gestures in apps</string>
-    <string name="gestures_navigation_summary">In other apps and in Fox\'s settings, swipe in from the left or right edge to go back, swipe up from the bottom edge to go home, and swipe up and hold for recent apps. Touches that start right at those edges go to Fox.</string>
+    <string name="gestures_navigation_summary">In other apps, in Fox\'s settings and in the app drawer, swipe in from the left or right edge to go back, swipe up from the bottom edge to go home, and swipe up and hold for recent apps. Touches that start right at those edges go to Fox.</string>
     <string name="gestures_needs_accessibility">Needs the accessibility service</string>
     <string name="gesture_swipe_up">Swipe up</string>
     <string name="gesture_swipe_down">Swipe down</string>

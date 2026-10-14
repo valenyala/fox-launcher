@@ -200,6 +200,7 @@ interface HomeControls {
  * Home press, which closes whatever is open; one made while already home ([homeKeyWhileHome]) with
  * nothing open is the HOME_KEY gesture (task 3.6). [onPageSettled] hears each page the pager
  * settles on after paging. [onCellSizeChanged] hears the size of one grid cell (task 6.2: app widget sizes).
+ * [onDrawerOpenChanged] hears the drawer settle open or closed (task 3.8: navigation gestures over it).
  * Long-pressing an item drags it, and so does long-pressing then moving an app in the drawer
  * ([DrawerScope]); [onDrop] receives what the drop should do (task 2.4). Removing a folder asks first.
  * Tapping a folder opens its [FolderSheet] (task 2.5); a changed title goes to [onRenameFolder].
@@ -224,6 +225,7 @@ fun HomeScreen(
     homeKeyWhileHome: Boolean = false,
     onPageSettled: (Int) -> Unit = {},
     onCellSizeChanged: (DpSize) -> Unit = {},
+    onDrawerOpenChanged: (Boolean) -> Unit = {},
     drawer: @Composable DrawerScope.() -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -387,6 +389,8 @@ fun HomeScreen(
     }
 
     LaunchedEffect(Unit) { if (isOpen) progress.snapTo(1f) }
+    val currentOnDrawerOpenChanged by rememberUpdatedState(onDrawerOpenChanged)
+    LaunchedEffect(isOpen) { currentOnDrawerOpenChanged(isOpen) }
     LaunchedEffect(homeKeyPresses) {
         if (homeKeyPresses > 0) {
             val nothingOpen = dragState.dragging == null && popup == null && openFolderId == null && !isOpen && resizing == null

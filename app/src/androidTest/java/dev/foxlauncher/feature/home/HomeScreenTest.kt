@@ -150,6 +150,29 @@ class HomeScreenTest {
     }
 
     @Test
+    fun theDrawerReportsOpeningAndClosingByBack() {
+        val reports = mutableListOf<Boolean>()
+        composeRule.setContent {
+            FoxTheme {
+                HomeScreen(homeKeyPresses = 0, onDrawerClosed = {}, onDrawerOpenChanged = { reports += it }) { Text("drawer") }
+            }
+        }
+        composeRule.waitForIdle()
+        assertEquals(listOf(false), reports)
+
+        composeRule.onRoot().performTouchInput { swipeUp() }
+        composeRule.waitForIdle()
+        assertEquals(listOf(false, true), reports)
+
+        // Back from the navigation gestures' strip arrives as any Back does (task 3.8).
+        composeRule.runOnUiThread { composeRule.activity.onBackPressedDispatcher.onBackPressed() }
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag(HomeTestTags.DRAWER).assertDoesNotExist()
+        assertEquals(listOf(false, true, false), reports)
+    }
+
+    @Test
     fun swipingDownOnTheDrawerListAtItsTopClosesTheDrawer() {
         setHomeWithList(LazyListState())
         composeRule.onRoot().performTouchInput { swipeUp() }
