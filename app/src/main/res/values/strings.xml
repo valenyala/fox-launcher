@@ -82,7 +82,7 @@
     <string name="deep_boost_switch">Use Shizuku for Boost</string>
     <string name="deep_boost_fallback">Until Shizuku is ready, Boost works as it does without it.</string>
     <string name="navigation_buttons_title">Navigation buttons</string>
-    <string name="navigation_buttons_explainer">Hides Back, Home and Recents by switching the phone to full-screen gestures, as the system\'s own navigation setting does: swipe up from the bottom to go home, in from either side to go back. The phone keeps it after a restart, and the system\'s navigation setting turns the buttons back on too. The apps that are open, Fox included, reload when it changes.</string>
+    <string name="navigation_buttons_explainer">Hides Back, Home and Recents by switching the phone to full-screen gestures, as the system\'s own navigation setting does: swipe up from the bottom to go home, in from either side to go back. The phone keeps it after a restart, and the system\'s navigation setting turns the buttons back on too. Other apps that are open reload when it changes.</string>
     <string name="navigation_buttons_switch">Hide navigation buttons</string>
     <string name="navigation_buttons_needs_shizuku">Needs Shizuku running and allowing Fox</string>
     <string name="navigation_buttons_unknown">Fox cannot read this phone\'s navigation setting</string>

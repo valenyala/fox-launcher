@@ -164,6 +164,11 @@ Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out o
 
 ## Session notes
 
+- 2026-10-14 — 9.6 follow-up: `HomeActivity` declares `assetsPaths` in `configChanges`, so an overlay change no longer
+  relaunches it. fox-api33 (font overlay on/off): relaunch without the flag, none with it; fox-api37: switch off and on,
+  same pid, no relaunch; a blue system palette recoloured the open settings screen in place (palette restored after).
+  Explainer and README: other open apps reload, Fox does not. **Owed:** the POCO check that MIUI honours it too.
+
 - 2026-10-14 — 9.6 on the POCO F3: the user turned the switch off and on; the log shows "Navigation buttons shown:
   true" then "hidden: true", and `force_fsg_nav_bar` is 1 again. MIUI's SystemUI answers the setting by toggling
   `com.android.systemui.gesture.line.overlay`, an assets-path config change that relaunched Fox's home (2.5 s, 2.1 s)

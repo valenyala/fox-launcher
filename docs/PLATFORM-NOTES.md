@@ -15,7 +15,7 @@ here contradicts what you remember, trust this file unless a device proves other
     android:clearTaskOnLaunch="true"
     android:resumeWhilePausing="true"
     android:screenOrientation="portrait"
-    android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode|locale|layoutDirection|density|fontScale"
+    android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode|locale|layoutDirection|density|fontScale|assetsPaths"
     android:theme="@style/Theme.Fox.Home"
     android:windowSoftInputMode="adjustPan"
     tools:ignore="LockedOrientationActivity">
@@ -33,6 +33,8 @@ here contradicts what you remember, trust this file unless a device proves other
 - Portrait only (ADR-14). `configChanges` still lists `orientation|screenSize`: coming home from a landscape app is a
   configuration change too, and from targetSdk 36 Android ignores orientation locks on large screens (smallest width
   ≥ 600 dp: tablets, unfolded foldables), where the home must still rotate without restarting.
+- `configChanges` also lists `assetsPaths`: every overlay change (navigation mode, Material You palette, fonts)
+  otherwise relaunches the home (G, task 9.6).
 - Home button press while already home arrives in `onNewIntent` (because `singleTask`). Use it to close the drawer /
   scroll to the default page. Do not finish or recreate the activity.
 - Becoming default launcher: `RoleManager.createRequestRoleIntent(RoleManager.ROLE_HOME)`, check with
@@ -139,13 +141,15 @@ here contradicts what you remember, trust this file unless a device proves other
 - Navigation mode from an app (task 9.6, ADR-23), fox-api37: `Settings.Secure.getInt("navigation_mode")` is readable
   to an app targeting 37 (0 three buttons, 2 gestures). Switching it takes the shell (`cmd overlay enable-exclusive
   --category com.android.internal.systemui.navbar.gestural|threebutton`, ~70 ms), and the overlay change relaunches
-  every open activity, the home included, in about 0.5 s (`AppCompatResourceOverlayPolicy … result: true`, then
-  "finishDrawing of relaunch"); `configChanges` cannot prevent it. MIUI keeps its own switch, Settings.Global
+  every open activity in about 0.5 s (`AppCompatResourceOverlayPolicy … result: true`, then "finishDrawing of
+  relaunch"), unless it lists `assetsPaths` (`CONFIG_ASSETS_PATHS`, 0x80000000) in `configChanges`. The flag is public
+  only in recent SDKs but is a plain bit the system honours on API 33 too (fox-api33, font overlay on/off: relaunch
+  without it, none with it); fox-api37: no relaunch on a navigation switch, and a palette change recolours Fox in place. MIUI keeps its own switch, Settings.Global
   `force_fsg_nav_bar` (0 buttons, 1 full-screen gestures), and ignores Android's navigation overlays, but its SystemUI
   answers the setting by toggling its own `com.android.systemui.gesture.line.overlay`: the same assets-path config
   change (`Config changes=80000000`), `CONFIGURATION_CHANGED` to every app, and every open activity relaunched (POCO
-  F3, MIUI 14: Fox's home 2.1–2.5 s, 2026-10-14). No navigation mode can change under a running app without
-  relaunching it, so hiding the buttons per app in front is out.
+  F3, MIUI 14: Fox's home 2.1–2.5 s before it declared `assetsPaths`, 2026-10-14). An app that does not declare it
+  relaunches when the mode changes while it is shown, or when it is next shown after a change in the background.
 - Haptics: `View.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS / GESTURE_START / CONFIRM)`; in Compose use
   `LocalHapticFeedback`.
 

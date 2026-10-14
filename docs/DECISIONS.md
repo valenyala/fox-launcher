@@ -210,9 +210,9 @@ is read with `Settings.Global.getInt` / `Settings.Secure.getInt("navigation_mode
 fox-api37), shown as it is in the system each time the screen resumes. Fox keeps no setting of its own: the phone
 keeps the mode across restarts and the system's own navigation setting changes it back. Settings → "Shizuku" holds
 both uses (Deep boost and this switch) under one status card. Accepted cost, on MIUI too: the change swaps a system
-overlay, which relaunches every open activity, the home included (fox-api37 ≈ 0.5 s, POCO F3 2.1–2.5 s); the settings
-screen survives through `rememberSaveable`, and the explainer says so. For the same reason the switch is not driven
-per app in front (asked by the user): every app switch would relaunch the app just opened.
+overlay, which relaunches every other open activity (the explainer says so). The home itself declares `assetsPaths`
+in `configChanges`, so it takes the new resources in place instead of relaunching (it had taken 2.1–2.5 s on the POCO
+F3); its colours follow the system palette the same way, through `FoxTheme` re-reading them on the new configuration.
 
 ## Dependency log
 (append `- <lib> <version> — reason` when adding a dependency)
