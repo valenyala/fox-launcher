@@ -63,7 +63,8 @@
     <string name="memory_usage_access">Allow usage access to see recent apps</string>
     <string name="memory_app_info">App info for %1$s</string>
     <string name="widget_clock">Clock</string>
-    <string name="widget_clock_description">The time and date, in large type</string>
+    <string name="widget_clock_description">The time and date, in large type. Tap it for the clock app</string>
+    <string name="widget_clock_open">Open the clock app</string>
     <string name="settings_icons">Icons</string>
     <string name="settings_icons_summary">Icon pack, shape, size and labels</string>
     <string name="icons_title">Icons</string>

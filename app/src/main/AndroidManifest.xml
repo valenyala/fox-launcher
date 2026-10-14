@@ -22,7 +22,8 @@
     <!-- Uninstall from the app popup. -->
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
 
-    <!-- Icon packs (task 7.1) are found by the actions they declare; Android 11+ shows Fox only what it names here. -->
+    <!-- Apps Fox finds by an action rather than through LauncherApps; Android 11+ shows Fox only what it names here.
+         Icon packs (task 7.1) by the actions they declare. -->
     <queries>
         <intent>
             <action android:name="org.adw.launcher.THEMES" />
@@ -35,6 +36,10 @@
         </intent>
         <intent>
             <action android:name="com.anddoes.launcher.THEME" />
+        </intent>
+        <!-- The clock app, which the Clock widget opens. -->
+        <intent>
+            <action android:name="android.intent.action.SHOW_ALARMS" />
         </intent>
     </queries>
 

@@ -165,6 +165,11 @@ Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out o
 
 ## Session notes
 
+- 2026-10-14 — User request (before 7.2): the Clock widget opens the clock app. `ClockWidgetViewModel` resolves the
+  app answering `AlarmClock.ACTION_SHOW_ALARMS` off the main thread (the chooser's "android" ignored) and starts its
+  launch intent, else the intent itself; `SHOW_ALARMS` added to the manifest's `<queries>`. Picker previews take no
+  tap. `ClockFaceTest` 2 (fox-api33). fox-api37: tap → DeskClock in front; long press still opens Resize / Remove.
+
 - 2026-10-14 — 7.1 (phase 7 started at the user's call). Pure `AppFilter` (core/apps/iconpack: `ComponentInfo{}` with
   short classes, first entry wins, package fallback, `iconback`/`iconmask`/`iconupon` `img1…`, `scale`; 6 JVM tests)
   fed by `IconPacks` (ADW, Nova, Go, Apex actions in the manifest's new `<queries>`; `res/xml/appfilter.xml` or
