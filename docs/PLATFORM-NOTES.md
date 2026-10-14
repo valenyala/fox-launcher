@@ -190,7 +190,15 @@ here contradicts what you remember, trust this file unless a device proves other
   frame: the wallpaper freezes. Fox draws through its own `HardwareRenderer` + `RenderNode` (public since API 29):
   it binds `holder.surface` again on every surface callback, and when `syncAndDraw()` reports
   `SYNC_LOST_SURFACE_REWARD_IF_FOUND` it binds again and redraws the frame (`WallpaperRenderer`).
-  (`Surface.getGenerationId()` would detect the swap but is hidden API.) Register in manifest with
+  (`Surface.getGenerationId()` would detect the swap but is hidden API.) That was not enough (POCO F3, 2026-10-14):
+  the swap is logged 150–200 ms *after* the engine's last surface callback, with no callback after it, on every
+  rebind; usually harmless, but once (reinstalled with the screen off, 1 of 2; 0 of 7 with it on) Fox's own renderer
+  froze the same way, and `syncAndDraw()` reported nothing: the frames die inside HWUI's draw step (no "Drawing" slice
+  in a trace), before the point where AOSP's `CanvasContext::draw` runs a frame's `setFrameCommitCallback` (inferred;
+  the freeze did not come back in the tries since). Fox now also binds again when four frames in a row go
+  uncommitted (`CommitWatch`, doubling the wait while that does not help) and before every new image. Until
+  2026-10-14 each change also restyled every app (see "Theme changes in front of the user"), whose
+  `onSurfaceRedrawNeeded` rebound the renderer and hid the freeze. Register in manifest with
   `android.service.wallpaper.WallpaperService` action, `BIND_WALLPAPER` permission, and `res/xml/wallpaper.xml`
   (`<wallpaper android:settingsActivity=... android:thumbnail=... android:showMetadataInPreview="true"/>`).
 - Apply from the app: `Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER).putExtra(EXTRA_LIVE_WALLPAPER_COMPONENT, ComponentName(...))`

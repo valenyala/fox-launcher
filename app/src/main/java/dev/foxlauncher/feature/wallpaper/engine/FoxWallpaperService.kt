@@ -268,6 +268,9 @@ class FoxWallpaperService : WallpaperService() {
                     return@launch
                 }
                 val (bitmap, colors) = decoded
+                // MIUI can swap the surface without a callback and drop every frame unreported (PLATFORM-NOTES W):
+                // a new image starts on a fresh binding, whatever happened since the last callback.
+                renderer.setSurface(surfaceHolder.surface)
                 FoxLog.d("$name: showing entry $id (${bitmap.width}x${bitmap.height}, ${if (animate && visible && current != null) "crossfade" else "at once"})")
                 if (animate && visible && current != null) {
                     finishFade()

@@ -165,6 +165,21 @@ Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out o
 
 ## Session notes
 
+- 2026-10-14 — User, after the fix below: "the wallpaper change is broken". The POCO showed the same picture for
+  15 min while the engine logged six changes: `OpenGLRenderer: The surface had destroyed before draw` on every frame,
+  only Fox's wallpaper layer composed, its buffer stale. The MIUI surface freeze of 4.7, this time in Fox's own
+  renderer: after a reinstall with the screen off, MIUI's silent swap ("Wallpaper has updated the surface", after the
+  last surface callback) left it bound to a dead surface, and `syncAndDraw()` reported nothing. Until this session
+  each change's immediate theme refresh sent `onSurfaceRedrawNeeded`, which rebound the renderer; deferring the lock
+  image removed that. Fix: `CommitWatch` (pure, 7 tests) binds again when 4 frames in a row are never committed
+  (`setFrameCommitCallback`), doubling the wait while that does not help; the engine also binds again before each new
+  image. Repro attempts on the POCO: 1 screen-off reinstall and 7 screen-on ones did not freeze again, so the watch
+  has not been seen firing on a real freeze. After: 3 changes on the POCO all reached the screen, crossfades 61
+  frames, work avg 1.1–1.2 / max ≤ 9.8 ms; `WallpaperRendererTest` 3/3 on fox-api33; fox-api33/37 crossfades and
+  swipes with no false rebind. POCO screen off at 19:22: lock image set (`[LOCK]`), palette applied while dark.
+  **Owed:** the user's look at the lock screen; a real freeze caught by the watch (look for "frames are not being
+  committed" in the log).
+
 - 2026-10-14 — User: "the first time a wallpaper gets its turn, with move-with-pages on, the first move lags". Traced
   on the POCO (debug build, perfetto, the user's flow: wallpaper settings → Next wallpaper now → back → swipe).
   Cause: "Also change the lock screen" set the lock image at once; that `setStream` lets SystemUI apply the new
@@ -177,7 +192,7 @@ Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out o
   first swipe right after Next reaches the page (worst frame 21 ms), crossfade gets all 61 frames, no fade-end stall.
   fox-api33/37: change with the screen on writes nothing; screen off writes `[LOCK]`; a second screen off writes
   nothing. Parallax was not a factor. Left as is: Android 13's own `PixelCopy` of the wallpaper on landing on a page
-  (PLATFORM-NOTES W). **Owed:** POCO check that the lock screen shows the new image after locking.
+  (PLATFORM-NOTES W).
 
 - 2026-10-14 — User: "add the back gesture to the drawer". Back already closed the drawer (`BackHandler`), but Fox's
   edge strips (3.8) stayed down over the whole home. `HomeScreen` reports the drawer settling open or closed
