@@ -51,6 +51,10 @@ any app shortcut (for example "New event" in Calendar).
 
 Single-finger left and right swipes turn pages, so they are only free for an action where there is no page to turn to.
 
+**Per page:** choose a page under **Pages** at the top of the list to give that page its own actions; everything it
+does not change follows **All pages**. **Macro…** runs several actions in a row, each after a wait you choose (0 to
+5 seconds), for example "next wallpaper, then open the drawer a second later".
+
 System actions (marked with a shield in the settings) go through Fox's accessibility service, **Fox gestures**. Fox
 uses it only to perform those actions; it does not read what is on your screen. Fox asks you to turn it on the first
 time you use such a gesture.
@@ -88,8 +92,9 @@ Without it Fox still rotates by setting a normal wallpaper, but each change show
 
 ### Widgets
 
-Open **Home settings → Widgets** and tap a widget to place it. Long-press a widget on the home screen to resize or
-remove it.
+Open **Home settings → Widgets** and tap a widget to place it. The **Fox** tab has Fox's own widgets, the **App
+widgets** tab every widget your apps offer (Calendar, Gmail, weather and so on), grouped by app, with a search field.
+Long-press a widget on the home screen to move, resize or remove it; lists inside app widgets scroll.
 
 | Widget | Size | What it shows |
 |---|---|---|
@@ -107,6 +112,7 @@ The memory widgets only poll while they are on screen.
 | Android 13 and lower | Frees what Fox holds and asks Android to close other apps' background processes. It leaves alone the app you were using, your keyboard, phone and SMS apps, accessibility services, the live wallpaper, and anything with a foreground service, such as music playing |
 | Android 14 and higher | Android no longer lets an app close other apps, so Boost frees only what Fox holds; the widget says "Limited on Android 14+" |
 | MIUI (Xiaomi, POCO, Redmi) | MIUI ignores the request to close other apps, so Boost works as on Android 14+ and says "Limited on MIUI" |
+| Any, with Deep boost | With [Shizuku](https://shizuku.rikka.app/) running and **Home settings → Deep boost** on, Boost closes other apps' background processes through the shell, on Android 14+ and MIUI too, sparing the same apps as above. It never force-stops anything |
 
 In every case the number shown is the measured change in available memory, never an estimate. Tap the ⓘ on the widget
 for the explanation. The RAM gauge is also available as a regular app widget, so you can put it on another launcher's
@@ -129,9 +135,25 @@ home screen.
 
 <img src="docs/media/drag-and-folders.gif" width="250" alt="Moving Gmail by drag and drop, dropping Calendar on it to make a folder, and opening the folder">
 
+### Commands from other apps
+
+Automation apps can drive Fox once you turn on **Home settings → Commands from other apps** (off by default, since any
+app could send them). Send one of these actions as a broadcast to the package `dev.foxlauncher`:
+
+| Action | Does |
+|---|---|
+| `dev.foxlauncher.NEXT_WALLPAPER` | Next wallpaper (needs the Fox live wallpaper) |
+| `dev.foxlauncher.PREV_WALLPAPER` | Previous wallpaper (needs the Fox live wallpaper) |
+| `dev.foxlauncher.BOOST` | Boost memory |
+
+In Tasker: **Send Intent**, Action as above, Package `dev.foxlauncher`, Target **Broadcast Receiver**. From a computer:
+`adb shell am broadcast -a dev.foxlauncher.BOOST -p dev.foxlauncher`. An ordered broadcast gets a result back:
+`RESULT_OK` with what happened (`changed`, `freed 12 MB`), or `RESULT_CANCELED` with the reason (`off`, `no live
+wallpaper`). Android delivers nothing to an app that has never been opened since it was installed; Fox, being your
+launcher, always has been.
+
 ### Not done yet
 
-- Third-party app widgets (Google Calendar, weather and so on) are being built now.
 - Icon packs, notification dots, backup and restore, and search beyond apps are planned.
 - **Page overview** (the default for pinch in) does nothing yet.
 - **Add to home screen** in the drawer's long-press menu is not wired up yet. Drag the app onto the home screen instead.
@@ -207,6 +229,7 @@ Fox has **no internet permission**. Nothing leaves your phone.
 | Request uninstall | The **Uninstall** item in an app's menu |
 | Write secure settings (only via adb) | Restart Fox's own accessibility service; never granted by a normal install |
 | Accessibility service (you turn it on) | Perform system actions for gestures; it does not read screen content |
+| Shizuku (you allow it in Shizuku, optional) | Deep boost only: close other apps' background processes as the shell |
 
 WorkManager, which runs the wallpaper timer, adds the wake-lock, start-at-boot, foreground-service and network-state
 permissions.

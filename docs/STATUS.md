@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 9 — Power features, at the user's request before phases 7 and 8 (2026-10-14) (Phase 6 done 2026-10-14; Phase 5 done 2026-10-13, its boost checklist item blocked by MIUI until Phase 9; Phase 4 owes three checklist items, deferred; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists)
-**Next task:** 9.1's POCO check, then 9.4 (9.3's POCO check owed too) (see docs/phases/09-power-features.md; 9.2 and 9.5 dropped by the user) (3.8's POCO check still owed; 2.8 still deferred; phases 7 and 8 not started)
+**Next task:** the POCO checks of 9.1, 9.3 and 9.4, then phases 7 and 8 at the user's call (see docs/phases/09-power-features.md; 9.2 and 9.5 dropped by the user) (3.8's POCO check still owed; 2.8 still deferred; phases 7 and 8 not started)
 
 ## Environment facts (verified 2026-09-17)
 
@@ -122,7 +122,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [ ] 9.1 Shizuku boost strategy: fox-api33/37 pass (Shizuku 13.6.0; status steps, permission, opt-in, boost through the shell; on API 37 it closed an app Android 14+ refuses to apps); **owed:** the POCO F3 (MIUI), and 5.4's boost checklist item with it
 - [-] 9.2 Online wallpaper sources: dropped by the user (2026-10-14)
 - [ ] 9.3 Per-app gestures and macros: fox-api33/37 pass (page 1's own double tap, a macro with a 1 s wait, a macro stopped by the live wallpaper prompt); **owed:** the POCO F3. Home pages only (no drawer or folder contexts)
-- [ ] 9.4 External intent API
+- [ ] 9.4 External intent API: fox-api37 pass (off: ignored "off"; on: next wallpaper "no live wallpaper", boost "freed 8 MB"; an implicit broadcast does not arrive); **owed:** the POCO F3. No signature permission (ADR-22)
 - [-] 9.5 Extra transitions, lock-screen live wallpaper: dropped by the user (2026-10-14)
 
 ## Blockers
@@ -162,6 +162,17 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-14 — 9.4. `AutomationReceiver` (exported, actions `dev.foxlauncher.NEXT_WALLPAPER`, `PREV_WALLPAPER`, `BOOST`; Hilt
+  entry point, `goAsync` on the application scope) acts only while the new `automation` setting is on, else answers
+  `RESULT_CANCELED` "off"; ordered broadcasts get `RESULT_OK` "changed" / "freed N MB" or `RESULT_CANCELED` "no live
+  wallpaper". **Deviation (ADR-22):** the plan's signature permission would have shut out Tasker, the point of the task,
+  so the guard is the user's opt-in. Pure `AutomationCommand.of` (2 tests). Settings → Commands from other apps: switch,
+  the three actions selectable, Tasker steps and an adb example; `AutomationContentTest` 1. README: commands section,
+  plus Deep boost, per-page gestures and macros, the App widgets tab (and "app widgets being built" out of Not done
+  yet), Shizuku in the permissions table. fox-api37: off → "off" and "Ignored BOOST"; on → NEXT_WALLPAPER "no live
+  wallpaper" (not applied there), BOOST `RESULT_OK` "freed 8 MB" through the deep boost; without `-p` nothing arrives.
+  Right after an install the package is stopped and gets no broadcasts until opened (a launcher always is).
 
 - 2026-10-14 — 9.3. Per-page gestures: a page may override any gesture (`GestureMaps.actionFor`: the page's own, else all
   pages'; `withPageAction` sets or clears), stored under `gesture_page_map` as `{"<page index>":{changes}}` by

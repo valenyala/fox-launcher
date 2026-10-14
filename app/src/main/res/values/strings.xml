@@ -64,6 +64,13 @@
     <string name="memory_app_info">App info for %1$s</string>
     <string name="widget_clock">Clock</string>
     <string name="widget_clock_description">The time and date, in large type</string>
+    <string name="settings_automation">Commands from other apps</string>
+    <string name="settings_automation_summary">Let Tasker and similar apps change the wallpaper and boost</string>
+    <string name="automation_title">Commands from other apps</string>
+    <string name="automation_explainer">Automation apps such as Tasker can ask Fox to change the wallpaper or to boost memory, by sending Fox a broadcast. Any app on the phone could send one, so Fox listens only while this is on.</string>
+    <string name="automation_switch">Accept commands</string>
+    <string name="automation_how">Send the action as a broadcast to the package dev.foxlauncher. In Tasker: Send Intent, Action as above, Package dev.foxlauncher, Target Broadcast Receiver. An ordered broadcast gets a result back. For example, from a computer:</string>
+    <string name="automation_adb_example" translatable="false">adb shell am broadcast -a dev.foxlauncher.NEXT_WALLPAPER -p dev.foxlauncher</string>
     <string name="settings_deep_boost">Deep boost</string>
     <string name="settings_deep_boost_summary">Let Boost close other apps through Shizuku</string>
     <string name="deep_boost_title">Deep boost (Shizuku)</string>

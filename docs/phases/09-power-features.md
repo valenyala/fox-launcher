@@ -26,6 +26,8 @@ Each task is independent and opt-in for the user. Do not start this phase before
 ## 9.4 External intent API
 - Exported `BroadcastReceiver` guarded by a signature permission `dev.foxlauncher.permission.CONTROL`: actions
   `dev.foxlauncher.NEXT_WALLPAPER`, `PREV_WALLPAPER`, `BOOST`, so Tasker/automation apps can drive the launcher. Document in README.
+- As built (ADR-22): no permission, which would shut Tasker out; the receiver acts only while the user has "Commands
+  from other apps" on.
 
 ## 9.5 Extra transitions, lock-screen live wallpaper
 **Dropped by the user, 2026-10-14: not to be built.**

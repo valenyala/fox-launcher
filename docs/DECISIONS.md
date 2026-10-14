@@ -186,6 +186,17 @@ notifications of the closed apps survive. The service lives only for one boost (
 would otherwise probe for Sui through a hidden `ServiceManager` method in Fox's process. Opt-in as ADR-9 requires: a
 "Deep boost" settings screen, off by default; while off or while Shizuku is not ready, the ADR-5 strategies run.
 
+## ADR-22 Commands from other apps need the user's opt-in, not a permission
+Task 9.4 asked for an exported receiver "guarded by a signature permission `dev.foxlauncher.permission.CONTROL`, so
+Tasker/automation apps can drive the launcher". The two halves contradict each other: a signature permission is held
+only by apps signed with Fox's key, which Tasker is not, and Tasker cannot hold a custom permission of any level
+without declaring it in its own manifest. So `AutomationReceiver` is exported without a permission and acts only while
+"Commands from other apps" is on (DataStore `automation`, off by default); otherwise it ignores the broadcast and
+answers `RESULT_CANCELED` "off". The commands are harmless to the phone (next / previous wallpaper, a boost that never
+force-stops), so the cost of any app sending them while the user has the switch on is low. Explicit broadcasts only
+(Android 8+ drops implicit ones for manifest receivers): senders set the package `dev.foxlauncher`. The action strings
+are public API (README) and never change.
+
 ## Dependency log
 (append `- <lib> <version> — reason` when adding a dependency)
 - AGP (com.android.application) 9.4.0 — build system; built-in Kotlin, see ADR-11.
