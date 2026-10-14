@@ -14,6 +14,8 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -169,5 +171,54 @@ class WidgetPickerSheetTest {
         showAppWidgets(listOf(tooWide))
 
         composeRule.onNodeWithText(context.getString(R.string.widgets_apps_empty)).assertIsDisplayed()
+    }
+
+    // --- search (user request, 2026-10-14) ---
+
+    @Test
+    fun searchNarrowsTheAppWidgets() {
+        showAppWidgets(listOf(clockWide, calendarWork, clock, calendar))
+
+        composeRule.onNodeWithTag(WidgetPickerTestTags.SEARCH).performTextInput("big")
+
+        assertEquals(listOf(WidgetPickerTestTags.appGroup("com.clock|0"), WidgetPickerTestTags.appWidget(clockWide.key)), appEntryTags())
+    }
+
+    @Test
+    fun searchingAnAppNameKeepsItsWidgetsInEveryProfile() {
+        showAppWidgets(listOf(clockWide, calendarWork, clock, calendar))
+
+        composeRule.onNodeWithTag(WidgetPickerTestTags.SEARCH).performTextInput("calendar")
+
+        assertEquals(
+            listOf(
+                WidgetPickerTestTags.appGroup("com.cal|0"),
+                WidgetPickerTestTags.appWidget(calendar.key),
+                WidgetPickerTestTags.appGroup("com.cal|10"),
+                WidgetPickerTestTags.appWidget(calendarWork.key),
+            ),
+            appEntryTags(),
+        )
+    }
+
+    @Test
+    fun aSearchWithNoMatchSaysSo() {
+        showAppWidgets(listOf(clock))
+
+        composeRule.onNodeWithTag(WidgetPickerTestTags.SEARCH).performTextInput("weather")
+
+        composeRule.onNodeWithText(context.getString(R.string.widgets_search_empty, "weather")).assertIsDisplayed()
+    }
+
+    @Test
+    fun searchNarrowsFoxWidgetsToo() {
+        showAppWidgets(emptyList())
+        composeRule.onNodeWithTag(WidgetPickerTestTags.FOX_TAB).performClick()
+
+        composeRule.onNodeWithTag(WidgetPickerTestTags.SEARCH).performTextInput("weather")
+        composeRule.onNodeWithText(context.getString(R.string.widgets_search_empty, "weather")).assertIsDisplayed()
+
+        composeRule.onNodeWithTag(WidgetPickerTestTags.SEARCH).performTextReplacement("clo")
+        composeRule.onNodeWithText(context.getString(R.string.widget_clock)).assertIsDisplayed()
     }
 }

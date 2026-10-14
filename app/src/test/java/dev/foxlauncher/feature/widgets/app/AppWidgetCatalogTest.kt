@@ -59,4 +59,46 @@ class AppWidgetCatalogTest {
     fun nothingInstalledMeansNoGroups() {
         assertEquals(emptyList(), AppWidgetCatalog.group(emptyList(), order))
     }
+
+    // --- search ---
+
+    private val groups by lazy { AppWidgetCatalog.group(listOf(clock, clockDigital, calendar, calendarWork, ebook), order) }
+
+    @Test
+    fun aBlankSearchKeepsEverything() {
+        assertEquals(groups, AppWidgetCatalog.search(groups, "  "))
+    }
+
+    @Test
+    fun anAppNameKeepsAllItsWidgets() {
+        assertEquals(listOf("com.clock|0"), AppWidgetCatalog.search(groups, "clo").map { it.key })
+        assertEquals(listOf(clock, clockDigital), AppWidgetCatalog.search(groups, "clo").single().widgets)
+    }
+
+    @Test
+    fun aWidgetNameKeepsOnlyThatWidget() {
+        val found = AppWidgetCatalog.search(groups, "DIGI")
+
+        assertEquals(listOf("com.clock|0"), found.map { it.key })
+        assertEquals(listOf(clockDigital), found.single().widgets)
+    }
+
+    @Test
+    fun searchIgnoresAccentsAndFindsEveryProfile() {
+        assertEquals(listOf("com.ebook|0"), AppWidgetCatalog.search(groups, "eclair").map { it.key })
+        assertEquals(listOf("com.cal|0", "com.cal|10"), AppWidgetCatalog.search(groups, "calendar").map { it.key })
+    }
+
+    @Test
+    fun aDescriptionMatchesToo() {
+        val described = option("com.notes", "Keep", "Note").copy(description = "Your shopping list")
+        val found = AppWidgetCatalog.search(AppWidgetCatalog.group(listOf(described, ebook), order), "shopping")
+
+        assertEquals(listOf(described), found.single().widgets)
+    }
+
+    @Test
+    fun noMatchLeavesNoGroups() {
+        assertEquals(emptyList(), AppWidgetCatalog.search(groups, "weather"))
+    }
 }

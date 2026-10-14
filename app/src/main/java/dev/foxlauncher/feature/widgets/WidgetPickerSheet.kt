@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
@@ -18,6 +19,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
@@ -32,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -43,7 +46,9 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.unit.dp
 import dev.foxlauncher.R
+import dev.foxlauncher.core.apps.AppSearch
 import dev.foxlauncher.feature.home.grid.GridSpec
+import dev.foxlauncher.feature.widgets.app.AppWidgetCatalog
 import dev.foxlauncher.feature.widgets.app.AppWidgetGroup
 import dev.foxlauncher.feature.widgets.app.AppWidgetOption
 import dev.foxlauncher.feature.widgets.app.AppWidgetSizing
@@ -53,6 +58,7 @@ object WidgetPickerTestTags {
     const val SHEET = "widget_picker_sheet"
     const val FOX_TAB = "widget_picker_tab_fox"
     const val APPS_TAB = "widget_picker_tab_apps"
+    const val SEARCH = "widget_picker_search"
 
     /** Starts the tag of every app group header and app widget row, in list order. */
     const val APP_ENTRY = "widget_picker_entry_"
@@ -82,7 +88,8 @@ private enum class PickerTab(@param:StringRes val labelRes: Int, val testTag: St
  * default size, its name, what it does and its size in cells; tapping one calls [onPick]. The app
  * widgets of every profile (task 6.2): [appWidgets] grouped by app (null while loading), each
  * sized in cells of [cellSize] on [grid] and drawn by [appWidgetPreview]; tapping one calls
- * [onPickAppWidget] with its cells. Widgets too large for the grid are left out.
+ * [onPickAppWidget] with its cells. Widgets too large for the grid are left out. A search field above
+ * the tabs narrows both by app, widget name or description (user request, 2026-10-14).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -97,11 +104,29 @@ fun WidgetPickerSheet(
     appWidgetPreview: @Composable (AppWidgetOption) -> Unit = {},
 ) {
     var tab by rememberSaveable { mutableStateOf(PickerTab.FOX) }
+    var query by rememberSaveable { mutableStateOf("") }
+    val resources = LocalResources.current
+    val shownSpecs = remember(specs, query, resources) {
+        specs.filter { AppSearch.match(query, resources.getString(it.nameRes)) || AppSearch.match(query, resources.getString(it.descriptionRes)) }
+    }
+    val shownAppWidgets = remember(appWidgets, query) { appWidgets?.let { AppWidgetCatalog.search(it, query) } }
     ModalBottomSheet(onDismissRequest = onDismiss, modifier = Modifier.testTag(WidgetPickerTestTags.SHEET)) {
         Text(
             stringResource(R.string.widgets_title),
             style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+        )
+        // There can be hundreds of app widgets (user request, 2026-10-14). It searches both tabs.
+        OutlinedTextField(
+            value = query,
+            onValueChange = { query = it },
+            placeholder = { Text(stringResource(R.string.widgets_search_hint)) },
+            singleLine = true,
+            shape = MaterialTheme.shapes.extraLarge,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp)
+                .testTag(WidgetPickerTestTags.SEARCH),
         )
         PrimaryTabRow(selectedTabIndex = tab.ordinal) {
             PickerTab.entries.forEach { entry ->
@@ -114,13 +139,17 @@ fun WidgetPickerSheet(
             }
         }
         when (tab) {
-            PickerTab.FOX -> LazyColumn(Modifier.navigationBarsPadding()) {
-                items(specs, key = { it.kind }) { spec -> PickerRow(spec, onClick = { onPick(spec) }) }
+            PickerTab.FOX -> if (shownSpecs.isEmpty()) {
+                EmptyText(stringResource(R.string.widgets_search_empty, query))
+            } else {
+                LazyColumn(Modifier.navigationBarsPadding().imePadding()) {
+                    items(shownSpecs, key = { it.kind }) { spec -> PickerRow(spec, onClick = { onPick(spec) }) }
+                }
             }
             PickerTab.APPS -> {
                 // Before the home has measured its cells (never seen), a phone's will do.
                 val cell = if (cellSize.isSpecified && cellSize.width > 0.dp && cellSize.height > 0.dp) cellSize else DpSize(PREVIEW_CELL_WIDTH, PREVIEW_CELL_HEIGHT)
-                AppWidgetList(appWidgets, cell, grid, onPickAppWidget, appWidgetPreview)
+                AppWidgetList(shownAppWidgets, query, cell, grid, onPickAppWidget, appWidgetPreview)
             }
         }
     }
@@ -166,6 +195,7 @@ private fun PickerRow(spec: NativeWidgetSpec, onClick: () -> Unit) {
 @Composable
 private fun AppWidgetList(
     groups: List<AppWidgetGroup>?,
+    query: String,
     cellSize: DpSize,
     grid: GridSpec,
     onPick: (AppWidgetOption, WidgetSpans) -> Unit,
@@ -187,15 +217,10 @@ private fun AppWidgetList(
         }
     }
     if (sized.isEmpty()) {
-        Text(
-            stringResource(R.string.widgets_apps_empty),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.navigationBarsPadding().padding(24.dp),
-        )
+        EmptyText(if (query.isBlank()) stringResource(R.string.widgets_apps_empty) else stringResource(R.string.widgets_search_empty, query))
         return
     }
-    LazyColumn(Modifier.navigationBarsPadding()) {
+    LazyColumn(Modifier.navigationBarsPadding().imePadding()) {
         sized.forEach { (group, widgets) ->
             item(key = "group:${group.key}") { AppGroupHeader(group) }
             items(widgets, key = { (option, _) -> option.key }) { (option, spans) ->
@@ -203,6 +228,16 @@ private fun AppWidgetList(
             }
         }
     }
+}
+
+@Composable
+private fun EmptyText(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.navigationBarsPadding().imePadding().padding(24.dp),
+    )
 }
 
 @Composable

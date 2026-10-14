@@ -70,6 +70,8 @@
     <string name="widgets_tab_apps">App widgets</string>
     <string name="widgets_app_work">%1$s · Work</string>
     <string name="widgets_apps_empty">No installed app offers a widget</string>
+    <string name="widgets_search_hint">Search widgets</string>
+    <string name="widgets_search_empty">No widget matches “%1$s”</string>
     <string name="widget_size">%1$d × %2$d</string>
     <string name="widget_missing">This widget is no longer available</string>
     <string name="popup_resize">Resize</string>

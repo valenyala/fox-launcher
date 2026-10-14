@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 6 — App widgets (Phase 5 done 2026-10-13, its boost checklist item blocked by MIUI until Phase 9; Phase 4 owes three checklist items, deferred; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists)
-**Next task:** the POCO checks of 6.1–6.5 and phase 6's device checklist, then phase 7 (see docs/phases/07-polish.md) (3.8's POCO check still owed, the user went on to phase 6 first; 2.8 still deferred)
+**Next task:** 6.6's POCO check, then phase 7 (see docs/phases/07-polish.md) (3.8's POCO check still owed; 2.8 still deferred)
 
 ## Environment facts (verified 2026-09-17)
 
@@ -91,12 +91,13 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [ ] Device checklist: POCO F3 2026-10-13 — widgets added from the home menu, resized, moved, figures right; **owed:** 5.4 "boost reduces used memory on API ≤ 33", blocked by MIUI until Shizuku (Phase 9); the 34+ caption passed on fox-api37
 
 ## Phase 6 — App widgets
-- [ ] 6.1 AppWidgetHost lifecycle: fox-api33/37 pass (one host, listening only while home is started, kept across config changes); **owed:** the POCO F3 (`dumpsys appwidget`)
-- [ ] 6.2 Widget picker: fox-api33/37 pass (App widgets tab, 27 / 34 providers grouped by app, preview layouts and images); **owed:** the POCO F3
-- [ ] 6.3 Bind + configure flow: fox-api33/37 pass (bind dialog, Cancel, Create, Always allow, configure, Back out of configure); **owed:** the POCO F3
-- [ ] 6.4 Render, size, resize, touch coexistence: fox-api37 pass, fox-api33 renders (render, tap, size, resize to min, drag, swipe over a widget opens the drawer); **owed:** the POCO F3, incl. a scrolling widget (none on the emulators)
-- [ ] 6.5 Persistence and provider removal: fox-api37 pass (Remove frees the id, uninstalling Calendar removes its widget, a process restart keeps them), fox-api33 start-up keeps its widget; **owed:** the POCO F3, incl. a reboot. Work-profile groups read "App · Work" (no work profile on the devices)
-- [ ] Device checklist passed on: —
+- [x] 6.1 AppWidgetHost lifecycle (fox-api33/37: one host, listening only while home is started, kept across config changes; POCO F3: host with its widgets after a reboot)
+- [x] 6.2 Widget picker (fox-api33/37; POCO F3 2026-10-14, user: works. MIUI's own clock widgets are not there: they are no app widgets, see PLATFORM-NOTES AW)
+- [x] 6.3 Bind + configure flow (fox-api33/37: dialog, Cancel, Create, Always allow, configure, Back out; POCO F3 2026-10-14, user: works)
+- [x] 6.4 Render, size, resize, touch coexistence (fox-api37, fox-api33 renders; POCO F3 2026-10-14, user: works)
+- [x] 6.5 Persistence and provider removal (fox-api37: Remove frees the id, uninstall removes the widget; POCO F3 2026-10-14, user: a reboot keeps them. Work-profile groups read "App · Work"; no work profile on the devices)
+- [ ] 6.6 Widget picker search (user request 2026-10-14): fox-api33/37 pass; **owed:** the POCO F3
+- [x] Device checklist passed on: POCO F3 (MIUI 14, Android 13), 2026-10-14, user: "seems ok", reboot keeps the widgets
 
 ## Phase 7 — Polish & personalization
 - [ ] 7.1 Icon packs and icon options
@@ -161,6 +162,15 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-14 — 6.6 (user request after the POCO round: "make a search bar for the widgets, there are too many";
+  the POCO lists 168 providers). Search field above the picker's tabs, narrowing both: `AppWidgetCatalog.search` (app
+  label keeps the whole group, else widget label or description; `AppSearch` matching; 6 tests), Fox widgets by name
+  or description; "No widget matches" text. UI tests +4 (10/10 on fox-api33). **Found and fixed while testing:** the
+  home's column padded by `safeDrawing`, which includes the keyboard, so typing squeezed the grid behind the sheet:
+  every app widget got a smaller size and the picker's cell size shrank with it; now `systemBars ∪ displayCutout`.
+  The user's other caveat, "system clock is not showing": MIUI's clock widgets are not app widgets (none of the 168
+  providers is the Clock app's), so only MIUI's launcher can show them; Fox's native Clock is the alternative.
 
 - 2026-10-14 — 6.5. Pure `AppWidgetCleanup.plan` (6 tests): an item leaves when its id is no longer the host's or its
   provider is gone; an id is freed when no remaining item uses it and it is not pending. `AppWidgetReconciler`

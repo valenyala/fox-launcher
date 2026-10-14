@@ -272,6 +272,11 @@ here contradicts what you remember, trust this file unless a device proves other
   `bindAppWidgetIdIfAllowed` succeed from then on. The configuration activity answers through `onActivityResult` only
   (`startAppWidgetConfigureActivityForResult` uses an `IntentSender` Fox never sees).
 - Emulators: Google Calendar's schedule widget and Gmail's want a signed-in account, so no scrolling widget there.
+- MIUI (POCO F3, 2026-10-14): the clock, weather and other "MIUI widgets" on MIUI's home are not app widgets; none of
+  the 168 providers `dumpsys appwidget` lists is the Clock app's. No other launcher can host them; Fox's native Clock
+  stands in.
+- The home must not pad by `safeDrawing`: it includes the keyboard, so a search field over the home (widget picker)
+  squeezed the grid and resized every app widget while typing. Pad by `systemBars ∪ displayCutout`.
 
 ## S. Broadcasts, background, permissions summary
 

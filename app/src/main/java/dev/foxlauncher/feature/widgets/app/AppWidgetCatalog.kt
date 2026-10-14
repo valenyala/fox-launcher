@@ -1,6 +1,7 @@
 package dev.foxlauncher.feature.widgets.app
 
 import androidx.compose.runtime.Immutable
+import dev.foxlauncher.core.apps.AppSearch
 
 /**
  * One installed app widget provider, as the picker lists it (task 6.2). [provider] is
@@ -63,4 +64,19 @@ object AppWidgetCatalog {
                     .thenBy { it.packageName }
                     .thenBy { it.userSerial },
             )
+
+    /**
+     * The picker's search (user request, 2026-10-14): a group whose app label matches [query] keeps all
+     * its widgets; otherwise only its widgets whose label or description matches stay, and a group
+     * left with none goes. Matching is [AppSearch]'s, case- and accent-insensitive; order is kept.
+     * A blank query keeps everything.
+     */
+    fun search(groups: List<AppWidgetGroup>, query: String): List<AppWidgetGroup> {
+        if (query.isBlank()) return groups
+        return groups.mapNotNull { group ->
+            if (AppSearch.match(query, group.appLabel)) return@mapNotNull group
+            val widgets = group.widgets.filter { AppSearch.match(query, it.label) || it.description?.let { d -> AppSearch.match(query, d) } == true }
+            if (widgets.isEmpty()) null else group.copy(widgets = widgets)
+        }
+    }
 }

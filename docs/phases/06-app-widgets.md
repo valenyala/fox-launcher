@@ -32,3 +32,10 @@ Read `PLATFORM-NOTES.md` section AW.
 - Ids persist via Room; on `AppWidgetHost.onProvidersChanged`/package removed, drop items whose provider no longer resolves and
   `deleteAppWidgetId`. On app data clear, `host.deleteHost()` is not needed. Widgets in a work profile carry badge in picker.
 - Verify: reboot keeps widgets; uninstalling the widget's app removes it.
+
+## 6.6 Widget picker search (user request, 2026-10-14)
+- Why: a phone can offer well over a hundred app widgets (168 providers on the POCO F3); scrolling for one is slow.
+- Do: a search field above the picker's tabs narrows both: Fox widgets by name or description, app widgets by app
+  label (all its widgets), widget label or description. Matching as the drawer's (`AppSearch`). Pure
+  `AppWidgetCatalog.search` with unit tests; "No widget matches" when nothing does.
+- Verify: unit tests; Compose UI test types a query and checks what is left in both tabs.
