@@ -1,13 +1,11 @@
-package dev.foxlauncher.feature.memory.shizuku
+package dev.foxlauncher.feature.shizuku
 
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 import org.junit.Test
 
-class DeepBoostStatusTest {
+class ShizukuStatusTest {
 
-    private fun status(probe: ShizukuProbe) = DeepBoostStatus.of(probe)
+    private fun status(probe: ShizukuProbe) = ShizukuStatus.of(probe)
 
     @Test
     fun eachStepToReady() {
@@ -30,14 +28,5 @@ class DeepBoostStatusTest {
     @Test
     fun aRunningServiceCountsAsInstalled() {
         assertEquals(ShizukuStatus.READY, status(ShizukuProbe(installed = false, running = true, granted = true)))
-    }
-
-    @Test
-    fun deepBoostIsActiveOnlyWhenOnAndReady() {
-        assertTrue(DeepBoostState(ShizukuStatus.READY, enabled = true).active)
-        assertFalse(DeepBoostState(ShizukuStatus.READY, enabled = false).active)
-        ShizukuStatus.entries.filter { it != ShizukuStatus.READY }.forEach {
-            assertFalse(DeepBoostState(it, enabled = true).active, "$it")
-        }
     }
 }

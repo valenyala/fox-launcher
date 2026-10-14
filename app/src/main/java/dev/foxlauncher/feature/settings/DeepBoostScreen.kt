@@ -34,10 +34,10 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.foxlauncher.R
 import dev.foxlauncher.core.common.FoxLog
-import dev.foxlauncher.feature.memory.shizuku.DeepBoost
-import dev.foxlauncher.feature.memory.shizuku.DeepBoostState
-import dev.foxlauncher.feature.memory.shizuku.ShizukuAccess
-import dev.foxlauncher.feature.memory.shizuku.ShizukuStatus
+import dev.foxlauncher.feature.memory.DeepBoost
+import dev.foxlauncher.feature.memory.DeepBoostState
+import dev.foxlauncher.feature.shizuku.ShizukuAccess
+import dev.foxlauncher.feature.shizuku.ShizukuStatus
 import javax.inject.Inject
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch

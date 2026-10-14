@@ -14,7 +14,7 @@ import dev.foxlauncher.core.apps.AppRepository
 import dev.foxlauncher.core.apps.IconCache
 import dev.foxlauncher.core.common.FoxLog
 import dev.foxlauncher.core.common.IoDispatcher
-import dev.foxlauncher.feature.memory.shizuku.ShizukuAccess
+import dev.foxlauncher.feature.shizuku.ShizukuAccess
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext

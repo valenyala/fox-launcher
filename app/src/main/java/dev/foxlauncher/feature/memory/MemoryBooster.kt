@@ -3,7 +3,6 @@ package dev.foxlauncher.feature.memory
 import android.os.Build
 import dev.foxlauncher.core.common.ApplicationScope
 import dev.foxlauncher.core.common.FoxLog
-import dev.foxlauncher.feature.memory.shizuku.DeepBoost
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope

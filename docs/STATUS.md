@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 9 — Power features, at the user's request before phases 7 and 8 (2026-10-14) (Phase 6 done 2026-10-14; Phase 5 done 2026-10-13, its boost checklist item blocked by MIUI until Phase 9; Phase 4 owes three checklist items, deferred; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists)
-**Next task:** the POCO checks of 9.1, 9.3 and 9.4, then phases 7 and 8 at the user's call (see docs/phases/09-power-features.md; 9.2 and 9.5 dropped by the user) (3.8's POCO check still owed; 2.8 still deferred; phases 7 and 8 not started)
+**Next task:** finish 9.6 (user request: "Hide navigation buttons" switch; backend in the checkpoint commit, the switch on a "Shizuku" settings screen, strings, ADR-23, tests and POCO check still to do), then the POCO checks of 9.1, 9.3 and 9.4, then phases 7 and 8 at the user's call (see docs/phases/09-power-features.md; 9.2 and 9.5 dropped by the user) (3.8's POCO check still owed; 2.8 still deferred; phases 7 and 8 not started)
 
 ## Environment facts (verified 2026-09-17)
 
@@ -124,6 +124,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [ ] 9.3 Per-app gestures and macros: fox-api33/37 pass (page 1's own double tap, a macro with a 1 s wait, a macro stopped by the live wallpaper prompt); **owed:** the POCO F3. Home pages only (no drawer or folder contexts)
 - [ ] 9.4 External intent API: fox-api37 pass (off: ignored "off"; on: next wallpaper "no live wallpaper", boost "freed 8 MB"; an implicit broadcast does not arrive); **owed:** the POCO F3. No signature permission (ADR-22)
 - [-] 9.5 Extra transitions, lock-screen live wallpaper: dropped by the user (2026-10-14)
+- [ ] 9.6 Hide navigation buttons (user request 2026-10-14, after `force_fsg_nav_bar 1` over adb hid the POCO's buttons): checkpoint — Shizuku classes moved to `feature/shizuku`, pure `ShellCommands` (+ tests), `IFoxShell.setNavigationButtonsHidden`, `NavigationButtons`; **to do:** the switch (Deep boost screen → "Shizuku" screen), strings, ADR-23 (widens ADR-9), UI tests, emulator (fox-api37 only: nav-mode switches hung fox-api33 before) and POCO checks. The POCO is left in full-screen gestures (`force_fsg_nav_bar` 1)
 
 ## Blockers
 

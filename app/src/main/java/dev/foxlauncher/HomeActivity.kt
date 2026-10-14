@@ -44,7 +44,7 @@ import dev.foxlauncher.feature.home.HomeScreen
 import dev.foxlauncher.feature.home.HomeViewModel
 import dev.foxlauncher.feature.home.HomeVisibility
 import dev.foxlauncher.feature.home.isDefaultLauncher
-import dev.foxlauncher.feature.memory.shizuku.ShizukuAccess
+import dev.foxlauncher.feature.shizuku.ShizukuAccess
 import dev.foxlauncher.feature.home.requestDefaultLauncherRole
 import dev.foxlauncher.feature.settings.AutomationScreen
 import dev.foxlauncher.feature.settings.DeepBoostScreen

@@ -1,4 +1,4 @@
-package dev.foxlauncher.feature.memory.shizuku
+package dev.foxlauncher.feature.shizuku
 
 import android.content.ComponentName
 import android.content.Context
@@ -60,7 +60,7 @@ class ShizukuAccess @Inject constructor(
 
     /** Reads [status] again, off the main thread (it looks the app up). */
     fun refresh() {
-        scope.launch { _status.value = withContext(io) { DeepBoostStatus.of(probe()) } }
+        scope.launch { _status.value = withContext(io) { ShizukuStatus.of(probe()) } }
     }
 
     private fun probe(): ShizukuProbe {

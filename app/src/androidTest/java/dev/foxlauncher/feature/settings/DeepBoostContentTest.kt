@@ -14,8 +14,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import dev.foxlauncher.R
 import dev.foxlauncher.core.ui.theme.FoxTheme
-import dev.foxlauncher.feature.memory.shizuku.DeepBoostState
-import dev.foxlauncher.feature.memory.shizuku.ShizukuStatus
+import dev.foxlauncher.feature.memory.DeepBoostState
+import dev.foxlauncher.feature.shizuku.ShizukuStatus
 import kotlin.test.assertEquals
 import org.junit.Rule
 import org.junit.Test
