@@ -210,6 +210,14 @@ class FoxSettings @Inject constructor(
         Unit
     }
 
+    /** The entry Fox last set on the lock screen; null before the first. A change catches it up at screen off. */
+    val lockWallpaperEntryId: Flow<Long?> = dataStore.data.map { it[Keys.LOCK_WALLPAPER] }
+
+    suspend fun setLockWallpaperEntry(id: Long?) = withContext(io) {
+        dataStore.edit { if (id == null) it.remove(Keys.LOCK_WALLPAPER) else it[Keys.LOCK_WALLPAPER] = id }
+        Unit
+    }
+
     /** How long a wallpaper crossfade lasts, in ms (task 4.3; set in the wallpaper settings, task 4.7). */
     val crossfadeMs: Flow<Int> = dataStore.data.map { it[Keys.CROSSFADE_MS] ?: DEFAULT_CROSSFADE_MS }
 
@@ -274,6 +282,7 @@ class FoxSettings @Inject constructor(
         val ROTATE_ON_UNLOCK = booleanPreferencesKey("wallpaper_rotate_on_unlock")
         val ROTATE_ON_PAGE_CHANGE = booleanPreferencesKey("wallpaper_rotate_on_page_change")
         val CHANGE_LOCK_SCREEN = booleanPreferencesKey("wallpaper_change_lock_screen")
+        val LOCK_WALLPAPER = longPreferencesKey("wallpaper_lock_entry")
         val WALLPAPER_PARALLAX = booleanPreferencesKey("wallpaper_parallax")
         val PLAYLIST_MODE = stringPreferencesKey("wallpaper_playlist_mode")
         val PLAYLIST_SEED = longPreferencesKey("wallpaper_playlist_seed")

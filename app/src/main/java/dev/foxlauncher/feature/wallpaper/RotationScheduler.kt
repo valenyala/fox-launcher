@@ -27,7 +27,8 @@ import kotlinx.coroutines.sync.withLock
  * active entry, which the live wallpaper engine draws (task 4.3). Gestures and "next now" ask directly; the interval, unlock and page-change triggers
  * (task 4.4) go through [advanceIfDue], which applies [TriggerPolicy]. While Fox's live wallpaper is
  * not applied, a change is also set as a static image (task 4.5), except from a gesture ([advance]);
- * so is the lock screen's, when the user asked for it (task 4.6).
+ * so is the lock screen's, when the user asked for it (task 4.6): at once with the home screen's,
+ * otherwise once the screen goes off ([catchUpLockScreen]).
  */
 @Singleton
 class RotationScheduler @Inject constructor(
@@ -94,15 +95,30 @@ class RotationScheduler @Inject constructor(
         settings.savePlaylist(after.seed, after.history)
         settings.setActiveWallpaper(id, changedAt = now)
         dao.markShown(id, now)
-        if (StaticTargets.of(LiveWallpaper.isFoxActive(context), settings.changeLockScreen.first()).isNotEmpty()) {
+        val targets = StaticTargets.of(LiveWallpaper.isFoxActive(context), settings.changeLockScreen.first())
+        // The lock screen alone waits for the screen to go off ([catchUpLockScreen]).
+        if (targets.isNotEmpty() && !StaticTargets.waitsForScreenOff(targets)) {
             StaticApplyWorker.enqueue(WorkManager.getInstance(context))
         }
     }
 
-    /** Turns "also change the lock screen" on or off; on, the lock screen gets the current image at once. */
+    /** Turns "also change the lock screen" on or off; on, the lock screen gets the current image when the screen next goes off. */
     suspend fun setChangeLockScreen(enabled: Boolean) {
+        // Forgotten, so the next screen off sets it, whatever the lock screen came to show meanwhile.
+        if (enabled) settings.setLockWallpaperEntry(null)
         settings.setChangeLockScreen(enabled)
-        if (enabled) StaticApplyWorker.enqueueLockOnly(WorkManager.getInstance(context))
+    }
+
+    /**
+     * At screen off: the lock screen gets the image the home screen shows, if it is behind. Not
+     * sooner, because a still image set in front of the user restyles every app at once
+     * ([StaticTargets.waitsForScreenOff]).
+     */
+    suspend fun catchUpLockScreen() {
+        val showing = WallpaperPlaylist.showing(settings.activeWallpaperEntryId.first(), dao.observeRotationEntries().first().map { it.id })
+        if (StaticTargets.lockScreenBehind(settings.changeLockScreen.first(), settings.lockWallpaperEntryId.first(), showing)) {
+            StaticApplyWorker.enqueueLockOnly(WorkManager.getInstance(context))
+        }
     }
 
     /**

@@ -107,6 +107,11 @@ class FoxWallpaperService : WallpaperService() {
         /** The image on screen and, during a crossfade, the one fading in: never more than two. */
         private var current: Bitmap? = null
         private var incoming: Bitmap? = null
+
+        /** Their colours, worked out with the decode: on the main thread they cost 80–190 ms (POCO F3). */
+        private var currentColors: WallpaperColors? = null
+        private var incomingColors: WallpaperColors? = null
+
         private var fadeStartNanos = 0L
         private var fadeMs = FoxSettings.DEFAULT_CROSSFADE_MS
 
@@ -181,6 +186,8 @@ class FoxWallpaperService : WallpaperService() {
                 current?.recycle()
                 current = next
                 incoming = null
+                currentColors = incomingColors
+                incomingColors = null
             }
             surfaceW = 0
             surfaceH = 0
@@ -206,7 +213,7 @@ class FoxWallpaperService : WallpaperService() {
             if (visible && incoming == null) draw()
         }
 
-        override fun onComputeColors(): WallpaperColors? = current?.takeUnless { it.isRecycled }?.let(WallpaperColors::fromBitmap)
+        override fun onComputeColors(): WallpaperColors? = currentColors
 
         override fun onDestroy() {
             engines -= this
@@ -217,6 +224,8 @@ class FoxWallpaperService : WallpaperService() {
             incoming?.recycle()
             current = null
             incoming = null
+            currentColors = null
+            incomingColors = null
             renderer.destroy()
             super.onDestroy()
         }
@@ -251,15 +260,19 @@ class FoxWallpaperService : WallpaperService() {
                 finishFade()
                 val entry = withContext(io) { dao.getEntry(id) } ?: return@launch
                 val width = if (parallax) (surfaceW * (1 + PARALLAX_EXTRA)).roundToInt() else surfaceW
-                val bitmap = withContext(io) { loader.load(entry.uri.toUri(), width, surfaceH) }
-                if (bitmap == null) {
+                val decoded = withContext(io) {
+                    loader.load(entry.uri.toUri(), width, surfaceH)?.let { it to WallpaperColors.fromBitmap(it) }
+                }
+                if (decoded == null) {
                     sources.reportUnreadable(id)
                     return@launch
                 }
+                val (bitmap, colors) = decoded
                 FoxLog.d("$name: showing entry $id (${bitmap.width}x${bitmap.height}, ${if (animate && visible && current != null) "crossfade" else "at once"})")
                 if (animate && visible && current != null) {
                     finishFade()
                     incoming = bitmap
+                    incomingColors = colors
                     fadeStartNanos = 0L
                     frameStats.reset()
                     Choreographer.getInstance().postFrameCallback(this@FoxEngine)
@@ -267,6 +280,7 @@ class FoxWallpaperService : WallpaperService() {
                     finishFade()
                     current?.recycle()
                     current = bitmap
+                    currentColors = colors
                     draw()
                     notifyColorsChanged()
                 }
@@ -300,7 +314,9 @@ class FoxWallpaperService : WallpaperService() {
             val next = incoming ?: return
             current?.recycle()
             current = next
+            currentColors = incomingColors
             incoming = null
+            incomingColors = null
             draw()
         }
 

@@ -206,8 +206,26 @@ here contradicts what you remember, trust this file unless a device proves other
   Keep at most current + next bitmaps; recycle the old one after the crossfade.
 - Crossfade: draw current with alpha 255, next with alpha `(t*255)` via `Paint.alpha`, `t` from an `Interpolator`
   over `durationMs`, one frame per `Choreographer.FrameCallback`. Stop callbacks when done.
-- `onComputeColors()` (API 27+) should return `WallpaperColors.fromBitmap(current)` and call `notifyColorsChanged()`
-  after each transition so the system and our theme pick up colors.
+- `onComputeColors()` (API 27+) returns the current image's `WallpaperColors`; call `notifyColorsChanged()` after each
+  transition so the system and our theme pick up colors. The system calls it on the engine's (main) thread, which is
+  the launcher's: `WallpaperColors.fromBitmap` of a 1296×2400 image there took 80–190 ms at the end of each fade (POCO
+  F3, debug build, 2026-10-14). Fox works the colours out on the IO dispatcher with the decode and returns them.
+- Theme changes in front of the user (POCO F3, 2026-10-14). SystemUI's `ThemeOverlayController` (AOSP since 12)
+  applies a new Material You palette only at screen off ("colors received; processing deferred until screen off"),
+  except right after `ACTION_WALLPAPER_CHANGED` ("Wallpaper changed, allowing color events again"), which every
+  `setStream`/`setBitmap` sends: the next colour event then applies at once, as a configuration change to every app.
+  MIUI 14 takes the palette from the lock wallpaper (`color_source: lock_wallpaper`), so Fox's lock-screen image
+  restyled every app within a second of each change, and Fox (dynamic colour, `assetsPaths` handled in place)
+  recomposed and re-measured everything: 450–630 ms frames in a debug build, landing on the first swipe after "Next
+  wallpaper now" and losing the fling. With its live wallpaper applied, Fox sets the lock-screen image at
+  `ACTION_SCREEN_OFF` only (runtime receiver, a protected broadcast), when the lock screen is behind the home screen.
+- Android 13 as first released (POCO F3's TKQ1 build) runs `WallpaperService.Engine`'s own local-colour pass even
+  when nobody asked for local colours: when the offset lands on a page whose snapshot is over a minute old, or was
+  reset by `notifyColorsChanged`, it copies the wallpaper surface with a synchronous `PixelCopy` on the engine's
+  thread (`WallpaperService#pixelCopy`, 1–18 ms on Fox's main thread, and failed copies retry on every offset near
+  the page). Only the hidden `supportsLocalColorExtraction()` turns it off, so Fox lives with it. Its trace sections
+  are mis-nested (begun in one message, ended in another): `processLocalColors` slices span whole frames. Later 13
+  builds (fox-api33's TE1A, under 1 ms a copy there) and AOSP main rate-limit it to once every 2 s.
 - `WallpaperManager.setStream/setBitmap(..., which = FLAG_SYSTEM | FLAG_LOCK)` needs `SET_WALLPAPER` permission and is
   the non-seamless fallback. It runs a full-size decode in system server; always pass a stream already scaled down.
 - Lock-screen live wallpaper support varies by OEM and version (AOSP added a lock-screen live-wallpaper picker path in
@@ -216,8 +234,9 @@ here contradicts what you remember, trust this file unless a device proves other
   screen*; API 37 adds *Lock screen*. *Home and lock* leaves no separate lock image, so the keyguard shows the live
   wallpaper itself, crossfades included (fox-api33/37). `setStream(FLAG_LOCK)` gives the lock screen its own still image
   (the home screen is untouched); `setStream(FLAG_SYSTEM)` alone keeps an existing lock image; both flags in one call
-  make the two share one image again. Fox's "Also change the lock screen" (off by default) writes `FLAG_LOCK` (plus
-  `FLAG_SYSTEM` when the static fallback is on) after each change, in the same worker.
+  make the two share one image again. Fox's "Also change the lock screen" (off by default) writes `FLAG_LOCK` with
+  `FLAG_SYSTEM`, in one write, after each change while the static fallback is on; with the live wallpaper, alone at
+  the next screen off (see "Theme changes in front of the user").
 - MIUI 14 (POCO F3): the keyguard draws its own wallpaper window (`MiuiKeyguardPictorialWallpaper`, from
   `com.miui.miwallpaper`). Wallpaper Carousel (`com.miui.android.fashiongallery`) sets the lock wallpaper itself
   (`MiuiWallpaperManagerService setWallpaper which=2 type=gallery`) on screen-on and unlock, overwriting Fox's; with

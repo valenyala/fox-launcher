@@ -165,6 +165,20 @@ Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out o
 
 ## Session notes
 
+- 2026-10-14 — User: "the first time a wallpaper gets its turn, with move-with-pages on, the first move lags". Traced
+  on the POCO (debug build, perfetto, the user's flow: wallpaper settings → Next wallpaper now → back → swipe).
+  Cause: "Also change the lock screen" set the lock image at once; that `setStream` lets SystemUI apply the new
+  Material You palette immediately instead of at screen off, and MIUI takes it from the lock wallpaper, so every app
+  got a configuration change and Fox recomposed everything: a 450–630 ms frame within a second of the change, on the
+  first swipe (fling lost). Also `onComputeColors` ran `WallpaperColors.fromBitmap` on the main thread at each fade's
+  end (80–190 ms). Fixes: with the live wallpaper applied, the lock image is set at screen off when it is behind
+  (`StaticTargets.waitsForScreenOff`/`lockScreenBehind`, `RotationScheduler.catchUpLockScreen`, `FoxApp` screen-off
+  receiver, `wallpaper_lock_entry`); colours worked out with the decode on IO. After: no config change mid-use,
+  first swipe right after Next reaches the page (worst frame 21 ms), crossfade gets all 61 frames, no fade-end stall.
+  fox-api33/37: change with the screen on writes nothing; screen off writes `[LOCK]`; a second screen off writes
+  nothing. Parallax was not a factor. Left as is: Android 13's own `PixelCopy` of the wallpaper on landing on a page
+  (PLATFORM-NOTES W). **Owed:** POCO check that the lock screen shows the new image after locking.
+
 - 2026-10-14 — User: "add the back gesture to the drawer". Back already closed the drawer (`BackHandler`), but Fox's
   edge strips (3.8) stayed down over the whole home. `HomeScreen` reports the drawer settling open or closed
   (`onDrawerOpenChanged`) → `HomeVisibility.onDrawerOpen`, and `homeGesturesInFront` is now resumed, no settings and

@@ -75,10 +75,21 @@ class FoxApp : Application(), Configuration.Provider, SingletonImageLoader.Facto
         }
     }
 
+    /**
+     * The lock screen's still image is set while nobody looks (task 4.6, PLATFORM-NOTES W).
+     * `ACTION_SCREEN_OFF` also reaches only runtime receivers; it is a protected broadcast too.
+     */
+    private val screenOffReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            scope.launch { rotation.catchUpLockScreen() }
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         FoxLog.i("FoxApp started")
         ContextCompat.registerReceiver(this, unlockReceiver, IntentFilter(Intent.ACTION_USER_PRESENT), ContextCompat.RECEIVER_EXPORTED)
+        ContextCompat.registerReceiver(this, screenOffReceiver, IntentFilter(Intent.ACTION_SCREEN_OFF), ContextCompat.RECEIVER_EXPORTED)
         // A new process may be one the system killed with Fox's accessibility service in it, which then
         // stays stopped (PLATFORM-NOTES G). Give an ordinary rebind its moment first.
         scope.launch {

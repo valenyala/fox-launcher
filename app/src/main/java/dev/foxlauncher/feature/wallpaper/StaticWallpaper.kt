@@ -118,7 +118,7 @@ class StaticApplyWorker @AssistedInject constructor(
         if (targets.isEmpty()) return Result.success()
         // The same entry the live wallpaper shows, so the lock screen matches the home screen.
         val entryId = WallpaperPlaylist.showing(settings.activeWallpaperEntryId.first(), dao.observeRotationEntries().first().map { it.id })
-        if (entryId != null) applier.apply(entryId, targets)
+        if (entryId != null && applier.apply(entryId, targets) && StaticTarget.LOCK in targets) settings.setLockWallpaperEntry(entryId)
         return Result.success()
     }
 
@@ -132,7 +132,7 @@ class StaticApplyWorker @AssistedInject constructor(
         }
 
         /**
-         * The lock screen catches up with the home screen (the setting was just turned on). A pending
+         * The lock screen catches up with the home screen (at screen off, [RotationScheduler.catchUpLockScreen]). A pending
          * run is kept: it reads the setting when it runs, so it covers the lock screen too.
          */
         fun enqueueLockOnly(workManager: WorkManager) {
