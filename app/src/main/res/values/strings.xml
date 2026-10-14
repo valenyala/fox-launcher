@@ -67,7 +67,7 @@
     <string name="settings_shizuku">Shizuku</string>
     <string name="settings_shizuku_summary">Deep boost and hiding the navigation buttons</string>
     <string name="shizuku_title">Shizuku</string>
-    <string name="shizuku_explainer">Shizuku is a separate app that you start yourself, over wireless debugging or a computer, and that lets the apps you allow run commands as the shell. Fox uses it only for the two things below, and only when you turn them on.</string>
+    <string name="shizuku_explainer">Shizuku is a separate app that you start yourself, over wireless debugging or a computer, and that lets the apps you allow run commands as the shell. Fox uses it only for the things below, and only when you turn them on.</string>
     <string name="shizuku_status_not_installed">Shizuku is not installed.</string>
     <string name="shizuku_status_not_running">Shizuku is installed but not running. Start it in the Shizuku app; it needs starting again after every restart.</string>
     <string name="shizuku_status_too_old">This Shizuku is too old. Update it to version 11 or later.</string>
@@ -82,7 +82,7 @@
     <string name="deep_boost_switch">Use Shizuku for Boost</string>
     <string name="deep_boost_fallback">Until Shizuku is ready, Boost works as it does without it.</string>
     <string name="navigation_buttons_title">Navigation buttons</string>
-    <string name="navigation_buttons_explainer">Hides Back, Home and Recents by switching the phone to full-screen gestures, as the system\'s own navigation setting does: swipe up from the bottom to go home, in from either side to go back. The phone keeps it after a restart, and the system\'s navigation setting turns the buttons back on too. Other apps that are open reload when it changes.</string>
+    <string name="navigation_buttons_explainer">Hides Back, Home and Recents by switching the phone to full-screen gestures, as the system\'s own navigation setting does: swipe up from the bottom to go home, in from either side to go back. The phone keeps it after a restart, and the system\'s navigation setting turns the buttons back on too. Other apps that are open reload when it changes. On Xiaomi phones, Fox does it without Shizuku once you have granted it secure settings over adb (see the README).</string>
     <string name="navigation_buttons_switch">Hide navigation buttons</string>
     <string name="button_apps_title">Apps with buttons</string>
     <string name="button_apps_none">None. Keep the buttons in some apps</string>
@@ -91,8 +91,8 @@
         <item quantity="other">%1$d apps open from Fox with the buttons</item>
     </plurals>
     <string name="button_apps_everywhere">The buttons show everywhere now, so these apps change nothing</string>
-    <string name="button_apps_explainer">While the navigation buttons are hidden, these apps keep them. When you open one from Fox, from the home screen, a folder, the drawer or a gesture, Fox shows the buttons first and hides them again when you come back to Fox. Opened another way, from a notification, Recents or a link, an app gets the navigation as it is. An app still open from before reloads once as it opens. Needs Shizuku running and allowing Fox.</string>
-    <string name="navigation_buttons_needs_shizuku">Needs Shizuku running and allowing Fox</string>
+    <string name="button_apps_explainer">While the navigation buttons are hidden, these apps keep them. When you open one from Fox, from the home screen, a folder, the drawer or a gesture, Fox shows the buttons first and hides them again when you come back to Fox. Opened another way, from a notification, Recents or a link, an app gets the navigation as it is. An app still open from before reloads once as it opens. Needs what the switch needs: Shizuku, or on Xiaomi phones the adb grant.</string>
+    <string name="navigation_buttons_needs_shizuku">Needs Shizuku running and allowing Fox, or on Xiaomi phones the adb grant of secure settings</string>
     <string name="navigation_buttons_unknown">Fox cannot read this phone\'s navigation setting</string>
     <string name="navigation_buttons_failed">Shizuku could not change the navigation</string>
     <string name="widgets_title">Widgets</string>

@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 9 — Power features, at the user's request before phases 7 and 8 (2026-10-14) (Phase 6 done 2026-10-14; Phase 5 done 2026-10-13, its boost checklist item passed through Deep boost 2026-10-14; Phase 4 owes three checklist items, deferred; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists)
-**Next task:** the POCO check of 9.7 (reversed) and the user's choice on its speed, then phases 7 and 8 at the user's call (phase 9: 9.1 and 9.6 done, 9.2 and 9.5 dropped, 9.3 and 9.4 removed) at the user's call (see docs/phases/09-power-features.md; 9.2 and 9.5 dropped by the user) (3.8's POCO check still owed; 2.8 still deferred; phases 7 and 8 not started)
+**Next task:** the POCO check of 9.7's last build, then phases 7 and 8 at the user's call (phase 9: 9.1 and 9.6 done, 9.2 and 9.5 dropped, 9.3 and 9.4 removed) at the user's call (see docs/phases/09-power-features.md; 9.2 and 9.5 dropped by the user) (3.8's POCO check still owed; 2.8 still deferred; phases 7 and 8 not started)
 
 ## Environment facts (verified 2026-09-17)
 
@@ -125,7 +125,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [-] 9.4 External intent API: removed by the user 2026-10-14 after it was built (receiver, setting, screen, README section gone; ADR-22 withdrawn)
 - [-] 9.5 Extra transitions, lock-screen live wallpaper: dropped by the user (2026-10-14)
 - [x] 9.6 Hide navigation buttons (user request 2026-10-14, ADR-23): Settings → Shizuku → "Hide navigation buttons"; fox-api37 pass (both ways); UI tests 6/6 on fox-api33; POCO F3 2026-10-14, user: turned off and on (log: shown, hidden, `force_fsg_nav_bar` back at 1); Fox no longer reloads on a switch (`assetsPaths`; POCO F3 2026-10-14, user: "it doesn't reload")
-- [ ] 9.7 Apps with navigation buttons (user request 2026-10-14, reversed the same day, ADR-24): fox-api37 pass (gestures, Clock listed: opened from the drawer with three buttons, no relaunch, ~0.6 s; Home → gestures again); POCO F3 tested the first direction (works, ~2.0 s per switch, 1.6 s of it starting Fox's shell service); **owed:** the POCO check of the reversed list, and the user's choice on speed
+- [ ] 9.7 Apps with navigation buttons (user request 2026-10-14, reversed the same day, ADR-24, ADR-25): fox-api37 pass (gestures, Clock listed: three buttons, no relaunch; Home → gestures; Fox's edge strips down in Clock, up in Settings); POCO F3: works through the adb grant without Shizuku (write in ms, overlay ~0.3 s); **owed:** the POCO check of the build that no longer waits for MIUI's resize and keeps the edge strips down in listed apps
 
 ## Blockers
 
@@ -164,6 +164,18 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-14 — 9.7 speed and edge gestures (user chose option 1: the adb grant; then "if it's listed to be with
+  buttons, disable fullscreen gestures"). ADR-25 widens ADR-18 (and CLAUDE.md's hard rule): on MIUI with
+  WRITE_SECURE_SETTINGS granted, `NavigationButtons` writes `force_fsg_nav_bar` itself (`writesDirectly`,
+  `canChange()`), so the switch and the list work without Shizuku. POCO log: "shown directly … in 1513 ms" with
+  "applied false": Fox had waited for MIUI's resize (h843→h796), which comes only after the next app's START (80 ms
+  after it), so the wait always hit the 1.5 s cap. Now it waits for the overlay change only (~0.3 s after the write
+  on the POCO); the resize lands as the app opens (Brave handles it). Hiding on Home took 1–5 ms. The log also showed
+  "Navigation gesture: HOME" inside Brave: `NavigationGestures` now keeps Fox's edge strips down while
+  `buttons_shown_by_fox` stands. fox-api37 (gestures in apps on, Clock listed): accessibility overlays 4 in Settings,
+  0 in Clock, 4 again after Home. The Shizuku screen's switch is enabled when Fox writes directly
+  (`NavigationButtonsState.direct`); `ShizukuContentTest` +1 (8/8). Full instrumented suite 190/190 on fox-api33.
 
 - 2026-10-14 — 9.7 reversed (user: "make hide nav buttons the default, and make a list that does have nav buttons").
   The user had tried the first direction on the POCO: works; log "hidden: true, applied true in 1974 ms", of which

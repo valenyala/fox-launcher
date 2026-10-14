@@ -64,9 +64,15 @@ object ShizukuTestTags {
 
 /**
  * The navigation buttons' row (task 9.6): [hidden] as last read from the system (null when this
- * phone does not let Fox read it), [busy] while the shell changes it, [failed] after it could not.
+ * phone does not let Fox read it), [direct] when Fox changes it itself, without Shizuku (MIUI with
+ * the adb grant, ADR-25), [busy] while it changes, [failed] after it could not.
  */
-data class NavigationButtonsState(val hidden: Boolean? = null, val busy: Boolean = false, val failed: Boolean = false)
+data class NavigationButtonsState(
+    val hidden: Boolean? = null,
+    val direct: Boolean = false,
+    val busy: Boolean = false,
+    val failed: Boolean = false,
+)
 
 /** What Fox does through Shizuku (tasks 9.1, 9.6, 9.7): the deep boost and hiding the navigation buttons. */
 @HiltViewModel
@@ -98,7 +104,7 @@ class ShizukuViewModel @Inject constructor(
         shizuku.refresh()
         viewModelScope.launch {
             val hidden = navigationButtons.isHidden()
-            _navigation.update { it.copy(hidden = hidden) }
+            _navigation.update { it.copy(hidden = hidden, direct = navigationButtons.writesDirectly) }
         }
     }
 
@@ -114,7 +120,9 @@ class ShizukuViewModel @Inject constructor(
         viewModelScope.launch {
             val done = navigationButtons.setHidden(hidden)
             // Android's navigation mode follows its overlay a moment later, so a success shows what was asked.
-            _navigation.value = NavigationButtonsState(hidden = if (done) hidden else navigationButtons.isHidden(), failed = !done)
+            _navigation.update {
+                it.copy(hidden = if (done) hidden else navigationButtons.isHidden(), busy = false, failed = !done)
+            }
         }
     }
 
@@ -160,10 +168,10 @@ fun ShizukuScreen(viewModel: ShizukuViewModel, onBack: () -> Unit, onOpenButtonA
 }
 
 /**
- * Shizuku (tasks 9.1 and 9.6, ADR-9, ADR-21, ADR-23): where it stands with the one step it needs
- * next, then each thing Fox does through it, explained, with its switch. Deep boost is off until
- * the user turns it on; the navigation buttons' switch shows the system's own setting and changes
- * it only when tapped, and only while Shizuku is ready.
+ * Shizuku (tasks 9.1, 9.6 and 9.7, ADR-9, ADR-21, ADR-23 to ADR-25): where it stands with the one
+ * step it needs next, then each thing Fox does through it, explained, with its switch. Deep boost
+ * is off until the user turns it on; the navigation buttons' switch shows the system's own setting
+ * and changes it only when tapped, while Shizuku is ready or Fox can change it itself.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -242,10 +250,11 @@ fun ShizukuContent(
             SectionHeader(R.string.navigation_buttons_title)
             Explainer(R.string.navigation_buttons_explainer)
             val hidden = navigation.hidden == true
-            val canChange = status == ShizukuStatus.READY && !navigation.busy
+            val available = navigation.direct || status == ShizukuStatus.READY
+            val canChange = available && !navigation.busy
             val note = when {
                 navigation.failed -> R.string.navigation_buttons_failed
-                status != ShizukuStatus.READY -> R.string.navigation_buttons_needs_shizuku
+                !available -> R.string.navigation_buttons_needs_shizuku
                 navigation.hidden == null -> R.string.navigation_buttons_unknown
                 else -> null
             }

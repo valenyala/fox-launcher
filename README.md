@@ -55,7 +55,8 @@ System actions (marked with a shield in the settings) go through Fox's accessibi
 uses it only to perform those actions; it does not read what is on your screen. Fox asks you to turn it on the first
 time you use such a gesture.
 
-**Hide the navigation buttons:** with [Shizuku](https://shizuku.rikka.app/) running, **Home settings → Shizuku → Hide
+**Hide the navigation buttons:** with [Shizuku](https://shizuku.rikka.app/) running (on Xiaomi phones, or with the
+[secure settings grant](#optional-adb-grants)), **Home settings → Shizuku → Hide
 navigation buttons** switches the phone to full-screen gestures, the same as the system's own navigation setting (on
 MIUI, its "Full screen gestures"). It stays after a restart, and the system's setting brings the buttons back too. Other
 open apps reload when the navigation changes; Fox does not.
@@ -191,7 +192,8 @@ From a computer with `adb`:
 
 ```sh
 # Let Fox turn "Fox gestures" off and on again by itself when Android stops it
-# (Android stops it when you clear recent apps).
+# (Android stops it when you clear recent apps), and, on Xiaomi phones, hide or show
+# the navigation buttons without Shizuku.
 adb shell pm grant dev.foxlauncher android.permission.WRITE_SECURE_SETTINGS
 
 # Allow usage access without going through the settings screens.
@@ -216,7 +218,7 @@ Fox has **no internet permission**. Nothing leaves your phone.
 | Close background processes (`KILL_BACKGROUND_PROCESSES`) | Boost on Android 13 and lower |
 | Usage access (you grant it) | Recent apps in the Memory details widget |
 | Request uninstall | The **Uninstall** item in an app's menu |
-| Write secure settings (only via adb) | Restart Fox's own accessibility service; never granted by a normal install |
+| Write secure settings (only via adb) | Restart Fox's own accessibility service; on MIUI, switch its full-screen gestures for **Hide navigation buttons** and **Apps with buttons**; never granted by a normal install |
 | Accessibility service (you turn it on) | Perform system actions for gestures; it does not read screen content |
 | Shizuku (you allow it in Shizuku, optional) | Deep boost: close other apps' background processes as the shell. Hide navigation buttons: switch the phone to full-screen gestures |
 

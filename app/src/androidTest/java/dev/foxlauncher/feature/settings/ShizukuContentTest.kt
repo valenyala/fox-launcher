@@ -157,4 +157,15 @@ class ShizukuContentTest {
         composeRule.onNodeWithTag(ShizukuTestTags.BUTTON_APPS).performClick()
         assertEquals(listOf("button apps"), calls)
     }
+
+    @Test
+    fun withoutShizukuTheSwitchStillWorksWhenFoxWritesTheSettingItself() {
+        deepBoost = DeepBoostState(ShizukuStatus.NOT_RUNNING, enabled = false)
+        navigation = NavigationButtonsState(hidden = true, direct = true)
+        show()
+
+        composeRule.onNodeWithTag(ShizukuTestTags.NAVIGATION_SWITCH).performScrollTo().assertIsOn().assertIsEnabled().performClick()
+        composeRule.onNodeWithText(context.getString(R.string.navigation_buttons_needs_shizuku)).assertDoesNotExist()
+        assertEquals(listOf("hidden false"), calls)
+    }
 }

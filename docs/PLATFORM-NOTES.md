@@ -150,6 +150,12 @@ here contradicts what you remember, trust this file unless a device proves other
   change (`Config changes=80000000`), `CONFIGURATION_CHANGED` to every app, and every open activity relaunched (POCO
   F3, MIUI 14: Fox's home 2.1–2.5 s before it declared `assetsPaths`, 2026-10-14). An app that does not declare it
   relaunches when the mode changes while it is shown, or when it is next shown after a change in the background.
+  MIUI then sends a second global change, `Config changes=20000400` (screen size): with buttons the app area is
+  shorter (POCO F3: h843dp gestures, h796dp buttons). It comes only once the next app starts (80 ms after the START
+  when Fox waited 1.5 s first; 0.5–1 s after it otherwise), so it cannot be waited for: an app that does not handle
+  `screenSize` relaunches once as it opens (Brave does not). Stock Android (fox-api37) keeps the size and sends only
+  the overlay change. `force_fsg_nav_bar` is writable with WRITE_SECURE_SETTINGS
+  (`Settings.Global.putInt`), and SystemUI follows the write as it follows `adb shell settings put`.
 - Haptics: `View.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS / GESTURE_START / CONFIRM)`; in Compose use
   `LocalHapticFeedback`.
 

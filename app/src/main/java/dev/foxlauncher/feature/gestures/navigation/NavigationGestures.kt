@@ -27,8 +27,9 @@ import kotlinx.coroutines.launch
 
 /**
  * Puts the [NavigationOverlay] up while it is wanted (task 3.8): the user turned navigation
- * gestures on, another app is in front (the home has its own gestures), and the screen is on and
- * unlocked (the lock screen keeps its edges to itself).
+ * gestures on, another app is in front (the home has its own gestures), the screen is on and
+ * unlocked (the lock screen keeps its edges to itself), and that app is not one Fox opened with the
+ * navigation buttons (task 9.7: the user wants buttons there, not gestures).
  */
 class NavigationGestures @Inject constructor(
     private val settings: FoxSettings,
@@ -42,8 +43,13 @@ class NavigationGestures @Inject constructor(
         val overlay = NavigationOverlay(service) { action -> service.performGlobalAction(action.globalAction) }
         return CoroutineScope(main).launch {
             try {
-                combine(settings.navigationGestures, homeVisibility.inFront, screenUnlocked(service)) { on, homeInFront, unlocked ->
-                    on && !homeInFront && unlocked
+                combine(
+                    settings.navigationGestures,
+                    homeVisibility.inFront,
+                    screenUnlocked(service),
+                    settings.buttonsShownByFox,
+                ) { on, homeInFront, unlocked, buttonApp ->
+                    on && !homeInFront && unlocked && !buttonApp
                 }
                     // The home pauses and resumes around each new intent (a Home press on the home):
                     // only a pause that lasts puts the strips up. Taking them down is immediate.

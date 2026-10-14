@@ -131,6 +131,7 @@ touches). Each screen's back pops one route; the Home key clears them all. The n
 unused until a destination needs real navigation (deep links, arguments).
 
 ## ADR-18 An adb-granted WRITE_SECURE_SETTINGS restarts Fox's own stopped accessibility service
+**Widened by ADR-25** (2026-10-14): it also writes MIUI's `force_fsg_nav_bar` for the navigation buttons.
 Narrows ADR-9 ("Shizuku is the only privileged path"), at the user's request (2026-10-12). MIUI's "clear recent apps"
 kills Fox and leaves its accessibility service enabled but crashed; the system never restarts it until it is turned
 off and on (PLATFORM-NOTES G), and it happened several times a day on the POCO. Fox declares WRITE_SECURE_SETTINGS,
@@ -225,11 +226,23 @@ application `ComponentCallbacks`, 1.5 s at most) before calling `LauncherApps`, 
 it records `buttons_shown_by_fox`, and the home's `onStart` hides them again and clears it (retrying on the next start
 while Shizuku is down). Listed apps are `AppEntry.key`s (`button_apps`), matched by package and profile, so shortcuts
 count. The user's switch clears the record (their choice wins); with the buttons showing everywhere the list changes
-nothing. Rejected: following the app in front through the accessibility service's window events, which the
+nothing. While the record stands, Fox's own navigation gestures in other apps (ADR-20) stay down: the user asked for
+buttons, not gestures, in those apps. Rejected: following the app in front through the accessibility service's window events, which the
 disclosure rules out (ADR-20) and which could only switch after the app is shown, relaunching it in front of the user.
 Accepted: an app opened another way gets the mode as it is; an app still in the background from a launch made in the
 other mode relaunches as it is shown again; a listed app opens later, by the time Shizuku takes to start Fox's shell
 service plus the switch (fox-api37 ≈ 0.6 s; POCO F3 ≈ 2.0 s, of which 1.6 s starting the service process).
+
+## ADR-25 The adb-granted WRITE_SECURE_SETTINGS also switches MIUI's full-screen gestures
+Widens ADR-18 at the user's request (2026-10-14). Through Shizuku, every navigation switch of tasks 9.6 and 9.7 took
+about 2 s on the POCO F3, 1.6 s of it Shizuku starting Fox's shell service process, so a listed app opened 2 s late.
+MIUI's switch is a Global setting, `force_fsg_nav_bar`, which WRITE_SECURE_SETTINGS lets an app write: when the user
+has granted it over adb (the same opt-in as ADR-18) and the phone is MIUI, `NavigationButtons` writes it with
+`Settings.Global.putInt` itself, and the switch and the list work without Shizuku, after restarts too. It writes that
+one key, only for the switch (the user's tap) and for the launches of the apps the user listed (ADR-24); elsewhere
+(Android's navigation overlays need the shell) and without the grant, Shizuku remains the way. POCO F3: the write
+takes milliseconds and the overlay change follows in about 0.3 s, which Fox waits for. MIUI's second change, the app
+area's new size, comes only once the app starts, so it is not waited for (PLATFORM-NOTES G).
 
 ## Dependency log
 (append `- <lib> <version> — reason` when adding a dependency)
