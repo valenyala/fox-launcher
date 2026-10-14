@@ -66,6 +66,8 @@ ANDROID_SERIAL=emulator-5556 ./gradlew installDebug          # pick one device w
 ./gradlew :app:assembleProfiling && adb install -r app/build/outputs/apk/profiling/app-profiling.apk
 ./scripts/perf/measure.sh <label>                          # cold start, page swipes, drawer, memory
 ./scripts/perf/ab.sh <open|scroll|pages|return> A.apk B.apk   # A/B per-frame work of one scenario
+ANDROID_SERIAL=emulator-5558 ./gradlew :app:generateBaselineProfile             # regenerate app/src/main/generated/baselineProfiles (emulators only)
+ANDROID_SERIAL=emulator-5558 ./gradlew :baselineprofile:connectedBenchmarkReleaseAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=dev.foxlauncher.baselineprofile.FoxBenchmarks   # startup + drawer macrobenchmarks (emulators only)
 ```
 
 **Pre-commit gate** (must be green before every commit):
@@ -75,15 +77,15 @@ ANDROID_SERIAL=emulator-5556 ./gradlew installDebug          # pick one device w
 ```
 
 That is the whole CI for this repo (ADR-13): it runs
-`./gradlew check assembleDebug :app:compileDebugAndroidTestKotlin` — unit tests, lint, the APK, and the
-instrumented sources that nothing else compiles while no device is attached. It re-enters `nix develop` on
+`./gradlew check assembleDebug :app:compileDebugAndroidTestKotlin :baselineprofile:compileBenchmarkReleaseKotlin` — unit
+tests, lint, the APK, and the instrumented and benchmark sources that nothing else compiles while no device is attached. It re-enters `nix develop` on
 its own, so it works from outside the shell. `.githooks/pre-commit` execs it and the dev shell points
 `core.hooksPath` there, so the gate runs on every `git commit`; `git commit --no-verify` is the escape
 hatch. There is no GitHub Actions workflow — do not add one without a new ADR.
 
 ## Architecture
 
-Single Gradle module `:app`, applicationId `dev.foxlauncher`, minSdk 29, package-by-feature. Stack: Kotlin, Compose + Material 3, Hilt (KSP), Room, Preferences DataStore, WorkManager, Coil, coroutines/Flow. No LiveData, no RxJava, no multi-module until a phase explicitly introduces it.
+One app module `:app`, applicationId `dev.foxlauncher`, minSdk 29, package-by-feature, plus the test module `:baselineprofile` (task 8.1: baseline profile generator and macrobenchmarks, ADR-1's one exception). Stack: Kotlin, Compose + Material 3, Hilt (KSP), Room, Preferences DataStore, WorkManager, Coil, coroutines/Flow. No LiveData, no RxJava, no further modules until a phase explicitly introduces one.
 
 ```
 dev.foxlauncher

@@ -7,7 +7,8 @@ Smaller models: do not re-open these in a session; they were made with the trade
 Compose is the only UI toolkit; XML views appear only where the platform forces them
 (`AppWidgetHostView` inside `AndroidView`, accessibility/wallpaper service config XML).
 A single module with strict package-by-feature layout keeps Gradle simple for automated sessions.
-Modularization is allowed only if a phase task introduces it explicitly (none currently does).
+Modularization is allowed only if a phase task introduces it explicitly. Task 8.1 does: the test module
+`:baselineprofile` (baseline profile generator and macrobenchmarks), which ships nothing.
 
 ## ADR-2 minSdk 29, targetSdk/compileSdk = latest stable
 API 29 gives `RoleManager` (default launcher prompt), system gesture navigation insets and
@@ -267,3 +268,5 @@ area's new size, comes only once the app starts, so it is not waited for (PLATFO
 - junit 4.13.2, kotlin-test 2.3.21, turbine 1.2.1 — JVM unit tests, per ADR-7.
 - androidx.test runner/rules 1.7.0, androidx.test.ext:junit 1.3.0, compose ui-test-junit4/manifest (BOM) — instrumented tests.
 - dev.rikka.shizuku:api and :provider 13.1.5 (newest on Maven Central, 2023-09) — deep boost through Shizuku, task 9.1, ADR-9, ADR-21.
+- androidx.baselineprofile plugin 1.5.0, androidx.benchmark:benchmark-macro-junit4 1.5.0, androidx.test.uiautomator 2.4.0 (newest stable on Google Maven, 2026-10-14) — `:baselineprofile` generator and macrobenchmarks, task 8.1.
+- androidx.profileinstaller 1.4.1 (newest stable, 2026-10-14) — installs the baseline profile on sideloaded builds, task 8.1.

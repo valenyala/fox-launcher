@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.baselineprofile)
 }
 
 android {
@@ -68,6 +69,11 @@ kotlin {
     jvmToolchain(17)
 }
 
+// One baseline profile for every build type (task 8.1), generated on an emulator by :baselineprofile.
+baselineProfile {
+    mergeIntoMain = true
+}
+
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
 }
@@ -77,6 +83,9 @@ dependencies {
     androidTestImplementation(platform(libs.androidx.compose.bom))
 
     implementation(libs.androidx.core.ktx)
+    // Installs the baseline profile (task 8.1) on installs that do not come from Play, such as adb's.
+    implementation(libs.androidx.profileinstaller)
+    baselineProfile(project(":baselineprofile"))
     implementation(libs.shizuku.api)
     implementation(libs.shizuku.provider)
     implementation(libs.androidx.activity.compose)

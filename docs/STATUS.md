@@ -2,8 +2,8 @@
 
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
-**Current phase:** 7 — Polish & personalization (started 2026-10-14; phase 9 done first at the user's request; Phase 6 done 2026-10-14; Phase 5 done 2026-10-13; Phase 4 owes three checklist items, deferred; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists; phase 8 not started)
-**Next task:** 7.2 Dynamic color and theming. Still owed: 3.8's POCO check; 2.8 deferred
+**Current phase:** 8 — Performance & release (started 2026-10-14 at the user's call, with 7.2–7.8 still open; phase 9 done; Phase 4 owes three checklist items, deferred; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists)
+**Next task:** 8.2 Jank pass. Still open: 7.2–7.8; 3.8's POCO check; 2.8 deferred
 
 ## Environment facts (verified 2026-09-17)
 
@@ -111,7 +111,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [ ] Device checklist passed on: —
 
 ## Phase 8 — Performance & release
-- [ ] 8.1 Baseline profiles + macrobenchmark
+- [x] 8.1 Baseline profiles + macrobenchmark: profile generated on fox-api37 (26,315 rules, 3,108 Fox's); cold start TTID, fox-api37 macrobenchmark median 850 → 609 ms; POCO F3 `am start -W` median 188 → 169 ms (target < 500 ms)
 - [ ] 8.2 Jank pass
 - [ ] 8.3 R8, keep rules, signing
 - [ ] 8.4 Battery pass
@@ -164,6 +164,22 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-14 — 8.1 (phase 8 started at the user's call). New test module `:baselineprofile` (ADR-1's exception;
+  one module for generator and benchmarks, Android Studio's layout, where the plan had two): `com.android.test` +
+  `androidx.baselineprofile` 1.5.0, benchmark-macro-junit4 1.5.0, uiautomator 2.4.0; `:app` gets the consumer plugin
+  with `mergeIntoMain` (one profile, `app/src/main/generated/baselineProfiles/`, for release and profiling) and
+  profileinstaller 1.4.1. Journeys: cold start, two page swipes back and forth, drawer open, three flings each way,
+  Back. Generated on fox-api37 in 6 min (`:app:generateBaselineProfile`; 26,315 rules, 3,108 in dev.foxlauncher);
+  the profiling APK carries `assets/dexopt/baseline.prof` (11.5 KB; 9.5 KB without Fox's own, the libraries' alone).
+  **Emulators only:** an instrumented run uninstalls its app, so never on the POCO; macrobenchmark refuses
+  emulators unless told (`suppressErrors=EMULATOR`), and its frame metric finds no render-thread slices there, so
+  the drawer benchmarks were dropped (frames stay with scripts/perf on the phone). fox-api37 cold start TTID, 5 runs:
+  no compilation 609–1032 ms (median 850), with the profile 450–667 ms (median 609). POCO F3, with the user's go
+  ahead, `measure.sh` after installing each profiling APK, the profile installed by profileinstaller's broadcast and
+  `cmd package compile -f -m speed-profile` (`--reset` needs root): libraries' profile only 169–195 ms (median 188),
+  with Fox's 161–185 ms (median 169). Drawer: 2.0% janky both, P90 9 vs 18 ms, within run-to-run noise (8.2's job).
+  Debug build reinstalled after. `ci.sh` now also compiles `:baselineprofile`.
 
 - 2026-10-14 — POCO checks: the Clock widget opened MIUI's Clock (`DeskClockTabActivity`, displayed in 528 ms); the
   user installed Arcticons and chose it: "750 icons kept in 1759 ms" (the POCO reads appfilter.xml about 3× slower

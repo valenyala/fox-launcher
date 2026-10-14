@@ -4,6 +4,8 @@
 #   assembleDebug -> the APK
 #   :app:compileDebugAndroidTestKotlin -> instrumented sources, which nothing
 #   else compiles while no device is attached.
+#   :baselineprofile:compileBenchmarkReleaseKotlin -> the profile generator and
+#   macrobenchmarks (task 8.1), likewise device-only.
 #
 # Runs inside `nix develop` unless the caller is already in the dev shell.
 set -euo pipefail
@@ -11,7 +13,7 @@ set -euo pipefail
 root="$(git rev-parse --show-toplevel)"
 cd "$root"
 
-tasks=(check assembleDebug :app:compileDebugAndroidTestKotlin)
+tasks=(check assembleDebug :app:compileDebugAndroidTestKotlin :baselineprofile:compileBenchmarkReleaseKotlin)
 
 if [[ -n "${ANDROID_HOME:-}" ]] && command -v java >/dev/null 2>&1; then
     exec ./gradlew "${tasks[@]}" "$@"

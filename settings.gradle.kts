@@ -22,3 +22,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "fox-launcher"
 include(":app")
+// Baseline profile generator and macrobenchmarks (task 8.1): the one module ADR-1 allows besides :app.
+include(":baselineprofile")
