@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 7 — Polish & personalization (started 2026-10-14; phase 9 done first at the user's request; Phase 6 done 2026-10-14; Phase 5 done 2026-10-13; Phase 4 owes three checklist items, deferred; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists; phase 8 not started)
-**Next task:** 7.1's POCO check (the user needs an icon pack installed), then 7.2. Still owed: 3.8's POCO check; 2.8 deferred
+**Next task:** 7.2 Dynamic color and theming. Still owed: 3.8's POCO check; 2.8 deferred
 
 ## Environment facts (verified 2026-09-17)
 
@@ -100,7 +100,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] Device checklist passed on: POCO F3 (MIUI 14, Android 13), 2026-10-14, user: "seems ok", reboot keeps the widgets
 
 ## Phase 7 — Polish & personalization
-- [ ] 7.1 Icon packs and icon options: fox-api37 pass (Arcticons 15.3.2 from F-Droid on home and dock; themed icons, recoloured by a palette change; Camera without a monochrome layer keeps its own); **owed:** the POCO F3 with a pack of the user's
+- [x] 7.1 Icon packs and icon options: fox-api37/33 pass (Arcticons 15.3.2 from F-Droid; themed icons, recoloured by a palette change; Camera without a monochrome layer keeps its own); POCO F3 2026-10-14 with the user's Arcticons: 750 entries kept in 1759 ms, 282 icons redrawn, no crash
 - [ ] 7.2 Dynamic color and theming
 - [ ] 7.3 Notification dots
 - [ ] 7.4 Animations
@@ -164,6 +164,11 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-14 — POCO checks: the Clock widget opened MIUI's Clock (`DeskClockTabActivity`, displayed in 528 ms); the
+  user installed Arcticons and chose it: "750 icons kept in 1759 ms" (the POCO reads appfilter.xml about 3× slower
+  than fox-api33; only when an icon must be drawn, the disk cache serves the rest), 282 icons redrawn at 65–210 ms
+  each in parallel, no crash.
 
 - 2026-10-14 — User request (before 7.2): the Clock widget opens the clock app. `ClockWidgetViewModel` resolves the
   app answering `AlarmClock.ACTION_SHOW_ALARMS` off the main thread (the chooser's "android" ignored) and starts its
