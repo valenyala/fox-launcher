@@ -46,7 +46,6 @@ import dev.foxlauncher.feature.home.HomeVisibility
 import dev.foxlauncher.feature.home.isDefaultLauncher
 import dev.foxlauncher.feature.shizuku.ShizukuAccess
 import dev.foxlauncher.feature.home.requestDefaultLauncherRole
-import dev.foxlauncher.feature.settings.AutomationScreen
 import dev.foxlauncher.feature.settings.DeepBoostScreen
 import dev.foxlauncher.feature.settings.GesturesScreen
 import dev.foxlauncher.feature.settings.HiddenAppsScreen
@@ -289,7 +288,6 @@ class HomeActivity : ComponentActivity() {
                             )
                             SettingsRoute.HIDDEN_APPS -> HiddenAppsScreen(hiltViewModel(), onBack = closeSettings)
                             SettingsRoute.DEEP_BOOST -> DeepBoostScreen(hiltViewModel(), onBack = closeSettings)
-                            SettingsRoute.AUTOMATION -> AutomationScreen(hiltViewModel(), onBack = closeSettings)
                             null -> Unit
                         }
                         if (widgetPicker) {

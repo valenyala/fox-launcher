@@ -119,14 +119,6 @@ class FoxSettings @Inject constructor(
         Unit
     }
 
-    /** Commands from other apps by broadcast (task 9.4, ADR-22): off until the user turns it on. */
-    val automation: Flow<Boolean> = dataStore.data.map { it[Keys.AUTOMATION] ?: false }
-
-    suspend fun setAutomation(enabled: Boolean) = withContext(io) {
-        dataStore.edit { it[Keys.AUTOMATION] = enabled }
-        Unit
-    }
-
     /** Boost through Shizuku (task 9.1, ADR-9): off until the user turns it on. */
     val deepBoost: Flow<Boolean> = dataStore.data.map { it[Keys.DEEP_BOOST] ?: false }
 
@@ -239,7 +231,6 @@ class FoxSettings @Inject constructor(
         val GESTURE_PAGE_MAP = stringPreferencesKey("gesture_page_map")
         val NAVIGATION_GESTURES = booleanPreferencesKey("navigation_gestures")
         val DEEP_BOOST = booleanPreferencesKey("deep_boost")
-        val AUTOMATION = booleanPreferencesKey("automation")
         val ACTIVE_WALLPAPER = longPreferencesKey("wallpaper_active_entry")
         val CROSSFADE_MS = intPreferencesKey("wallpaper_crossfade_ms")
         val WALLPAPER_CHANGED_AT = longPreferencesKey("wallpaper_changed_at")

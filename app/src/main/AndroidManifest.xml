@@ -104,19 +104,6 @@
                 android:resource="@xml/wallpaper" />
         </service>
 
-        <!-- Commands from other apps (task 9.4, ADR-22): Tasker and the like send an explicit broadcast. It acts only
-             while the user has "Commands from other apps" on, so it needs no permission, which Tasker could not hold. -->
-        <receiver
-            android:name=".feature.automation.AutomationReceiver"
-            android:exported="true"
-            tools:ignore="ExportedReceiver">
-            <intent-filter>
-                <action android:name="dev.foxlauncher.NEXT_WALLPAPER" />
-                <action android:name="dev.foxlauncher.PREV_WALLPAPER" />
-                <action android:name="dev.foxlauncher.BOOST" />
-            </intent-filter>
-        </receiver>
-
         <!-- Shizuku hands Fox its binder through this provider (task 9.1, ADR-9, ADR-21). Shizuku's own
              permission guards it; deep boost is opt-in and nothing else uses Shizuku. -->
         <provider

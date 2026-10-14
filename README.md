@@ -135,23 +135,6 @@ home screen.
 
 <img src="docs/media/drag-and-folders.gif" width="250" alt="Moving Gmail by drag and drop, dropping Calendar on it to make a folder, and opening the folder">
 
-### Commands from other apps
-
-Automation apps can drive Fox once you turn on **Home settings → Commands from other apps** (off by default, since any
-app could send them). Send one of these actions as a broadcast to the package `dev.foxlauncher`:
-
-| Action | Does |
-|---|---|
-| `dev.foxlauncher.NEXT_WALLPAPER` | Next wallpaper (needs the Fox live wallpaper) |
-| `dev.foxlauncher.PREV_WALLPAPER` | Previous wallpaper (needs the Fox live wallpaper) |
-| `dev.foxlauncher.BOOST` | Boost memory |
-
-In Tasker: **Send Intent**, Action as above, Package `dev.foxlauncher`, Target **Broadcast Receiver**. From a computer:
-`adb shell am broadcast -a dev.foxlauncher.BOOST -p dev.foxlauncher`. An ordered broadcast gets a result back:
-`RESULT_OK` with what happened (`changed`, `freed 12 MB`), or `RESULT_CANCELED` with the reason (`off`, `no live
-wallpaper`). Android delivers nothing to an app that has never been opened since it was installed; Fox, being your
-launcher, always has been.
-
 ### Not done yet
 
 - Icon packs, notification dots, backup and restore, and search beyond apps are planned.

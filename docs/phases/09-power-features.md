@@ -24,6 +24,7 @@ Each task is independent and opt-in for the user. Do not start this phase before
   swipes scroll), so they keep none. Macro steps are the fixed actions and apps, not shortcuts.
 
 ## 9.4 External intent API
+**Removed by the user, 2026-10-14, after it was built (d18cf18): not to be rebuilt.**
 - Exported `BroadcastReceiver` guarded by a signature permission `dev.foxlauncher.permission.CONTROL`: actions
   `dev.foxlauncher.NEXT_WALLPAPER`, `PREV_WALLPAPER`, `BOOST`, so Tasker/automation apps can drive the launcher. Document in README.
 - As built (ADR-22): no permission, which would shut Tasker out; the receiver acts only while the user has "Commands

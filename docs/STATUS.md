@@ -122,7 +122,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] 9.1 Shizuku boost strategy: fox-api33/37 pass (Shizuku 13.6.0; status steps, permission, opt-in, boost through the shell; on API 37 it closed an app Android 14+ refuses to apps); POCO F3 (MIUI) 2026-10-14, user: "works well", and 5.4's boost checklist item with it
 - [-] 9.2 Online wallpaper sources: dropped by the user (2026-10-14)
 - [x] 9.3 Per-app gestures and macros: fox-api33/37 pass (page 1's own double tap, a macro with a 1 s wait, a macro stopped by the live wallpaper prompt); POCO F3 check waived by the user 2026-10-14. Home pages only (no drawer or folder contexts)
-- [x] 9.4 External intent API: fox-api37 pass (off: ignored "off"; on: next wallpaper "no live wallpaper", boost "freed 8 MB"; an implicit broadcast does not arrive); POCO F3 check waived by the user 2026-10-14. No signature permission (ADR-22)
+- [-] 9.4 External intent API: removed by the user 2026-10-14 after it was built (receiver, setting, screen, README section gone; ADR-22 withdrawn)
 - [-] 9.5 Extra transitions, lock-screen live wallpaper: dropped by the user (2026-10-14)
 - [ ] 9.6 Hide navigation buttons (user request 2026-10-14, after `force_fsg_nav_bar 1` over adb hid the POCO's buttons): checkpoint — Shizuku classes moved to `feature/shizuku`, pure `ShellCommands` (+ tests), `IFoxShell.setNavigationButtonsHidden`, `NavigationButtons`; **to do:** the switch (Deep boost screen → "Shizuku" screen), strings, ADR-23 (widens ADR-9), UI tests, emulator (fox-api37 only: nav-mode switches hung fox-api33 before) and POCO checks. The POCO is left in full-screen gestures (`force_fsg_nav_bar` 1)
 
@@ -163,6 +163,10 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-14 — 9.4 removed at the user's request: `AutomationReceiver`, `AutomationCommand` (+ test), the
+  `automation` setting, the "Commands from other apps" screen (+ UI test), its strings and README section. ADR-22
+  marked withdrawn. A stored `automation` key is left in DataStore, unread.
 
 - 2026-10-14 — POCO F3: 9.1 Deep boost passed (user: "works well"), closing Phase 5's boost checklist item;
   the user waived the POCO checks of 9.3 and 9.4. 9.6 still to finish.

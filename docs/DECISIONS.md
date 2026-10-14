@@ -187,6 +187,7 @@ would otherwise probe for Sui through a hidden `ServiceManager` method in Fox's 
 "Deep boost" settings screen, off by default; while off or while Shizuku is not ready, the ADR-5 strategies run.
 
 ## ADR-22 Commands from other apps need the user's opt-in, not a permission
+**Withdrawn 2026-10-14:** the user removed task 9.4; Fox has no `AutomationReceiver`. Kept for the record.
 Task 9.4 asked for an exported receiver "guarded by a signature permission `dev.foxlauncher.permission.CONTROL`, so
 Tasker/automation apps can drive the launcher". The two halves contradict each other: a signature permission is held
 only by apps signed with Fox's key, which Tasker is not, and Tasker cannot hold a custom permission of any level
