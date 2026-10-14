@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 9 — Power features, at the user's request before phases 7 and 8 (2026-10-14) (Phase 6 done 2026-10-14; Phase 5 done 2026-10-13, its boost checklist item blocked by MIUI until Phase 9; Phase 4 owes three checklist items, deferred; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists)
-**Next task:** 9.1's POCO check, then 9.3 (see docs/phases/09-power-features.md; 9.2 and 9.5 dropped by the user) (3.8's POCO check still owed; 2.8 still deferred; phases 7 and 8 not started)
+**Next task:** 9.1's POCO check, then 9.4 (9.3's POCO check owed too) (see docs/phases/09-power-features.md; 9.2 and 9.5 dropped by the user) (3.8's POCO check still owed; 2.8 still deferred; phases 7 and 8 not started)
 
 ## Environment facts (verified 2026-09-17)
 
@@ -121,7 +121,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 ## Phase 9 — Power features (optional)
 - [ ] 9.1 Shizuku boost strategy: fox-api33/37 pass (Shizuku 13.6.0; status steps, permission, opt-in, boost through the shell; on API 37 it closed an app Android 14+ refuses to apps); **owed:** the POCO F3 (MIUI), and 5.4's boost checklist item with it
 - [-] 9.2 Online wallpaper sources: dropped by the user (2026-10-14)
-- [ ] 9.3 Per-app gestures and macros
+- [ ] 9.3 Per-app gestures and macros: fox-api33/37 pass (page 1's own double tap, a macro with a 1 s wait, a macro stopped by the live wallpaper prompt); **owed:** the POCO F3. Home pages only (no drawer or folder contexts)
 - [ ] 9.4 External intent API
 - [-] 9.5 Extra transitions, lock-screen live wallpaper: dropped by the user (2026-10-14)
 
@@ -162,6 +162,23 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-14 — 9.3. Per-page gestures: a page may override any gesture (`GestureMaps.actionFor`: the page's own, else all
+  pages'; `withPageAction` sets or clears), stored under `gesture_page_map` as `{"<page index>":{changes}}` by
+  `GestureMapJson.decodePages/encodePages` (tolerant like the map: bad keys, empty pages, unknown gestures dropped);
+  reset clears both. The home resolves by the settled page, and drag-follow (3.7) by the pager's page. Overrides follow
+  the page index, so closing a page gap moves them with it. Macros: `GestureAction.Macro(steps)` (`"macro"`), each
+  `MacroStep(action, delayMs)`; `Macros.sanitize` drops nested macros and empty steps, caps 8 steps and 10 s waits (also
+  on reading); `MacroRunner` runs steps after their waits, stops at one needing the user (accessibility, live wallpaper)
+  and skips failures; `ActionExecutor.perform` runs macros, the home launches them off the gesture's call (no retry
+  after a service repair: the user repeats the gesture). Gestures screen: a "Pages" selector (all pages, page 1…N), rows
+  saying "Same as all pages: …" where a page has nothing of its own, "Same as all pages" first in the picker on a page,
+  and "Macro…" opening an editor (steps, a wait each cycling 0 / 0.5 / 1 / 2 / 5 s, remove, add from the fixed actions or
+  an app). Unit tests: JSON +5, `GestureMapsTest` 3, `MacrosTest` 4, `MacroRunnerTest` 4 (virtual time); UI
+  `GesturesContentTest` +3 (19/19 on fox-api33). fox-api37, through the UI: page 1's double tap → macro [next wallpaper,
+  open drawer after 1 s] stopped at the wallpaper step with the live wallpaper offer (Fox's live wallpaper is not
+  applied there now); with only the drawer step, no drawer at 0.3 s, drawer by 1.8 s; then page 1 cleared back to all
+  pages (lock the screen).
 
 - 2026-10-14 — 9.1 (the user asked for phase 9 before 7 and 8, then dropped 9.2 and 9.5). Deep boost through Shizuku
   (ADR-21): `FoxShellService` (AIDL `IFoxShell`, `aidl` build feature) runs in Shizuku's shell process and calls

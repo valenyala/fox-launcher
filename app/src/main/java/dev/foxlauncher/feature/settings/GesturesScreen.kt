@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -22,6 +23,8 @@ import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -59,6 +62,8 @@ import dev.foxlauncher.core.model.AppEntry
 import dev.foxlauncher.core.model.AppShortcut
 import dev.foxlauncher.core.model.GestureAction
 import dev.foxlauncher.core.model.GestureType
+import dev.foxlauncher.core.model.MacroStep
+import dev.foxlauncher.core.model.Macros
 import dev.foxlauncher.core.ui.AppIcon
 import dev.foxlauncher.feature.gestures.AccessibilityStatus
 import dev.foxlauncher.feature.gestures.system.AccessibilityDisclosureDialog
@@ -68,6 +73,11 @@ object GesturesTestTags {
     const val APP_CHOOSER = "gestures_app_chooser"
     const val SHORTCUT_PICKER = "gestures_shortcut_picker"
     const val NAVIGATION_SWITCH = "gestures_navigation_switch"
+    const val PAGE_SCOPE = "gestures_page_scope"
+    const val MACRO_EDITOR = "gestures_macro_editor"
+    const val MACRO_STEP_PICKER = "gestures_macro_step_picker"
+
+    fun macroDelay(index: Int) = "gestures_macro_delay_$index"
 }
 
 @Composable
@@ -93,6 +103,7 @@ fun GesturesScreen(
         modifier = modifier,
         onRestartService = viewModel::restartService,
         onSetNavigationGestures = viewModel::setNavigationGestures,
+        onSetPageGesture = viewModel::setPageGesture,
     )
 }
 
@@ -102,7 +113,8 @@ fun GesturesScreen(
  * shortcuts. Actions that need the accessibility service carry a shield, and the service's status
  * heads the list with a way to turn it on. Above the home gestures, the switch for the navigation
  * gestures in other apps (task 3.8); turning it on while the service is not running shows how to
- * turn the service on.
+ * turn the service on. A page selector above the gestures edits one home page's own actions,
+ * which fall back to all pages' (task 9.3); "Macro…" builds a list of steps with waits.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -116,6 +128,7 @@ fun GesturesContent(
     modifier: Modifier = Modifier,
     onRestartService: () -> Unit = {},
     onSetNavigationGestures: (Boolean) -> Unit = {},
+    onSetPageGesture: (Int, GestureType, GestureAction?) -> Unit = { _, _, _ -> },
     iconContent: @Composable (AppEntry) -> Unit = { AppIcon(it, ROW_ICON_SIZE.dp) },
 ) {
     val appsByKey = remember(state.apps) { state.apps.associateBy { it.key } }
@@ -124,9 +137,32 @@ fun GesturesContent(
     var choosingForShortcut by rememberSaveable { mutableStateOf(false) }
     var shortcutsOf by remember { mutableStateOf<Pair<GestureType, AppEntry>?>(null) }
     var showDisclosure by rememberSaveable { mutableStateOf(false) }
+    // Null: all pages. A page that has gone since it was chosen falls back to all pages.
+    var scopePage by rememberSaveable { mutableStateOf<Int?>(null) }
+    val page = scopePage?.takeIf { it < state.pageCount }
+    val setAction: (GestureType, GestureAction) -> Unit = { type, action ->
+        if (page == null) onSetGesture(type, action) else onSetPageGesture(page, type, action)
+    }
+    val shownAction: (GestureRow) -> GestureAction = { row -> page?.let { state.pageGestures[it]?.get(row.type) } ?: row.action }
+    var macroFor by remember { mutableStateOf<GestureType?>(null) }
+    var macroSteps by remember { mutableStateOf(listOf<MacroStep>()) }
+    var macroAddingStep by remember { mutableStateOf(false) }
+    var macroChoosingApp by remember { mutableStateOf(false) }
 
     val chooserType = choosingAppFor
-    if (chooserType != null) {
+    if (macroChoosingApp) {
+        BackHandler { macroChoosingApp = false }
+        AppChooser(
+            apps = state.apps,
+            iconContent = iconContent,
+            onBack = { macroChoosingApp = false },
+            onChoose = { entry ->
+                macroChoosingApp = false
+                macroSteps = macroSteps + MacroStep(GestureAction.OpenApp(entry.component, entry.userSerial))
+            },
+            modifier = modifier,
+        )
+    } else if (chooserType != null) {
         BackHandler { choosingAppFor = null }
         AppChooser(
             apps = state.apps,
@@ -137,7 +173,7 @@ fun GesturesContent(
                 if (choosingForShortcut) {
                     shortcutsOf = chooserType to entry
                 } else {
-                    onSetGesture(chooserType, GestureAction.OpenApp(entry.component, entry.userSerial))
+                    setAction(chooserType, GestureAction.OpenApp(entry.component, entry.userSerial))
                 }
             },
             modifier = modifier,
@@ -176,11 +212,15 @@ fun GesturesContent(
                         },
                     )
                 }
+                item { PageScopeRow(page, state.pageCount, onSelect = { scopePage = it }) }
                 items(state.rows, key = { it.type }) { row ->
+                    val action = shownAction(row)
+                    val label = actionLabel(action, appsByKey)
+                    val inherited = page != null && state.pageGestures[page]?.containsKey(row.type) != true
                     ListItem(
                         headlineContent = { Text(stringResource(row.type.labelRes())) },
-                        supportingContent = { Text(actionLabel(row.action, appsByKey)) },
-                        trailingContent = if (row.action.requiresAccessibility) {
+                        supportingContent = { Text(if (inherited) stringResource(R.string.gestures_same_as_all_pages, label) else label) },
+                        trailingContent = if (action.requiresAccessibility) {
                             { ShieldIcon(isOn = state.accessibility == AccessibilityStatus.ON) }
                         } else {
                             null
@@ -193,12 +233,24 @@ fun GesturesContent(
     }
 
     editing?.let { type ->
+        val row = state.rows.firstOrNull { it.type == type }
+        val inherited = page != null && state.pageGestures[page]?.containsKey(type) != true
         ActionPickerDialog(
-            current = state.rows.firstOrNull { it.type == type }?.action ?: GestureAction.None,
+            current = row?.let(shownAction) ?: GestureAction.None,
             accessibilityOn = state.accessibility == AccessibilityStatus.ON,
             onPick = { action ->
                 editing = null
-                onSetGesture(type, action)
+                setAction(type, action)
+            },
+            inherit = if (page == null) null else inherited,
+            onInherit = {
+                editing = null
+                page?.let { onSetPageGesture(it, type, null) }
+            },
+            onPickMacro = {
+                editing = null
+                macroSteps = (row?.let(shownAction) as? GestureAction.Macro)?.steps.orEmpty()
+                macroFor = type
             },
             onPickApp = { forShortcut ->
                 editing = null
@@ -214,13 +266,43 @@ fun GesturesContent(
             loadShortcuts = loadShortcuts,
             onPick = { shortcut ->
                 shortcutsOf = null
-                onSetGesture(
+                setAction(
                     type,
                     GestureAction.OpenShortcut(shortcut.packageName, shortcut.id, shortcut.userSerial, shortcut.shortLabel),
                 )
             },
             onDismiss = { shortcutsOf = null },
         )
+    }
+    val macroType = macroFor
+    if (macroType != null && !macroChoosingApp) {
+        if (macroAddingStep) {
+            MacroStepPickerDialog(
+                accessibilityOn = state.accessibility == AccessibilityStatus.ON,
+                onPick = { action ->
+                    macroAddingStep = false
+                    macroSteps = macroSteps + MacroStep(action)
+                },
+                onPickApp = {
+                    macroAddingStep = false
+                    macroChoosingApp = true
+                },
+                onDismiss = { macroAddingStep = false },
+            )
+        } else {
+            MacroEditorDialog(
+                steps = macroSteps,
+                apps = appsByKey,
+                onCycleDelay = { index -> macroSteps = macroSteps.mapIndexed { i, s -> if (i == index) s.copy(delayMs = Macros.nextDelay(s.delayMs)) else s } },
+                onRemove = { index -> macroSteps = macroSteps.filterIndexed { i, _ -> i != index } },
+                onAdd = { macroAddingStep = true },
+                onSave = {
+                    macroFor = null
+                    setAction(macroType, if (macroSteps.isEmpty()) GestureAction.None else GestureAction.Macro(macroSteps))
+                },
+                onDismiss = { macroFor = null },
+            )
+        }
     }
     if (showDisclosure) {
         AccessibilityDisclosureDialog(
@@ -333,7 +415,11 @@ private fun ShieldIcon(isOn: Boolean) {
     )
 }
 
-/** The fixed actions, then "Open an app…" and "Open an app shortcut…" ([onPickApp] says which). */
+/**
+ * The fixed actions, then "Open an app…" and "Open an app shortcut…" ([onPickApp] says which), and
+ * "Macro…" ([onPickMacro], task 9.3). [inherit] is null on all pages; on one page it offers "Same as
+ * all pages" first ([onInherit]), selected when true.
+ */
 @Composable
 private fun ActionPickerDialog(
     current: GestureAction,
@@ -341,7 +427,11 @@ private fun ActionPickerDialog(
     onPick: (GestureAction) -> Unit,
     onPickApp: (forShortcut: Boolean) -> Unit,
     onDismiss: () -> Unit,
+    inherit: Boolean? = null,
+    onInherit: () -> Unit = {},
+    onPickMacro: () -> Unit = {},
 ) {
+    val own = inherit != true
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {},
@@ -349,10 +439,13 @@ private fun ActionPickerDialog(
         title = { Text(stringResource(R.string.gestures_choose_action)) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
+                if (inherit != null) {
+                    ChoiceRow(label = stringResource(R.string.gestures_inherit), selected = inherit, onClick = onInherit)
+                }
                 PICKABLE_ACTIONS.forEach { action ->
                     ChoiceRow(
                         label = actionLabel(action, emptyMap()),
-                        selected = action == current,
+                        selected = own && action == current,
                         needsAccessibility = action.requiresAccessibility,
                         accessibilityOn = accessibilityOn,
                         onClick = { onPick(action) },
@@ -360,17 +453,135 @@ private fun ActionPickerDialog(
                 }
                 ChoiceRow(
                     label = stringResource(R.string.action_open_app_pick),
-                    selected = current is GestureAction.OpenApp,
+                    selected = own && current is GestureAction.OpenApp,
                     onClick = { onPickApp(false) },
                 )
                 ChoiceRow(
                     label = stringResource(R.string.action_open_shortcut_pick),
-                    selected = current is GestureAction.OpenShortcut,
+                    selected = own && current is GestureAction.OpenShortcut,
                     onClick = { onPickApp(true) },
+                )
+                ChoiceRow(
+                    label = stringResource(R.string.action_macro_pick),
+                    selected = own && current is GestureAction.Macro,
+                    onClick = onPickMacro,
                 )
             }
         },
         modifier = Modifier.testTag(GesturesTestTags.ACTION_PICKER),
+    )
+}
+
+/** Which home page the gestures below are for (task 9.3): all of them, or one with its own actions. */
+@Composable
+private fun PageScopeRow(page: Int?, pageCount: Int, onSelect: (Int?) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        ListItem(
+            headlineContent = { Text(stringResource(R.string.gestures_pages)) },
+            supportingContent = { Text(pageName(page)) },
+            modifier = Modifier
+                .clickable { open = true }
+                .testTag(GesturesTestTags.PAGE_SCOPE),
+        )
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            (listOf<Int?>(null) + (0 until pageCount)).forEach { choice ->
+                DropdownMenuItem(
+                    text = { Text(pageName(choice)) },
+                    onClick = {
+                        open = false
+                        onSelect(choice)
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun pageName(page: Int?): String =
+    if (page == null) stringResource(R.string.gestures_all_pages) else stringResource(R.string.gestures_page, page + 1)
+
+/**
+ * A macro being edited (task 9.3): its steps in order, each with its wait, which a tap cycles
+ * through [Macros.DELAYS_MS], and a remove button; [onAdd] picks another, up to [Macros.MAX_STEPS].
+ */
+@Composable
+private fun MacroEditorDialog(
+    steps: List<MacroStep>,
+    apps: Map<String, AppEntry>,
+    onCycleDelay: (Int) -> Unit,
+    onRemove: (Int) -> Unit,
+    onAdd: () -> Unit,
+    onSave: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = { TextButton(onClick = onSave) { Text(stringResource(R.string.macro_save)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) } },
+        title = { Text(stringResource(R.string.macro_title)) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                Text(stringResource(R.string.macro_explainer), style = MaterialTheme.typography.bodyMedium)
+                Spacer(Modifier.height(8.dp))
+                if (steps.isEmpty()) {
+                    Text(
+                        stringResource(R.string.macro_empty),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                steps.forEachIndexed { index, step ->
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        Text("${index + 1}. ${actionLabel(step.action, apps)}", modifier = Modifier.weight(1f))
+                        TextButton(onClick = { onCycleDelay(index) }, modifier = Modifier.testTag(GesturesTestTags.macroDelay(index))) {
+                            Text(stringResource(R.string.macro_wait, seconds(step.delayMs)))
+                        }
+                        IconButton(onClick = { onRemove(index) }) {
+                            Icon(painterResource(R.drawable.ic_delete), stringResource(R.string.macro_remove_step, index + 1))
+                        }
+                    }
+                }
+                if (steps.size < Macros.MAX_STEPS) {
+                    TextButton(onClick = onAdd) { Text(stringResource(R.string.macro_add_step)) }
+                }
+            }
+        },
+        modifier = Modifier.testTag(GesturesTestTags.MACRO_EDITOR),
+    )
+}
+
+private fun seconds(delayMs: Long): String = if (delayMs % 1_000L == 0L) "${delayMs / 1_000L}" else "${delayMs / 1_000L}.${delayMs % 1_000L / 100L}"
+
+/** A macro step's action: the fixed ones but "None", or an app ([onPickApp]). No shortcuts or macros. */
+@Composable
+private fun MacroStepPickerDialog(
+    accessibilityOn: Boolean,
+    onPick: (GestureAction) -> Unit,
+    onPickApp: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) } },
+        title = { Text(stringResource(R.string.macro_add_step)) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                PICKABLE_ACTIONS.filter { it != GestureAction.None }.forEach { action ->
+                    ChoiceRow(
+                        label = actionLabel(action, emptyMap()),
+                        selected = false,
+                        needsAccessibility = action.requiresAccessibility,
+                        accessibilityOn = accessibilityOn,
+                        onClick = { onPick(action) },
+                    )
+                }
+                ChoiceRow(label = stringResource(R.string.action_open_app_pick), selected = false, onClick = onPickApp)
+            }
+        },
+        modifier = Modifier.testTag(GesturesTestTags.MACRO_STEP_PICKER),
     )
 }
 

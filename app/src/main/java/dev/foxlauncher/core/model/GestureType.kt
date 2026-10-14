@@ -38,3 +38,26 @@ val DEFAULT_GESTURE_MAP: Map<GestureType, GestureAction> = GestureType.entries.a
         else -> GestureAction.None
     }
 }
+
+/** Which action a gesture runs where (task 9.3). Pure, so it is unit tested. */
+object GestureMaps {
+
+    /** On [page], its own action for [type] if it has one, else the all-pages one from [base]. */
+    fun actionFor(
+        type: GestureType,
+        page: Int,
+        base: Map<GestureType, GestureAction>,
+        pages: Map<Int, Map<GestureType, GestureAction>>,
+    ): GestureAction = pages[page]?.get(type) ?: base[type] ?: GestureAction.None
+
+    /** [pages] with [page]'s action for [type] set, or cleared when [action] is null (the page follows all pages again). */
+    fun withPageAction(
+        pages: Map<Int, Map<GestureType, GestureAction>>,
+        page: Int,
+        type: GestureType,
+        action: GestureAction?,
+    ): Map<Int, Map<GestureType, GestureAction>> {
+        val changes = pages[page].orEmpty().let { if (action == null) it - type else it + (type to action) }
+        return if (changes.isEmpty()) pages - page else pages + (page to changes)
+    }
+}

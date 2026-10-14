@@ -15,14 +15,20 @@ import dev.foxlauncher.feature.gestures.AccessibilityStatus
 import dev.foxlauncher.feature.gestures.SystemActions
 import dev.foxlauncher.feature.gestures.system.AccessibilityRepair
 import dev.foxlauncher.feature.gestures.system.FoxAccessibilityService
+import dev.foxlauncher.feature.home.HomeRepository
 import javax.inject.Inject
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.collections.immutable.toImmutableMap
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -42,6 +48,10 @@ data class GesturesUiState(
     val showMiuiLockHint: Boolean = false,
     /** Back, Home and Recents from the screen edges in other apps (task 3.8). */
     val navigationGestures: Boolean = false,
+    /** Each page's own gestures (task 9.3), by page index. */
+    val pageGestures: ImmutableMap<Int, Map<GestureType, GestureAction>> = persistentMapOf(),
+    /** How many home pages there are, to choose one. */
+    val pageCount: Int = 1,
 )
 
 /** Gesture settings (task 3.5): every gesture with its action, editable. */
@@ -49,6 +59,7 @@ data class GesturesUiState(
 class GesturesViewModel @Inject constructor(
     private val settings: FoxSettings,
     private val appRepository: AppRepository,
+    homeRepository: HomeRepository,
     private val systemActions: SystemActions,
     private val accessibilityRepair: AccessibilityRepair,
 ) : ViewModel() {
@@ -61,8 +72,8 @@ class GesturesViewModel @Inject constructor(
         appRepository.apps,
         statusChecks,
         FoxAccessibilityService.connected,
-        settings.navigationGestures,
-    ) { map, apps, _, _, navigationGestures ->
+        combine(settings.navigationGestures, settings.gesturePageMap, homeRepository.layout.map { it.pages.size }.distinctUntilChanged(), ::Triple),
+    ) { map, apps, _, _, (navigationGestures, pages, pageCount) ->
         GesturesUiState(
             rows = EDITABLE_GESTURES.map { GestureRow(it, map[it] ?: GestureAction.None) }.toImmutableList(),
             apps = apps,
@@ -70,6 +81,8 @@ class GesturesViewModel @Inject constructor(
             autoRestart = accessibilityRepair.isAvailable,
             showMiuiLockHint = IS_XIAOMI,
             navigationGestures = navigationGestures,
+            pageGestures = pages.toImmutableMap(),
+            pageCount = pageCount,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), GesturesUiState())
 
@@ -87,6 +100,11 @@ class GesturesViewModel @Inject constructor(
 
     fun setGesture(type: GestureType, action: GestureAction) {
         viewModelScope.launch { settings.setGesture(type, action) }
+    }
+
+    /** [page] gets its own [action] for [type]; null lets it follow all pages again (task 9.3). */
+    fun setPageGesture(page: Int, type: GestureType, action: GestureAction?) {
+        viewModelScope.launch { settings.setPageGesture(page, type, action) }
     }
 
     fun setNavigationGestures(enabled: Boolean) {

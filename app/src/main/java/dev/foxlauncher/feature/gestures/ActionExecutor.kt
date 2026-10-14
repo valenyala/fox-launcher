@@ -94,7 +94,13 @@ class ActionExecutor @Inject constructor(
         is GestureAction.OpenApp -> appLauncher.launchApp(action.component, action.userSerial).toResult()
         is GestureAction.OpenShortcut ->
             appLauncher.startShortcut(action.packageName, action.shortcutId, action.userSerial).toResult()
+        // A macro takes time: [perform] runs it. A macro's steps are never macros (Macros.sanitize).
+        is GestureAction.Macro -> ActionResult.FAILED
     }
+
+    /** [execute], and macros too, step by step with their delays (task 9.3). */
+    suspend fun perform(action: GestureAction, context: ExecContext): ActionResult =
+        if (action is GestureAction.Macro) MacroRunner.run(action) { execute(it, context) } else execute(action, context)
 
     private fun system(action: SystemAction): ActionResult = when (systemActions.status) {
         AccessibilityStatus.OFF -> ActionResult.NEEDS_ACCESSIBILITY

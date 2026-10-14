@@ -79,6 +79,7 @@ import dev.foxlauncher.R
 import dev.foxlauncher.core.common.FoxLog
 import dev.foxlauncher.core.model.AppEntry
 import dev.foxlauncher.core.model.GestureAction
+import dev.foxlauncher.core.model.GestureMaps
 import dev.foxlauncher.core.model.GestureType
 import dev.foxlauncher.core.model.HomeItem
 import dev.foxlauncher.core.model.HomeLayout
@@ -294,6 +295,7 @@ fun HomeScreen(
     val currentOnGesture by rememberUpdatedState(onGesture)
     val isRtl by rememberUpdatedState(LocalLayoutDirection.current == LayoutDirection.Rtl)
     val gestureMap by rememberUpdatedState(state.gestureMap)
+    val pageGestureMap by rememberUpdatedState(state.pageGestureMap)
     // The bottom strip where the system's own swipes start (home, recents in gesture navigation; the
     // bar in three-button). A gesture that starts there is the system's, never ours (task 3.6).
     val systemGestureStrip by rememberUpdatedState(WindowInsets.mandatorySystemGestures.getBottom(LocalDensity.current))
@@ -444,7 +446,8 @@ fun HomeScreen(
                 // Task 3.7: a swipe up that opens the drawer drags it with the finger; any other vertical swipe
                 // (remapped, downwards) is recognized when it lifts.
                 followsVerticalDrag = { fromDock, upward ->
-                    upward && gestureMap[if (fromDock) GestureType.DOCK_SWIPE_UP else GestureType.SWIPE_UP] == GestureAction.OpenDrawer
+                    val type = if (fromDock) GestureType.DOCK_SWIPE_UP else GestureType.SWIPE_UP
+                    upward && GestureMaps.actionFor(type, pagerState.currentPage, gestureMap, pageGestureMap) == GestureAction.OpenDrawer
                 },
                 onDragStart = {
                     drawerDrag.floatValue = progress.value

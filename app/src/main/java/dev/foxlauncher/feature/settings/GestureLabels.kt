@@ -69,4 +69,5 @@ fun actionLabel(action: GestureAction, apps: Map<String, AppEntry>): String = wh
         R.string.action_open_shortcut,
         action.label.ifBlank { apps.values.firstOrNull { it.packageName == action.packageName }?.label ?: action.shortcutId },
     )
+    is GestureAction.Macro -> stringResource(R.string.action_macro, action.steps.map { actionLabel(it.action, apps) }.joinToString(" → "))
 }

@@ -17,6 +17,7 @@ import kotlinx.coroutines.withContext
 import dev.foxlauncher.core.common.IoDispatcher
 import dev.foxlauncher.core.model.GestureAction
 import dev.foxlauncher.core.model.GestureType
+import dev.foxlauncher.core.model.GestureMaps
 import dev.foxlauncher.core.model.PlaylistMode
 import dev.foxlauncher.core.model.PlaylistState
 import dev.foxlauncher.core.model.RotationTriggers
@@ -85,9 +86,25 @@ class FoxSettings @Inject constructor(
         Unit
     }
 
-    /** Every gesture back to its default action. */
+    /** Each home page's own gestures (task 9.3), by page index; elsewhere [gestureMap] applies. */
+    val gesturePageMap: Flow<Map<Int, Map<GestureType, GestureAction>>> =
+        dataStore.data.map { GestureMapJson.decodePages(it[Keys.GESTURE_PAGE_MAP]) }
+
+    /** Gives [page] its own [action] for [type], or with null lets it follow all pages again. */
+    suspend fun setPageGesture(page: Int, type: GestureType, action: GestureAction?) = withContext(io) {
+        dataStore.edit {
+            val pages = GestureMaps.withPageAction(GestureMapJson.decodePages(it[Keys.GESTURE_PAGE_MAP]), page, type, action)
+            if (pages.isEmpty()) it.remove(Keys.GESTURE_PAGE_MAP) else it[Keys.GESTURE_PAGE_MAP] = GestureMapJson.encodePages(pages)
+        }
+        Unit
+    }
+
+    /** Every gesture back to its default action, on every page. */
     suspend fun resetGestures() = withContext(io) {
-        dataStore.edit { it.remove(Keys.GESTURE_MAP) }
+        dataStore.edit {
+            it.remove(Keys.GESTURE_MAP)
+            it.remove(Keys.GESTURE_PAGE_MAP)
+        }
         Unit
     }
 
@@ -211,6 +228,7 @@ class FoxSettings @Inject constructor(
         val DOCK_SLOTS = intPreferencesKey("dock_slots")
         val SHOW_HOME_LABELS = booleanPreferencesKey("show_home_labels")
         val GESTURE_MAP = stringPreferencesKey("gesture_map")
+        val GESTURE_PAGE_MAP = stringPreferencesKey("gesture_page_map")
         val NAVIGATION_GESTURES = booleanPreferencesKey("navigation_gestures")
         val DEEP_BOOST = booleanPreferencesKey("deep_boost")
         val ACTIVE_WALLPAPER = longPreferencesKey("wallpaper_active_entry")
