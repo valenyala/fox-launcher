@@ -2,8 +2,8 @@
 
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
-**Current phase:** 6 — App widgets (Phase 5 done 2026-10-13, its boost checklist item blocked by MIUI until Phase 9; Phase 4 owes three checklist items, deferred; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists)
-**Next task:** 6.6's POCO check, then phase 7 (see docs/phases/07-polish.md) (3.8's POCO check still owed; 2.8 still deferred)
+**Current phase:** 9 — Power features, at the user's request before phases 7 and 8 (2026-10-14) (Phase 6 done 2026-10-14; Phase 5 done 2026-10-13, its boost checklist item blocked by MIUI until Phase 9; Phase 4 owes three checklist items, deferred; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists)
+**Next task:** 9.1 (see docs/phases/09-power-features.md) (3.8's POCO check still owed; 2.8 still deferred; phases 7 and 8 not started)
 
 ## Environment facts (verified 2026-09-17)
 
@@ -96,7 +96,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] 6.3 Bind + configure flow (fox-api33/37: dialog, Cancel, Create, Always allow, configure, Back out; POCO F3 2026-10-14, user: works)
 - [x] 6.4 Render, size, resize, touch coexistence (fox-api37, fox-api33 renders; POCO F3 2026-10-14, user: works)
 - [x] 6.5 Persistence and provider removal (fox-api37: Remove frees the id, uninstall removes the widget; POCO F3 2026-10-14, user: a reboot keeps them. Work-profile groups read "App · Work"; no work profile on the devices)
-- [ ] 6.6 Widget picker search (user request 2026-10-14): fox-api33/37 pass; **owed:** the POCO F3
+- [x] 6.6 Widget picker search (user request 2026-10-14; fox-api33/37; the user marked phase 6 done on the POCO F3, 2026-10-14)
 - [x] Device checklist passed on: POCO F3 (MIUI 14, Android 13), 2026-10-14, user: "seems ok", reboot keeps the widgets
 
 ## Phase 7 — Polish & personalization
