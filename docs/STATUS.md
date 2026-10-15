@@ -169,6 +169,10 @@ Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out o
 
 ## Session notes
 
+- 2026-10-15 — README brought up to date: navigation gestures in apps (3.8), per-picture framing replaces the
+  parallax (4.10), lock image set at screen off, Clock opens the clock app, the `:baselineprofile` module and perf
+  commands. **Owed:** `docs/media/wallpaper-settings.png` (13 Oct) still shows the removed parallax switch; retake it.
+
 - 2026-10-15 — 5.8 (user: "is it possible to customize the background of each individually?" → "build it"). A widget's
   popup has **Background** (`ItemPopupModel.canSetBackground`, `PopupAction.Background`) → `WidgetBackgroundPanel`, over
   the home without a scrim, at the bottom (top when the widget is in the lower half): "Same as other widgets (25%)"

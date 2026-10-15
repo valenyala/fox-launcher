@@ -55,6 +55,13 @@ System actions (marked with a shield in the settings) go through Fox's accessibi
 uses it only to perform those actions; it does not read what is on your screen. Fox asks you to turn it on the first
 time you use such a gesture.
 
+**Navigation gestures in other apps:** on a phone with three navigation buttons, turn on **Home settings → Gestures →
+Navigation gestures in apps** to navigate by swipe in other apps, in Fox's settings and in the app drawer: swipe in from
+the left or right edge to go back, up from the bottom edge to go home, and up and hold to open recent apps when you let
+go. A small bubble shows which one you are about to do. It works through **Fox gestures**, using invisible strips a few
+dp wide along those edges, so a touch that starts right at an edge goes to Fox, not to the app. With Android's own
+gesture navigation the system already does all this, and Fox steps aside.
+
 **Hide the navigation buttons:** with [Shizuku](https://shizuku.rikka.app/) running (on Xiaomi phones, or with the
 [secure settings grant](#optional-adb-grants)), **Home settings → Shizuku → Hide
 navigation buttons** switches the phone to full-screen gestures, the same as the system's own navigation setting (on
@@ -64,7 +71,8 @@ open apps reload when the navigation changes; Fox does not.
 **Keep them in some apps:** with the buttons hidden, **Home settings → Shizuku → Apps with buttons** lists apps that
 keep them. Opening one from Fox (home screen, folder, drawer or a gesture) shows the buttons first, so the app starts
 with them, and coming back to Fox hides them again. Opened another way (a notification, Recents, a link), an app gets
-the navigation as it is, and an app still open from before reloads once as it opens.
+the navigation as it is, and an app still open from before reloads once as it opens. In those apps Fox's own
+navigation gestures stay off too.
 
 <table>
   <tr>
@@ -87,9 +95,12 @@ Open **Home settings → Wallpaper**.
   pick from your gallery. If Fox loses access to a folder it tells you and lets you pick it again.
 - **When it changes:** every 1, 5, 10, 15 or 30 minutes, every 1 or 3 hours, or once a day; when you unlock; when you
   switch pages; or on a gesture. **Next wallpaper now** changes it right away.
-- **How it looks:** shuffle (each picture once per round), crossfade length, and parallax as you swipe between pages.
+- **How it looks:** shuffle (each picture once per round) and crossfade length. The wallpaper stays still as you swipe
+  between pages.
+- **Each picture's framing:** tap a picture in the list to show it now; touch and hold it to choose the part shown.
+  Drag to move it, pinch to zoom in up to 3×, then **Save**.
 - **Lock screen:** if your lock screen does not show the Fox live wallpaper, Fox can also set each new picture there as
-  a still image.
+  a still image. It does so the next time the screen turns off, so the lock screen never changes in front of you.
 
 Smooth crossfades need the **Fox wallpapers** live wallpaper; the Wallpaper screen has an **Apply** button for it.
 Without it Fox still rotates by setting a normal wallpaper, but each change shows with a flash, and intervals under
@@ -105,7 +116,7 @@ Long-press a widget on the home screen to move, resize or remove it; lists insid
 
 | Widget | Size | What it shows |
 |---|---|---|
-| Clock | 4 × 1 | The time and date in large type |
+| Clock | 4 × 1 | The time and date in large type; tap it to open your clock app |
 | RAM gauge | 2 × 1 | How much memory is in use |
 | Memory details | 2 × 2 | Used, available, cached and swap, with a graph of the last two minutes, plus recent apps if you allow usage access |
 | Boost | 1 × 1 | Frees memory and shows how much was really freed |
@@ -225,7 +236,7 @@ Fox has **no internet permission**. Nothing leaves your phone.
 | Usage access (you grant it) | Recent apps in the Memory details widget |
 | Request uninstall | The **Uninstall** item in an app's menu |
 | Write secure settings (only via adb) | Restart Fox's own accessibility service; on MIUI, switch its full-screen gestures for **Hide navigation buttons** and **Apps with buttons**; never granted by a normal install |
-| Accessibility service (you turn it on) | Perform system actions for gestures and the Lock screen widget; it does not read screen content |
+| Accessibility service (you turn it on) | Perform system actions for gestures and the Lock screen widget, and, if you turn them on, catch navigation gestures at the screen edges; it does not read screen content |
 | Shizuku (you allow it in Shizuku, optional) | Deep boost: close other apps' background processes as the shell. Hide navigation buttons: switch the phone to full-screen gestures |
 
 WorkManager, which runs the wallpaper timer, adds the wake-lock, start-at-boot, foreground-service and network-state
@@ -233,8 +244,9 @@ permissions.
 
 ## Development
 
-The project is a single Gradle module (`:app`, package `dev.foxlauncher`, min SDK 29) using Compose, Material 3, Hilt,
-Room, DataStore, WorkManager and coroutines. Work follows a phased plan; start with these:
+The app is one Gradle module (`:app`, package `dev.foxlauncher`, min SDK 29) using Compose, Material 3, Hilt, Room,
+DataStore, WorkManager and coroutines; a second module, `:baselineprofile`, holds only the baseline-profile generator
+and the startup and drawer benchmarks. Work follows a phased plan; start with these:
 
 | File | What's in it |
 |---|---|
@@ -247,11 +259,16 @@ Room, DataStore, WorkManager and coroutines. Work follows a phased plan; start w
 Common commands, from inside `nix develop`:
 
 ```sh
-./scripts/ci.sh                          # the pre-commit gate: unit tests, lint, debug APK, instrumented sources
+./scripts/ci.sh                          # the pre-commit gate: unit tests, lint, debug APK, test and benchmark sources
 ./gradlew :app:testDebugUnitTest         # JVM unit tests only
 ./gradlew :app:connectedDebugAndroidTest # instrumented and Compose UI tests (needs a device or emulator)
 ./scripts/emulator.sh start 33 --window  # create and boot the Android 13 test emulator
+./gradlew :app:assembleProfiling         # release-like build (R8, debug-signed) for performance work
+./scripts/perf/measure.sh <label>        # cold start, page swipes, drawer and memory on the attached device
 ```
+
+Measure performance on the `profiling` build only: debug builds run Compose several times slower. The emulators render
+in software, so take timings from a real phone.
 
 `./scripts/ci.sh` is the whole CI: the dev shell installs it as a git pre-commit hook, and there is no hosted CI.
 
