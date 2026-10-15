@@ -48,3 +48,10 @@ Read `PLATFORM-NOTES.md` section M. ADR-5 and ADR-8 apply.
 
 - **Do:** expose `memory_gauge` as a real `AppWidgetProvider` (`RemoteViews`, updated every 30 min + on tap) so users of other
   launchers can use it. Skip if the phase is running long; leave a TODO in STATUS.md.
+
+## 5.6 Widget background opacity (user request, 2026-10-15)
+
+- **Do:** one setting, Home settings → Widget background: how opaque the rounded surface behind Fox's native widgets is,
+  0–100% in 5% steps, default 25% (what it always was). `FoxSettings.widgetBackgroundOpacity` → `HomeUiState` →
+  `HomeItemView`. A preview Clock over a wallpaper-like backdrop. App widgets draw their own background: untouched.
+- **Verify:** UI test of the screen (percentage, 5% snapping). Device: a placed widget follows the slider.

@@ -4,6 +4,7 @@ import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.Color
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -52,6 +53,9 @@ class NativeWidgetRegistry @Inject constructor(specs: Set<@JvmSuppressWildcards 
 
     operator fun get(kind: String): NativeWidgetSpec? = byKind[kind]
 }
+
+/** The surface behind a native widget on the home, [opacityPercent] opaque (task 5.6). */
+fun widgetBackground(opacityPercent: Int): Color = Color.Black.copy(alpha = opacityPercent / 100f)
 
 /** The registry, for the home grid and the picker; empty unless provided (as in tests). */
 val LocalNativeWidgets = staticCompositionLocalOf { NativeWidgetRegistry(emptySet()) }

@@ -124,6 +124,11 @@
     <string name="widgets_search_empty">No widget matches “%1$s”</string>
     <string name="widget_size">%1$d × %2$d</string>
     <string name="widget_missing">This widget is no longer available</string>
+    <string name="widget_background_title">Widget background</string>
+    <string name="settings_widget_background_summary">How see-through the surface behind Fox\'s widgets is</string>
+    <string name="widget_background_opacity">Opacity</string>
+    <string name="widget_background_value">%1$d%%</string>
+    <string name="widget_background_note">For Fox\'s own widgets: Clock and the memory widgets. App widgets draw their own background.</string>
     <string name="popup_resize">Resize</string>
     <string name="widget_resize_done">Done</string>
     <string name="wallpaper_label">Fox wallpapers</string>

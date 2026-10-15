@@ -277,6 +277,7 @@ fun HomeScreen(
             iconSize = iconSize,
             showLabel = state.showLabels,
             shortcutIcons = state.shortcutIcons,
+            widgetBackgroundOpacity = state.widgetBackgroundOpacity,
             onClick = { clicked, bounds ->
                 if (clicked is HomeItem.Folder) openFolderId = clicked.id else onItemClick(clicked, bounds)
             },
@@ -579,7 +580,10 @@ fun HomeScreen(
         }
         RemoveZone(dragState, Modifier.testTag(HomeTestTags.REMOVE_ZONE))
         DragOverlay(dragState) { item ->
-            HomeItemView(item, state.apps, iconSize, state.showLabels, onClick = null, shortcutIcons = state.shortcutIcons)
+            HomeItemView(
+                item, state.apps, iconSize, state.showLabels, onClick = null,
+                shortcutIcons = state.shortcutIcons, widgetBackgroundOpacity = state.widgetBackgroundOpacity,
+            )
         }
         DrawerLayer(
             built = drawerBuilt,

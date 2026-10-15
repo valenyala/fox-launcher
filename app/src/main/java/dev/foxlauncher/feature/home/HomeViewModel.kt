@@ -69,6 +69,8 @@ data class HomeUiState(
     val shortcutIcons: ImmutableMap<String, ImageBitmap> = persistentMapOf(),
     /** What each gesture does (task 3.1); the home screen reads it to know which swipes drag the drawer (task 3.7). */
     val gestureMap: ImmutableMap<GestureType, GestureAction> = DEFAULT_GESTURE_MAP.toImmutableMap(),
+    /** How opaque the surface behind Fox's widgets is, in percent (task 5.6). */
+    val widgetBackgroundOpacity: Int = FoxSettings.DEFAULT_WIDGET_BACKGROUND_OPACITY,
 )
 
 @HiltViewModel
@@ -92,7 +94,7 @@ class HomeViewModel @Inject constructor(
 
     private val gridSpec = settings.homeGrid.map { (cols, rows, dock) -> GridSpec(cols, rows, dock) }
 
-    private val look = combine(gridSpec, settings.iconSizeDp, settings.showHomeLabels, ::Triple)
+    private val look = combine(gridSpec, settings.iconSizeDp, settings.showHomeLabels, settings.widgetBackgroundOpacity, ::Look)
 
     /** Loaded off the main thread whenever the set of shortcuts on the home changes or icons go stale. */
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -118,8 +120,10 @@ class HomeViewModel @Inject constructor(
         combine(look, gestureMap, ::Pair),
         shortcutIcons,
     ) { isFirstRun, layout, apps, (look, gestures), icons ->
-        val (spec, iconSizeDp, showLabels) = look
-        HomeUiState(isFirstRun, layout, apps, spec, iconSizeDp, showLabels, icons, gestures.toImmutableMap())
+        HomeUiState(
+            isFirstRun, layout, apps, look.gridSpec, look.iconSizeDp, look.showLabels, icons, gestures.toImmutableMap(),
+            look.widgetBackgroundOpacity,
+        )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
@@ -304,4 +308,6 @@ class HomeViewModel @Inject constructor(
             .filterIsInstance<HomeItem.Shortcut>()
             .map { AppShortcut(it.packageName, it.shortcutId, it.userSerial, it.title, longLabel = null) }
             .toSet()
+
+    private data class Look(val gridSpec: GridSpec, val iconSizeDp: Int, val showLabels: Boolean, val widgetBackgroundOpacity: Int)
 }

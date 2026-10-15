@@ -93,6 +93,19 @@ class FoxSettings @Inject constructor(
         Unit
     }
 
+    /**
+     * How opaque the rounded surface behind Fox's own widgets is, in percent (user request, 2026-10-15);
+     * app widgets draw their own.
+     */
+    val widgetBackgroundOpacity: Flow<Int> = dataStore.data.map {
+        it[Keys.WIDGET_BACKGROUND_OPACITY]?.coerceIn(WIDGET_BACKGROUND_OPACITIES) ?: DEFAULT_WIDGET_BACKGROUND_OPACITY
+    }
+
+    suspend fun setWidgetBackgroundOpacity(percent: Int) = withContext(io) {
+        dataStore.edit { it[Keys.WIDGET_BACKGROUND_OPACITY] = percent.coerceIn(WIDGET_BACKGROUND_OPACITIES) }
+        Unit
+    }
+
     /** Apps hidden from the drawer, as `AppEntry.key` (`component|serial`). */
     val hiddenApps: Flow<Set<String>> = dataStore.data.map { it[Keys.HIDDEN_APPS].orEmpty() }
 
@@ -264,6 +277,7 @@ class FoxSettings @Inject constructor(
         val HOME_ROWS = intPreferencesKey("home_rows")
         val DOCK_SLOTS = intPreferencesKey("dock_slots")
         val SHOW_HOME_LABELS = booleanPreferencesKey("show_home_labels")
+        val WIDGET_BACKGROUND_OPACITY = intPreferencesKey("widget_background_opacity")
         val GESTURE_MAP = stringPreferencesKey("gesture_map")
         val NAVIGATION_GESTURES = booleanPreferencesKey("navigation_gestures")
         val DEEP_BOOST = booleanPreferencesKey("deep_boost")
@@ -291,6 +305,10 @@ class FoxSettings @Inject constructor(
         const val DEFAULT_HOME_ROWS: Int = 6
         const val DEFAULT_DOCK_SLOTS: Int = 5
         const val DEFAULT_SHOW_HOME_LABELS: Boolean = true
+
+        /** What the widget background setting allows, in percent; the default is the surface widgets always had. */
+        val WIDGET_BACKGROUND_OPACITIES: IntRange = 0..100
+        const val DEFAULT_WIDGET_BACKGROUND_OPACITY: Int = 25
         const val DEFAULT_CROSSFADE_MS: Int = 800
         const val MIN_CROSSFADE_MS: Int = 300
         const val MAX_CROSSFADE_MS: Int = 2000

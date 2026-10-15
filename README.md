@@ -110,7 +110,8 @@ Long-press a widget on the home screen to move, resize or remove it; lists insid
 | Memory details | 2 × 2 | Used, available, cached and swap, with a graph of the last two minutes, plus recent apps if you allow usage access |
 | Boost | 1 × 1 | Frees memory and shows how much was really freed |
 
-The memory widgets only poll while they are on screen.
+The memory widgets only poll while they are on screen. **Home settings → Widget background** sets how see-through the
+surface behind Fox's widgets is, from clear to solid; app widgets keep their own background.
 
 **What Boost can do depends on your phone:**
 

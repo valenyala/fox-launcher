@@ -42,18 +42,19 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.foxlauncher.R
+import dev.foxlauncher.core.data.settings.FoxSettings
 import dev.foxlauncher.core.model.AppEntry
 import dev.foxlauncher.core.model.HomeItem
 import dev.foxlauncher.core.ui.AppIcon
 import dev.foxlauncher.core.ui.UNAVAILABLE_ICON_ALPHA
 import dev.foxlauncher.feature.widgets.LocalNativeWidgets
 import dev.foxlauncher.feature.widgets.NativeWidgetScope
+import dev.foxlauncher.feature.widgets.widgetBackground
 import dev.foxlauncher.feature.widgets.app.AppWidgetView
 import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.persistentMapOf
 
 private const val FOLDER_BACKGROUND_ALPHA = 0.3f
-private const val WIDGET_BACKGROUND_ALPHA = 0.25f
 private val WIDGET_CORNER = 20.dp
 private const val FOLDER_PREVIEW_COUNT = 4
 
@@ -84,7 +85,8 @@ private class ItemCoordinates {
 /**
  * One home or dock item: icon plus optional label. [onClick] receives the icon's bounds in window
  * coordinates for the launch animation; [onLongClick] receives the whole item's coordinates, to
- * start a drag. Without [onClick] the view is inert: the drag overlay draws one.
+ * start a drag. Without [onClick] the view is inert: the drag overlay draws one. A native widget
+ * sits on a surface [widgetBackgroundOpacity] percent opaque (task 5.6).
  */
 @Composable
 fun HomeItemView(
@@ -96,9 +98,10 @@ fun HomeItemView(
     modifier: Modifier = Modifier,
     onLongClick: ((HomeItem, LayoutCoordinates) -> Unit)? = null,
     shortcutIcons: ImmutableMap<String, ImageBitmap> = persistentMapOf(),
+    widgetBackgroundOpacity: Int = FoxSettings.DEFAULT_WIDGET_BACKGROUND_OPACITY,
 ) {
     if (item is HomeItem.NativeWidget) {
-        NativeWidgetView(item, interactive = onClick != null, onLongClick = onLongClick, modifier = modifier)
+        NativeWidgetView(item, interactive = onClick != null, onLongClick = onLongClick, backgroundOpacity = widgetBackgroundOpacity, modifier = modifier)
         return
     }
     if (item is HomeItem.AppWidget) {
@@ -140,15 +143,16 @@ fun HomeItemView(
 }
 
 /**
- * A native widget (task 5.1): its spec's content across all its cells, on a translucent rounded
- * surface. Taps belong to the content; a long press opens the popup and arms a drag, as for icons.
- * A kind Fox no longer has says so instead of vanishing.
+ * A native widget (task 5.1): its spec's content across all its cells, on a rounded surface as
+ * opaque as the user set (task 5.6). Taps belong to the content; a long press opens the popup and
+ * arms a drag, as for icons. A kind Fox no longer has says so instead of vanishing.
  */
 @Composable
 private fun NativeWidgetView(
     item: HomeItem.NativeWidget,
     interactive: Boolean,
     onLongClick: ((HomeItem, LayoutCoordinates) -> Unit)?,
+    backgroundOpacity: Int,
     modifier: Modifier,
 ) {
     val spec = LocalNativeWidgets.current[item.kind]
@@ -171,7 +175,7 @@ private fun NativeWidgetView(
             .then(interaction)
             .padding(4.dp)
             .clip(RoundedCornerShape(WIDGET_CORNER))
-            .background(Color.Black.copy(alpha = WIDGET_BACKGROUND_ALPHA)),
+            .background(widgetBackground(backgroundOpacity)),
     ) {
         if (spec != null) {
             spec.content(NativeWidgetScope(item.position.spanX, item.position.spanY))

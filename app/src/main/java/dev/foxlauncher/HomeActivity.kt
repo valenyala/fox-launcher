@@ -69,6 +69,7 @@ import dev.foxlauncher.feature.widgets.app.BindStep
 import dev.foxlauncher.feature.widgets.app.PendingAppWidget
 import dev.foxlauncher.feature.home.grid.Span
 import dev.foxlauncher.feature.settings.WallpaperSettingsScreen
+import dev.foxlauncher.feature.settings.WidgetBackgroundScreen
 import dev.foxlauncher.feature.wallpaper.LiveWallpaper
 import dev.foxlauncher.feature.wallpaper.LiveWallpaperPromptDialog
 import javax.inject.Inject
@@ -304,6 +305,7 @@ class HomeActivity : ComponentActivity() {
                             )
                             SettingsRoute.BUTTON_APPS -> ButtonAppsScreen(hiltViewModel(), onBack = closeSettings)
                             SettingsRoute.ICONS -> IconsScreen(hiltViewModel(), onBack = closeSettings)
+                            SettingsRoute.WIDGET_BACKGROUND -> WidgetBackgroundScreen(hiltViewModel(), onBack = closeSettings)
                             null -> Unit
                         }
                         if (widgetPicker) {
