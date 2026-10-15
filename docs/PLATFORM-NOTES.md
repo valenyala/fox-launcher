@@ -397,6 +397,15 @@ here contradicts what you remember, trust this file unless a device proves other
 - MIUI swaps most of a backgrounded launcher out (after a few minutes in Settings: 28 MB PSS plus 21 MB in swap, against
   about 141 MB in front) and evicts its code pages. The first frame after a long absence pays page faults
   (`filemap_fault` in a trace) that no app-side change avoids.
+- Home from the navigation gestures (POCO F3, 2026-10-14, injected over Settings): lift → `GLOBAL_ACTION_HOME` key
+  ~3 ms → `START` of the home ~9 ms → the home's first frame drawn, `AppTransitionReady` ~110 ms (debug) or ~85 ms
+  (profiling build) → MIUI's own home animation, ~310 ms more at 60 Hz. The animation is the system's, the same as
+  the Home button's. Before task 3.8's overlay got its own thread, removing its four windows ran inside
+  `HomeActivity.onResume` (the collector is on `Dispatchers.Main.immediate`) and cost 25–56 ms before that first frame.
+- **Trap:** `am force-stop dev.foxlauncher` (as `compile_like_play` in `scripts/perf/common.sh` does) makes Android
+  drop Fox from `enabled_accessibility_services` (`accessibility_enabled` goes to 0) and reset the wallpaper to the
+  system default when Fox's live wallpaper is set (POCO F3, 2026-10-14). On the user's phone, put both back
+  afterwards: the settings over adb, the wallpaper through the live wallpaper preview (the user taps it).
 
 - Wallpaper engine (POCO F3, 2026-10-13, task 4.8): a crossfade of two 1080×2400 bitmaps through Fox's own
   `HardwareRenderer` costs 1.1–1.8 ms of main-thread work per frame (record + `syncAndDraw`), worst 8.7 ms, no missed

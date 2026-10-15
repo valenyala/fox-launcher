@@ -4,6 +4,9 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.PixelFormat
 import android.os.Build
+import android.os.Handler
+import android.os.HandlerThread
+import android.os.Process
 import android.os.SystemClock
 import android.view.Gravity
 import android.view.HapticFeedbackConstants
@@ -25,8 +28,16 @@ import dev.foxlauncher.feature.gestures.classifier.PointerSample
  * A touch that starts on a strip never reaches the app below, so the strips are thin, and the side
  * ones start below the status bar and app bar. They draw nothing; a fourth, full-screen window that
  * takes no touches shows each gesture as it runs ([NavFeedbackView]).
+ *
+ * All four windows live on a thread of their own: their touches, the feedback's frames and adding
+ * and removing them never wait for Fox's main thread, nor hold it up. Home from another app brings
+ * the home back while the strips come down, and removing them on the main thread cost the home
+ * 25–56 ms before its first frame (POCO F3). [show], [hide] and [release] post to that thread.
  */
 class NavigationOverlay(private val context: Context, private val perform: (NavAction) -> Unit) {
+
+    private val thread = HandlerThread("FoxNavigation", Process.THREAD_PRIORITY_DISPLAY).apply { start() }
+    private val handler = Handler(thread.looper)
 
     private val windowManager = context.getSystemService(WindowManager::class.java)
     private val density = context.resources.displayMetrics.density
@@ -46,10 +57,26 @@ class NavigationOverlay(private val context: Context, private val perform: (NavA
         EdgeStrip(context, edge, NavGestureClassifier(edge, config), ::onResult, ::onTouched).also { it.layoutParams = params(edge) }
     }
 
+    fun show() {
+        handler.post(::addWindows)
+    }
+
+    fun hide() {
+        handler.post(::removeWindows)
+    }
+
+    /** Takes the windows down for good and ends their thread. */
+    fun release() {
+        handler.post {
+            removeWindows()
+            thread.quitSafely()
+        }
+    }
+
     // A strip's parent is its window's ViewRootImpl from addView to removeView. isAttachedToWindow
     // only turns true at the first traversal, too late for a hide that follows a show at once.
 
-    fun show() {
+    private fun addWindows() {
         for (view in listOf(feedback) + strips) {
             if (view.parent != null) continue
             try {
@@ -62,7 +89,7 @@ class NavigationOverlay(private val context: Context, private val perform: (NavA
         }
     }
 
-    fun hide() {
+    private fun removeWindows() {
         feedback.reset()
         for (view in strips + feedback) {
             if (view.parent != null) windowManager.removeViewImmediate(view)

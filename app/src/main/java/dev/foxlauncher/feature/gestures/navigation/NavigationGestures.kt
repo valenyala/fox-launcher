@@ -60,7 +60,7 @@ class NavigationGestures @Inject constructor(
                     .distinctUntilChanged()
                     .collect { wanted -> if (wanted) overlay.show() else overlay.hide() }
             } finally {
-                overlay.hide()
+                overlay.release()
             }
         }
     }

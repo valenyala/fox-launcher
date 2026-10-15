@@ -15,6 +15,7 @@ go_home() { adb shell am start -a android.intent.action.MAIN -c android.intent.c
 
 # After an install: the state a user's phone reaches once Android has compiled Fox (task 8.2), as Play's
 # installs or the idle dexopt would: start once, install the baseline profile, compile against it.
+# The force stop turns Fox's accessibility service off and resets a Fox live wallpaper (PLATFORM-NOTES P).
 compile_like_play() {
   go_home; sleep 3
   adb shell am broadcast -a androidx.profileinstaller.action.INSTALL_PROFILE $pkg/androidx.profileinstaller.ProfileInstallReceiver > /dev/null

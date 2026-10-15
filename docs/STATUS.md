@@ -166,6 +166,18 @@ Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out o
 
 ## Session notes
 
+- 2026-10-14 — 3.8 change (user: "make the home gesture happen quicker, as soon as I release"). Measured on the POCO
+  (injected Home swipes over Settings and Brave, logcat + a perfetto trace): Fox already performs Home on the lift;
+  the home's first frame came ~120–150 ms later (debug build) and MIUI's home animation takes ~310 ms after that.
+  Fox's own avoidable part: the overlay's four windows were removed inside `HomeActivity.onResume` (25–56 ms of main
+  thread before the first frame). Fix: `NavigationOverlay` runs its windows on a `FoxNavigation` `HandlerThread`
+  (`show`/`hide` post, `release` ends the thread). POCO debug, over Settings: lift → home shown median 131 → 118 ms;
+  the trace shows the removals on the new thread, off the home's path. Profiling build: median 88 ms. The rest is
+  MIUI's animation (PLATFORM-NOTES P). fox-api37 (three buttons for the check): Back, hold-release Recents, Home,
+  service off/on (one `FoxNavigation` thread afterwards), no crash. **Side effect fixed:** the perf script's force
+  stop turned Fox's accessibility service off and reset the wallpaper to MIUI's; service re-enabled over adb, the
+  live wallpaper preview opened for the user to re-apply. **Owed:** the user's feel on the POCO.
+
 - 2026-10-14 — 3.8 change (user: "recent apps gesture: only trigger it when releasing the hold"). The bottom
   swipe-and-hold no longer opens Recents when the hold completes: `NavGestureClassifier.onTimer` reports
   `NavResult.Held` (long-press buzz, full ring, square glyph) and the lift performs `RECENTS`; dragging back below the
