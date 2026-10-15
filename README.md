@@ -109,6 +109,7 @@ Long-press a widget on the home screen to move, resize or remove it; lists insid
 | RAM gauge | 2 × 1 | How much memory is in use |
 | Memory details | 2 × 2 | Used, available, cached and swap, with a graph of the last two minutes, plus recent apps if you allow usage access |
 | Boost | 1 × 1 | Frees memory and shows how much was really freed |
+| Lock screen | 1 × 1 | A padlock: tap it to lock the phone (needs the "Fox gestures" accessibility service, as the gestures do) |
 
 The memory widgets only poll while they are on screen. **Home settings → Widget background** sets how see-through the
 surface behind Fox's widgets is, from clear to solid; app widgets keep their own background.
@@ -223,7 +224,7 @@ Fox has **no internet permission**. Nothing leaves your phone.
 | Usage access (you grant it) | Recent apps in the Memory details widget |
 | Request uninstall | The **Uninstall** item in an app's menu |
 | Write secure settings (only via adb) | Restart Fox's own accessibility service; on MIUI, switch its full-screen gestures for **Hide navigation buttons** and **Apps with buttons**; never granted by a normal install |
-| Accessibility service (you turn it on) | Perform system actions for gestures; it does not read screen content |
+| Accessibility service (you turn it on) | Perform system actions for gestures and the Lock screen widget; it does not read screen content |
 | Shizuku (you allow it in Shizuku, optional) | Deep boost: close other apps' background processes as the shell. Hide navigation buttons: switch the phone to full-screen gestures |
 
 WorkManager, which runs the wallpaper timer, adds the wake-lock, start-at-boot, foreground-service and network-state

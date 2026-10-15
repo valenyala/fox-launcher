@@ -26,7 +26,7 @@
         <item quantity="other">The folder and the %1$d apps in it leave the home screen. The apps stay installed.</item>
     </plurals>
     <string name="accessibility_service_label">Fox gestures</string>
-    <string name="accessibility_service_description">Lets Fox Launcher open notifications and quick settings, lock the screen, show recent apps, the power menu or take a screenshot when you make a home-screen gesture. If you turn on navigation gestures, it also places thin invisible strips along the screen edges in other apps, to go back, home or to recent apps when you swipe from them. It does not read what is on your screen.</string>
+    <string name="accessibility_service_description">Lets Fox Launcher open notifications and quick settings, lock the screen, show recent apps, the power menu or take a screenshot when you make a home-screen gesture, and lock the screen when you tap its Lock screen widget. If you turn on navigation gestures, it also places thin invisible strips along the screen edges in other apps, to go back, home or to recent apps when you swipe from them. It does not read what is on your screen.</string>
     <string name="accessibility_disclosure_title">Allow system gestures?</string>
     <string name="accessibility_disclosure">Fox Launcher uses the accessibility service only to perform system actions, such as opening notifications when you gesture, and, if you turn on navigation gestures, to catch swipes from the screen edges in other apps. It does not read screen content. Turn on \"Fox gestures\" in the accessibility settings.</string>
     <string name="accessibility_stopped_title">Fox gestures stopped</string>
@@ -65,6 +65,9 @@
     <string name="widget_clock">Clock</string>
     <string name="widget_clock_description">The time and date, in large type. Tap it for the clock app</string>
     <string name="widget_clock_open">Open the clock app</string>
+    <string name="widget_lock_screen">Lock screen</string>
+    <string name="widget_lock_screen_description">Tap the padlock to lock the phone. Needs the \"Fox gestures\" accessibility service</string>
+    <string name="widget_lock_screen_action">Lock the screen</string>
     <string name="settings_icons">Icons</string>
     <string name="settings_icons_summary">Icon pack, shape, size and labels</string>
     <string name="icons_title">Icons</string>
@@ -128,7 +131,7 @@
     <string name="settings_widget_background_summary">How see-through the surface behind Fox\'s widgets is</string>
     <string name="widget_background_opacity">Opacity</string>
     <string name="widget_background_value">%1$d%%</string>
-    <string name="widget_background_note">For Fox\'s own widgets: Clock and the memory widgets. App widgets draw their own background.</string>
+    <string name="widget_background_note">For Fox\'s own widgets: Clock, the memory widgets and Lock screen. App widgets draw their own background.</string>
     <string name="popup_resize">Resize</string>
     <string name="widget_resize_done">Done</string>
     <string name="wallpaper_label">Fox wallpapers</string>

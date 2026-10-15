@@ -85,18 +85,19 @@ class ActionExecutor @Inject constructor(
         GestureAction.HomeSettings -> done(context.openHomeSettings)
         GestureAction.NextWallpaper -> wallpaperResult(wallpaper.advance(forward = true))
         GestureAction.PreviousWallpaper -> wallpaperResult(wallpaper.advance(forward = false))
-        GestureAction.Notifications -> system(SystemAction.NOTIFICATIONS)
-        GestureAction.QuickSettings -> system(SystemAction.QUICK_SETTINGS)
-        GestureAction.LockScreen -> system(SystemAction.LOCK_SCREEN)
-        GestureAction.Recents -> system(SystemAction.RECENTS)
-        GestureAction.PowerMenu -> system(SystemAction.POWER_MENU)
-        GestureAction.Screenshot -> system(SystemAction.SCREENSHOT)
+        GestureAction.Notifications -> perform(SystemAction.NOTIFICATIONS)
+        GestureAction.QuickSettings -> perform(SystemAction.QUICK_SETTINGS)
+        GestureAction.LockScreen -> perform(SystemAction.LOCK_SCREEN)
+        GestureAction.Recents -> perform(SystemAction.RECENTS)
+        GestureAction.PowerMenu -> perform(SystemAction.POWER_MENU)
+        GestureAction.Screenshot -> perform(SystemAction.SCREENSHOT)
         is GestureAction.OpenApp -> appLauncher.launchApp(action.component, action.userSerial).toResult()
         is GestureAction.OpenShortcut ->
             appLauncher.startShortcut(action.packageName, action.shortcutId, action.userSerial).toResult()
     }
 
-    private fun system(action: SystemAction): ActionResult = when (systemActions.status) {
+    /** A system action alone, as the Lock screen widget asks for one (task 5.7). */
+    fun perform(action: SystemAction): ActionResult = when (systemActions.status) {
         AccessibilityStatus.OFF -> ActionResult.NEEDS_ACCESSIBILITY
         AccessibilityStatus.STOPPED -> ActionResult.ACCESSIBILITY_STOPPED
         AccessibilityStatus.ON -> if (systemActions.perform(action)) ActionResult.DONE else ActionResult.FAILED

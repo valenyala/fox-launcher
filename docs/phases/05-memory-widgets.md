@@ -55,3 +55,12 @@ Read `PLATFORM-NOTES.md` section M. ADR-5 and ADR-8 apply.
   0–100% in 5% steps, default 25% (what it always was). `FoxSettings.widgetBackgroundOpacity` → `HomeUiState` →
   `HomeItemView`. A preview Clock over a wallpaper-like backdrop. App widgets draw their own background: untouched.
 - **Verify:** UI test of the screen (percentage, 5% snapping). Device: a placed widget follows the slider.
+
+## 5.7 Lock screen widget (user request, 2026-10-15)
+
+- **Do:** `lock_screen`, 1×1, not resizable: a padlock; a tap performs `GLOBAL_ACTION_LOCK_SCREEN` through Fox's
+  accessibility service (ADR-4), as the Lock screen gesture does, never device admin. Service off → the disclosure
+  dialog; stopped → restarted first when Fox holds the adb grant (ADR-18), else "turn it off and on"
+  (`AccessibilityRepair.recover`, shared with the home gestures). The picker preview takes no tap.
+- **Verify:** UI test (a tap locks, the preview takes none). Device: tap locks; with the service off the disclosure
+  shows and opens the accessibility settings; a long press opens the popup and does not lock.

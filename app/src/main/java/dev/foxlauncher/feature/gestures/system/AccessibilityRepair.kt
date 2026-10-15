@@ -93,6 +93,17 @@ class AccessibilityRepair @Inject constructor(
         pending.delete()
     }
 
+    /**
+     * After a system action found the service not running, [stopped] or off: restarts a stopped one, or one this is
+     * restarting right now (listed as off meanwhile). Null when it runs again, so the caller performs the action
+     * again; otherwise the dialog to show, the disclosure ([AccessibilityStatus.OFF]) or "turn it off and on"
+     * ([AccessibilityStatus.STOPPED]).
+     */
+    suspend fun recover(stopped: Boolean): AccessibilityStatus? {
+        if (!stopped && !isRepairing) return AccessibilityStatus.OFF
+        return if (repairIfStopped()) null else AccessibilityStatus.STOPPED
+    }
+
     /** Restarts the service if it is stopped and Fox may; true when it is running afterwards. */
     suspend fun repairIfStopped(): Boolean = mutex.withLock {
         finishInterrupted()

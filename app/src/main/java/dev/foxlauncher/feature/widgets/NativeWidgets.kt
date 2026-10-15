@@ -13,6 +13,7 @@ import dagger.multibindings.IntoSet
 import dev.foxlauncher.feature.home.grid.Span
 import dev.foxlauncher.feature.memory.widgets.MemoryWidgets
 import dev.foxlauncher.feature.widgets.clock.ClockWidget
+import dev.foxlauncher.feature.widgets.lock.LockScreenWidget
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -68,6 +69,10 @@ object NativeWidgetModule {
     @Provides
     @IntoSet
     fun clock(): NativeWidgetSpec = ClockWidget.spec
+
+    @Provides
+    @IntoSet
+    fun lockScreen(): NativeWidgetSpec = LockScreenWidget.spec
 
     @Provides
     @IntoSet
