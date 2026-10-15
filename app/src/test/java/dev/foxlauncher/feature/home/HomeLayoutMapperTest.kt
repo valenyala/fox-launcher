@@ -86,8 +86,9 @@ class HomeLayoutMapperTest {
         val items = listOf(
             HomeItem.App(1, pos, "com.a/.Main", 0),
             HomeItem.Shortcut(2, pos.copy(col = 0), "com.b", "compose", 10, "New message"),
-            HomeItem.AppWidget(3, pos.copy(row = 0), 42, "com.c/.ClockWidget", 10),
+            HomeItem.AppWidget(3, pos.copy(row = 0), 42, "com.c/.ClockWidget", 10, backgroundOpacity = 40),
             HomeItem.NativeWidget(4, pos.copy(row = 1, col = 0), "ram_gauge"),
+            HomeItem.NativeWidget(5, pos.copy(row = 2, col = 0), "clock", backgroundOpacity = 0),
         )
         val layout = HomeLayoutMapper.toLayout(items.map { HomeLayoutMapper.toEntity(it, createdAt = 5) }, emptyList())
         assertEquals(items.sortedBy { it.id }, layout.pages[1].items.sortedBy { it.id })

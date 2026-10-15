@@ -220,6 +220,7 @@ class HomeActivity : ComponentActivity() {
                                 viewModel.onPageSettled(page)
                             },
                             onResizeWidget = viewModel::onResizeWidget,
+                            onSetWidgetBackground = viewModel::onSetWidgetBackground,
                             onDrawerClosed = drawerViewModel::onDrawerClosed,
                             // Over the open drawer too, as over a settings screen.
                             onDrawerOpenChanged = homeVisibility::onDrawerOpen,

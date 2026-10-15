@@ -120,7 +120,7 @@ Unidirectional data flow everywhere: repositories expose `Flow`, ViewModels expo
 
 ### Persistence shape
 
-- Room `HomeItem(id, container[PAGE|DOCK|FOLDER], page, col, row, spanX, spanY, type[APP|SHORTCUT|FOLDER|APP_WIDGET|NATIVE_WIDGET], component, userSerial, shortcutId, appWidgetId, nativeWidgetKind, folderId, title)`. Schema JSON is exported to `app/schemas/` and every schema change ships a migration.
+- Room `HomeItem(id, container[PAGE|DOCK|FOLDER], page, col, row, spanX, spanY, type[APP|SHORTCUT|FOLDER|APP_WIDGET|NATIVE_WIDGET], component, userSerial, shortcutId, appWidgetId, nativeWidgetKind, folderId, title, createdAt, backgroundOpacity)`. Schema JSON is exported to `app/schemas/` and every schema change ships a migration.
 - Settings in Preferences DataStore; structured settings (gesture map, widget config) are kotlinx.serialization JSON strings under one key each.
 
 ## Hard rules

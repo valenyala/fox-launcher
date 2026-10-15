@@ -35,6 +35,8 @@ data class HomeItemEntity(
     val folderId: Long? = null,
     val title: String? = null,
     val createdAt: Long,
+    /** Widgets only: how opaque the surface behind this one is, in percent (task 5.8); null for the default. */
+    val backgroundOpacity: Int? = null,
 )
 
 @Entity(tableName = "folders")

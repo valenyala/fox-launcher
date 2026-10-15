@@ -212,10 +212,10 @@ class HomeViewModel @Inject constructor(
      * shortcuts, uninstall for non-system apps.
      */
     suspend fun popupFor(item: HomeItem): ItemPopupModel {
-        if (item is HomeItem.NativeWidget) return ItemPopupModel(canResize = nativeWidgets[item.kind]?.resizable == true)
+        if (item is HomeItem.NativeWidget) return ItemPopupModel(canResize = nativeWidgets[item.kind]?.resizable == true, canSetBackground = true)
         if (item is HomeItem.AppWidget) {
             val resizeMode = appWidgetHost.providerInfo(item.appWidgetId)?.resizeMode ?: AppWidgetProviderInfo.RESIZE_NONE
-            return ItemPopupModel(canResize = resizeMode != AppWidgetProviderInfo.RESIZE_NONE)
+            return ItemPopupModel(canResize = resizeMode != AppWidgetProviderInfo.RESIZE_NONE, canSetBackground = true)
         }
         val app = appOf(item) ?: return ItemPopupModel()
         // A shortcut item is itself a shortcut: its popup does not list the app's others.
@@ -233,6 +233,7 @@ class HomeViewModel @Inject constructor(
             PopupAction.Uninstall -> appOf(item)?.let(appRepository::uninstall)
             PopupAction.Remove -> viewModelScope.launch { homeRepository.applyDrop(item, DropAction.Remove(item.id)) }
             PopupAction.Resize -> Unit // HomeScreen shows the handles.
+            PopupAction.Background -> Unit // HomeScreen shows the panel.
             is PopupAction.OpenShortcut -> action.shortcut.let {
                 appRepository.startShortcut(it.packageName, it.id, it.userSerial, sourceBounds, null)
             }
@@ -254,6 +255,11 @@ class HomeViewModel @Inject constructor(
     }
 
     /** A widget's resize handles were let go at [cell] (task 5.1), already checked to be free. */
+    /** A widget's own background, in percent, or back to the default with null (task 5.8). */
+    fun onSetWidgetBackground(item: HomeItem, opacity: Int?) {
+        viewModelScope.launch { homeRepository.setWidgetBackground(item.id, opacity) }
+    }
+
     fun onResizeWidget(item: HomeItem, cell: CellRect) {
         val moved = item.position.copy(col = cell.col, row = cell.row, spanX = cell.spanX, spanY = cell.spanY)
         viewModelScope.launch { homeRepository.move(listOf(item to moved)) }

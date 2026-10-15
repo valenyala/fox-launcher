@@ -64,3 +64,13 @@ Read `PLATFORM-NOTES.md` section M. ADR-5 and ADR-8 apply.
   (`AccessibilityRepair.recover`, shared with the home gestures). The picker preview takes no tap.
 - **Verify:** UI test (a tap locks, the preview takes none). Device: tap locks; with the service off the disclosure
   shows and opens the accessibility settings; a long press opens the popup and does not lock.
+
+## 5.8 Each widget's own background (user request, 2026-10-15)
+
+- **Do:** a widget's long-press popup gets **Background**: a panel with no scrim (the widget shows each change live), a
+  "Same as other widgets" switch for Fox's widgets and the 5% slider; Done, a tap outside, Back or Home save it if it
+  changed. `home_items.backgroundOpacity` (nullable, Room v5 auto-migration); null = a Fox widget follows 5.6's setting,
+  an app widget has no backdrop (it is clipped to the rounded surface only once it has one).
+  `widgetBackgroundOpacity(item, default)` is pure.
+- **Verify:** unit tests for the rule and the mapper round trip; UI tests of the panel and of popup → panel → save.
+  Device: v4 → v5 keeps the layout; a Fox widget and an app widget each keep their own after Done.

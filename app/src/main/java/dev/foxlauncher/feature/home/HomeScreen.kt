@@ -99,6 +99,8 @@ import dev.foxlauncher.feature.home.grid.GridSpec
 import dev.foxlauncher.feature.home.grid.Span
 import dev.foxlauncher.feature.home.grid.WidgetResize
 import dev.foxlauncher.feature.widgets.LocalNativeWidgets
+import dev.foxlauncher.feature.widgets.ownBackgroundOpacity
+import dev.foxlauncher.feature.widgets.withOwnBackgroundOpacity
 import dev.foxlauncher.feature.widgets.app.AppWidgetSizing
 import dev.foxlauncher.feature.widgets.app.LocalAppWidgetHost
 import dev.foxlauncher.feature.widgets.app.providerSize
@@ -162,6 +164,12 @@ private data class OpenPopup(val item: HomeItem, val anchor: Rect, val windowBou
  */
 private data class ResizeTarget(val itemId: Long, val originCell: CellRect, val originBounds: Rect)
 
+/**
+ * The widget whose background is being set (task 5.8): its id, its drag-layer bounds when the panel
+ * opened, and the opacity shown on it meanwhile ([own]: null for none of its own), saved on Done.
+ */
+private data class BackgroundEdit(val itemId: Long, val anchor: Rect, val own: Int?)
+
 /** What the drawer slot knows of, and can ask of, the home screen. */
 @Stable
 interface DrawerScope {
@@ -222,6 +230,7 @@ fun HomeScreen(
     onPopupAction: (HomeItem, PopupAction, Rect?) -> Unit = { _, _, _ -> },
     onGesture: (GestureType, HomeControls) -> Unit = { _, _ -> },
     onResizeWidget: (HomeItem, CellRect) -> Unit = { _, _ -> },
+    onSetWidgetBackground: (HomeItem, Int?) -> Unit = { _, _ -> },
     homeKeyWhileHome: Boolean = false,
     onPageSettled: (Int) -> Unit = {},
     onCellSizeChanged: (DpSize) -> Unit = {},
@@ -259,6 +268,17 @@ fun HomeScreen(
     SideEffect { dragState.setOpenFolder(openFolder) }
     var popup by remember { mutableStateOf<OpenPopup?>(null) }
     var resizing by remember { mutableStateOf<ResizeTarget?>(null) }
+    var backgroundEdit by remember { mutableStateOf<BackgroundEdit?>(null) }
+    val layoutNow by rememberUpdatedState(state.layout)
+    val currentOnSetWidgetBackground by rememberUpdatedState(onSetWidgetBackground)
+    // Done, a tap outside, Back or Home keep what the panel shows; only a change is saved.
+    val finishBackgroundEdit: () -> Unit = {
+        backgroundEdit?.let { edit ->
+            val widget = layoutNow.pages.asSequence().flatMap { it.items }.firstOrNull { it.id == edit.itemId }
+            if (widget != null && widget.ownBackgroundOpacity != edit.own) currentOnSetWidgetBackground(widget, edit.own)
+        }
+        backgroundEdit = null
+    }
     val appWidgetHost = LocalAppWidgetHost.current
     val popupItem = popup?.item
     val popupModel by produceState<ItemPopupModel?>(null, popupItem) {
@@ -271,8 +291,10 @@ fun HomeScreen(
         dragState.arm(item, coordinates) { popup = null }
     }
     val itemContent: @Composable (HomeItem) -> Unit = { item ->
+        // The widget whose background is being set shows it live.
+        val edit = backgroundEdit?.takeIf { it.itemId == item.id }
         HomeItemView(
-            item = item,
+            item = if (edit != null) item.withOwnBackgroundOpacity(edit.own) else item,
             apps = state.apps,
             iconSize = iconSize,
             showLabel = state.showLabels,
@@ -394,10 +416,12 @@ fun HomeScreen(
     LaunchedEffect(isOpen) { currentOnDrawerOpenChanged(isOpen) }
     LaunchedEffect(homeKeyPresses) {
         if (homeKeyPresses > 0) {
-            val nothingOpen = dragState.dragging == null && popup == null && openFolderId == null && !isOpen && resizing == null
+            val nothingOpen = dragState.dragging == null && popup == null && openFolderId == null && !isOpen && resizing == null &&
+                backgroundEdit == null
             dragState.cancel()
             popup = null
             resizing = null
+            finishBackgroundEdit()
             openFolderId = null
             settle(open = false)
             // Back from an app, Home keeps the page (as Launcher3); while home it runs its action (default: first page).
@@ -415,6 +439,7 @@ fun HomeScreen(
     BackHandler(enabled = openFolder != null) { openFolderId = null }
     BackHandler(enabled = popup != null) { popup = null }
     BackHandler(enabled = resizing != null) { resizing = null }
+    BackHandler(enabled = backgroundEdit != null, onBack = finishBackgroundEdit)
     val outsideFolder by remember { derivedStateOf { dragState.isOutsideOpenFolder() } }
     LaunchedEffect(outsideFolder) {
         if (outsideFolder) {
@@ -432,11 +457,15 @@ fun HomeScreen(
                 dragState.cancel()
                 popup = null
                 resizing = null
+                finishBackgroundEdit()
             }
             .homeDragLayer(dragState)
             // After the drag layer: a drag that owns the finger has consumed its events before the arena sees them.
             .gestureArena(
-                enabled = { !isDrawerShown && openFolderId == null && popup == null && resizing == null && dragState.dragging == null },
+                enabled = {
+                    !isDrawerShown && openFolderId == null && popup == null && resizing == null && backgroundEdit == null &&
+                        dragState.dragging == null
+                },
                 isOnItem = { dragState.itemAt(it) != null },
                 onGesture = { currentOnGesture(it, currentHomeControls) },
                 // A swipe to the left goes to the next page, or to the previous one right to left.
@@ -560,6 +589,7 @@ fun HomeScreen(
                         action == PopupAction.Resize -> item.position.let { p ->
                             resizing = ResizeTarget(item.id, CellRect(p.col, p.row, p.spanX, p.spanY), shownPopup.anchor)
                         }
+                        action == PopupAction.Background -> backgroundEdit = BackgroundEdit(item.id, shownPopup.anchor, item.ownBackgroundOpacity)
                         else -> onPopupAction(item, action, shownPopup.windowBounds)
                     }
                 },
@@ -576,6 +606,22 @@ fun HomeScreen(
                 SideEffect { resizing = null }
             } else {
                 ResizeHandles(widget, range, target, state.layout, engine, onResize = onResizeWidget, onDismiss = { resizing = null })
+            }
+        }
+        backgroundEdit?.let { edit ->
+            val widget = state.layout.pages.asSequence().flatMap { it.items }.firstOrNull { it.id == edit.itemId }
+            if (widget == null) {
+                // Removed meanwhile: nothing to set.
+                SideEffect { backgroundEdit = null }
+            } else {
+                WidgetBackgroundPanel(
+                    anchor = edit.anchor,
+                    own = edit.own,
+                    defaultOpacity = state.widgetBackgroundOpacity,
+                    followsSetting = widget is HomeItem.NativeWidget,
+                    onChange = { own -> backgroundEdit = backgroundEdit?.copy(own = own) },
+                    onDone = finishBackgroundEdit,
+                )
             }
         }
         RemoveZone(dragState, Modifier.testTag(HomeTestTags.REMOVE_ZONE))

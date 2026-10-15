@@ -50,6 +50,7 @@ import dev.foxlauncher.core.ui.UNAVAILABLE_ICON_ALPHA
 import dev.foxlauncher.feature.widgets.LocalNativeWidgets
 import dev.foxlauncher.feature.widgets.NativeWidgetScope
 import dev.foxlauncher.feature.widgets.widgetBackground
+import dev.foxlauncher.feature.widgets.widgetBackgroundOpacity
 import dev.foxlauncher.feature.widgets.app.AppWidgetView
 import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.persistentMapOf
@@ -85,8 +86,9 @@ private class ItemCoordinates {
 /**
  * One home or dock item: icon plus optional label. [onClick] receives the icon's bounds in window
  * coordinates for the launch animation; [onLongClick] receives the whole item's coordinates, to
- * start a drag. Without [onClick] the view is inert: the drag overlay draws one. A native widget
- * sits on a surface [widgetBackgroundOpacity] percent opaque (task 5.6).
+ * start a drag. Without [onClick] the view is inert: the drag overlay draws one. A widget sits on
+ * its own background, or a Fox widget without one on the setting's, [widgetBackgroundOpacity] percent
+ * opaque (tasks 5.6, 5.8).
  */
 @Composable
 fun HomeItemView(
@@ -101,11 +103,23 @@ fun HomeItemView(
     widgetBackgroundOpacity: Int = FoxSettings.DEFAULT_WIDGET_BACKGROUND_OPACITY,
 ) {
     if (item is HomeItem.NativeWidget) {
-        NativeWidgetView(item, interactive = onClick != null, onLongClick = onLongClick, backgroundOpacity = widgetBackgroundOpacity, modifier = modifier)
+        NativeWidgetView(
+            item = item,
+            interactive = onClick != null,
+            onLongClick = onLongClick,
+            backgroundOpacity = widgetBackgroundOpacity(item, widgetBackgroundOpacity),
+            modifier = modifier,
+        )
         return
     }
     if (item is HomeItem.AppWidget) {
-        AppWidgetItemView(item, interactive = onClick != null, onLongClick = onLongClick, modifier = modifier)
+        AppWidgetItemView(
+            item = item,
+            interactive = onClick != null,
+            onLongClick = onLongClick,
+            backgroundOpacity = widgetBackgroundOpacity(item, widgetBackgroundOpacity),
+            modifier = modifier,
+        )
         return
     }
     val bounds = remember { IconBounds() }
@@ -188,12 +202,14 @@ private fun NativeWidgetView(
 /**
  * A third-party widget (task 6.4) across all its cells. Taps and scrolls belong to the widget; a
  * long press opens the popup and arms a drag, watched before the widget sees it, as for native ones.
+ * Only once the user gives it a backdrop (task 5.8) is it clipped to a rounded surface behind it.
  */
 @Composable
 private fun AppWidgetItemView(
     item: HomeItem.AppWidget,
     interactive: Boolean,
     onLongClick: ((HomeItem, LayoutCoordinates) -> Unit)?,
+    backgroundOpacity: Int,
     modifier: Modifier,
 ) {
     val coordinates = remember { ItemCoordinates() }
@@ -214,7 +230,8 @@ private fun AppWidgetItemView(
             .fillMaxSize()
             .onPlaced { coordinates.value = it }
             .then(interaction)
-            .padding(4.dp),
+            .padding(4.dp)
+            .then(if (backgroundOpacity > 0) Modifier.clip(RoundedCornerShape(WIDGET_CORNER)).background(widgetBackground(backgroundOpacity)) else Modifier),
     ) {
         Text(stringResource(R.string.widget_missing), style = wallpaperLabelStyle(), textAlign = TextAlign.Center, modifier = Modifier.padding(8.dp))
     }

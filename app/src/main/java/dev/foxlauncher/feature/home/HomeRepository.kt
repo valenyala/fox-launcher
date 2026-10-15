@@ -7,6 +7,7 @@ import dev.foxlauncher.core.common.FoxLog
 import dev.foxlauncher.core.common.IoDispatcher
 import dev.foxlauncher.core.data.db.FolderEntity
 import dev.foxlauncher.core.data.db.HomeDao
+import dev.foxlauncher.core.data.settings.FoxSettings
 import dev.foxlauncher.core.model.HomeContainer
 import dev.foxlauncher.core.model.HomeItem
 import dev.foxlauncher.core.model.HomeLayout
@@ -112,6 +113,11 @@ class HomeRepository @Inject constructor(
         val position = HomePosition(HomeContainer.PAGE, page, cell.col, cell.row, cell.spanX, cell.spanY)
         dao.insert(HomeLayoutMapper.toEntity(item(position), createdAt = System.currentTimeMillis()))
         return position
+    }
+
+    /** A widget's own background, in percent (task 5.8); null gives it the default again. */
+    suspend fun setWidgetBackground(itemId: Long, opacity: Int?) {
+        dao.setBackgroundOpacity(itemId, opacity?.coerceIn(FoxSettings.WIDGET_BACKGROUND_OPACITIES))
     }
 
     suspend fun remove(itemIds: List<Long>) {

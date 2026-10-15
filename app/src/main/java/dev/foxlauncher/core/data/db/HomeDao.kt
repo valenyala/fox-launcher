@@ -49,6 +49,9 @@ abstract class HomeDao {
         updateAll(items)
     }
 
+    @Query("UPDATE home_items SET backgroundOpacity = :opacity WHERE id = :id")
+    abstract suspend fun setBackgroundOpacity(id: Long, opacity: Int?)
+
     @Query("SELECT MAX(page) FROM home_items WHERE container = 'PAGE'")
     abstract suspend fun maxPage(): Int?
 

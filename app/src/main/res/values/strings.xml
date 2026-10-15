@@ -131,8 +131,11 @@
     <string name="settings_widget_background_summary">How see-through the surface behind Fox\'s widgets is</string>
     <string name="widget_background_opacity">Opacity</string>
     <string name="widget_background_value">%1$d%%</string>
-    <string name="widget_background_note">For Fox\'s own widgets: Clock, the memory widgets and Lock screen. App widgets draw their own background.</string>
+    <string name="widget_background_note">For Fox\'s own widgets: Clock, the memory widgets and Lock screen. To give one widget its own background, an app widget too, touch and hold it, then Background.</string>
     <string name="popup_resize">Resize</string>
+    <string name="popup_background">Background</string>
+    <string name="widget_background_same">Same as other widgets (%1$d%%)</string>
+    <string name="widget_background_app_note" formatted="false">At 0%, only the widget\'s own background shows.</string>
     <string name="widget_resize_done">Done</string>
     <string name="wallpaper_label">Fox wallpapers</string>
     <string name="wallpaper_description">Rotates your wallpapers with a smooth crossfade.</string>

@@ -54,19 +54,25 @@ sealed interface HomeItem {
         val items: ImmutableList<HomeItem>,
     ) : HomeItem
 
-    /** A third-party widget (phase 6): its id with Fox's `AppWidgetHost`, and its provider, kept as apps are. */
+    /**
+     * A third-party widget (phase 6): its id with Fox's `AppWidgetHost`, and its provider, kept as apps are.
+     * [backgroundOpacity] is the backdrop the user gave it, in percent (task 5.8); null for none.
+     */
     data class AppWidget(
         override val id: Long,
         override val position: HomePosition,
         val appWidgetId: Int,
         val provider: String,
         val userSerial: Long,
+        val backgroundOpacity: Int? = null,
     ) : HomeItem
 
+    /** A Fox widget (task 5.1). [backgroundOpacity] is its own, in percent (task 5.8); null follows the setting. */
     data class NativeWidget(
         override val id: Long,
         override val position: HomePosition,
         val kind: String,
+        val backgroundOpacity: Int? = null,
     ) : HomeItem
 }
 

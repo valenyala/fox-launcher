@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 8 — Performance & release (started 2026-10-14 at the user's call, with 7.2–7.8 still open; phase 9 done; Phase 4 owes three checklist items, deferred; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists)
-**Next task:** 8.3 R8, keep rules, signing (5.6 and 5.7, user requests, owe the POCO check). Still open: 7.2–7.8; 3.8's POCO check; 2.8 deferred
+**Next task:** 8.3 R8, keep rules, signing (5.6–5.8, user requests, owe the POCO check). Still open: 7.2–7.8; 3.8's POCO check; 2.8 deferred
 
 ## Environment facts (verified 2026-09-17)
 
@@ -91,6 +91,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [x] 5.5 (stretch) AppWidgetProvider export (fox-api37 in Pixel Launcher, 2026-10-13; the phone checks it when Fox hosts app widgets, phase 6)
 - [ ] 5.6 Widget background opacity (user request 2026-10-15): fox-api33 pass; **owed:** the POCO check
 - [ ] 5.7 Lock screen widget (user request 2026-10-15): fox-api33/37 pass; **owed:** the POCO check
+- [ ] 5.8 Each widget's own background (user request 2026-10-15): fox-api33 pass, v4 → v5 on fox-api33/37; **owed:** the POCO check
 - [x] Device checklist: POCO F3 2026-10-13 — widgets added from the home menu, resized, moved, figures right; 5.4 "boost reduces used memory on API ≤ 33" passed through Deep boost (9.1) on the POCO F3, 2026-10-14; the 34+ caption passed on fox-api37
 
 ## Phase 6 — App widgets
@@ -167,6 +168,21 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-15 — 5.8 (user: "is it possible to customize the background of each individually?" → "build it"). A widget's
+  popup has **Background** (`ItemPopupModel.canSetBackground`, `PopupAction.Background`) → `WidgetBackgroundPanel`, over
+  the home without a scrim, at the bottom (top when the widget is in the lower half): "Same as other widgets (25%)"
+  switch for Fox's widgets, the 5% slider, Done. `HomeScreen` keeps a `BackgroundEdit` and draws that widget with it
+  live; Done, a tap outside, Back, Home or a size change save it if it changed (`onSetWidgetBackground` →
+  `HomeRepository.setWidgetBackground` → `HomeDao.setBackgroundOpacity`). Room v5: `home_items.backgroundOpacity`,
+  nullable, auto-migration; `HomeItem.NativeWidget/AppWidget.backgroundOpacity`. Rule in pure `WidgetBackgrounds.kt`:
+  own, else the setting for Fox widgets, else none for app widgets (clipped and backed only from 1%). Unit:
+  `WidgetBackgroundsTest` 4, mapper round trip; UI: `WidgetBackgroundPanelTest` 3, `HomeScreenWidgetTest` +3.
+  fox-api33/37: v4 → v5 install kept the layouts (user_version 5). fox-api33: lock widget → Background → 90% live,
+  switch went off, Done → row 90; Arcticons clock app widget → 0% → 50% live, rounded backdrop, tap outside → row 50.
+  Full instrumented suite on fox-api33: 212/213; the one failure, `WallpaperLoaderTest.aSmallImageIsScaledUpToFill`,
+  predates this: 4.10 (ADR-26) decodes a small image at its own size and the test still expected 1080×2400; corrected
+  to ADR-26 in its own commit (4/4).
 
 - 2026-10-15 — 5.7 (user: "add a widget to lock the screen"). `LockScreenWidget` (`lock_screen`, 1×1): a padlock
   (`ic_lock`); a tap runs `ActionExecutor.perform(LOCK_SCREEN)`, now public, through the accessibility service, as the

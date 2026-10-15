@@ -112,7 +112,8 @@ Long-press a widget on the home screen to move, resize or remove it; lists insid
 | Lock screen | 1 × 1 | A padlock: tap it to lock the phone (needs the "Fox gestures" accessibility service, as the gestures do) |
 
 The memory widgets only poll while they are on screen. **Home settings → Widget background** sets how see-through the
-surface behind Fox's widgets is, from clear to solid; app widgets keep their own background.
+surface behind Fox's widgets is, from clear to solid. To give one widget its own, long-press it and pick **Background**:
+the widget changes as you move the slider. App widgets keep their own background unless you give them one this way.
 
 **What Boost can do depends on your phone:**
 

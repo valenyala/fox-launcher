@@ -56,6 +56,8 @@ data class ItemPopupModel(
     val canUninstall: Boolean = false,
     /** A native widget that can change size (task 5.1). */
     val canResize: Boolean = false,
+    /** A widget, which can have a background of its own (task 5.8). */
+    val canSetBackground: Boolean = false,
 )
 
 /** A choice made in a home item's popup. */
@@ -68,6 +70,9 @@ sealed interface PopupAction {
 
     /** Shows the widget's resize handles (task 5.1). */
     data object Resize : PopupAction
+
+    /** Shows the widget's background panel (task 5.8). */
+    data object Background : PopupAction
 
     data class OpenShortcut(val shortcut: AppShortcut) : PopupAction
 }
@@ -133,6 +138,7 @@ private fun PopupCard(model: ItemPopupModel, onAction: (PopupAction) -> Unit, on
             }
             if (model.shortcuts.isNotEmpty()) HorizontalDivider(Modifier.padding(vertical = 4.dp))
             if (model.canResize) PopupRow(stringResource(R.string.popup_resize)) { onAction(PopupAction.Resize) }
+            if (model.canSetBackground) PopupRow(stringResource(R.string.popup_background)) { onAction(PopupAction.Background) }
             if (model.canOpenAppInfo) PopupRow(stringResource(R.string.popup_app_info)) { onAction(PopupAction.AppInfo) }
             PopupRow(stringResource(R.string.home_remove)) { onAction(PopupAction.Remove) }
             if (model.canUninstall) PopupRow(stringResource(R.string.popup_uninstall)) { onAction(PopupAction.Uninstall) }

@@ -6,6 +6,7 @@ import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.getBoundsInRoot
@@ -14,6 +15,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -39,7 +41,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** Native widgets on the home grid (task 5.1): drawn across their cells, resized from the popup. */
+/** Native widgets on the home grid (task 5.1): drawn across their cells, resized from the popup, each with its own background (task 5.8). */
 @RunWith(AndroidJUnit4::class)
 class HomeScreenWidgetTest {
 
@@ -71,6 +73,7 @@ class HomeScreenWidgetTest {
     )
     private val widget = HomeItem.NativeWidget(1, HomePosition(HomeContainer.PAGE, 0, col = 1, row = 1, spanX = 2, spanY = 1), "test")
     private val resizes = mutableListOf<Pair<HomeItem, CellRect>>()
+    private val backgrounds = mutableListOf<Pair<HomeItem, Int?>>()
 
     @Test
     fun aNativeWidgetDrawsItsContentAcrossItsCells() {
@@ -154,6 +157,49 @@ class HomeScreenWidgetTest {
         assertTrue(resizes.isEmpty())
     }
 
+    @Test
+    fun aWidgetGetsItsOwnBackgroundFromThePopup() {
+        setHome(widget)
+        openBackground()
+
+        composeRule.onNodeWithText("25%").assertIsDisplayed()
+        composeRule.onNodeWithTag(WidgetBackgroundPanelTestTags.SLIDER).performSemanticsAction(SemanticsActions.SetProgress) { it(60f) }
+        composeRule.onNodeWithText("60%").assertIsDisplayed()
+        // Nothing is saved until the panel closes.
+        assertTrue(backgrounds.isEmpty())
+        composeRule.onNodeWithTag(WidgetBackgroundPanelTestTags.DONE).performClick()
+
+        composeRule.onNodeWithTag(WidgetBackgroundPanelTestTags.PANEL).assertDoesNotExist()
+        assertEquals(listOf<Pair<HomeItem, Int?>>(widget to 60), backgrounds)
+    }
+
+    @Test
+    fun theSwitchPutsAWidgetBackOnTheSetting() {
+        val own = widget.copy(backgroundOpacity = 70)
+        setHome(own)
+        openBackground()
+
+        composeRule.onNodeWithText("70%").assertIsDisplayed()
+        composeRule.onNodeWithTag(WidgetBackgroundPanelTestTags.SAME_AS_OTHERS).performClick()
+        composeRule.onNodeWithText("25%").assertIsDisplayed()
+        composeRule.onRoot().performTouchInput { click(Offset(width / 2f, height * 0.2f)) }
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag(WidgetBackgroundPanelTestTags.PANEL).assertDoesNotExist()
+        assertEquals(listOf<Pair<HomeItem, Int?>>(own to null), backgrounds)
+    }
+
+    @Test
+    fun closingThePanelUnchangedSavesNothing() {
+        setHome(widget)
+        openBackground()
+
+        composeRule.onNodeWithTag(WidgetBackgroundPanelTestTags.DONE).performClick()
+
+        composeRule.onNodeWithTag(WidgetBackgroundPanelTestTags.PANEL).assertDoesNotExist()
+        assertTrue(backgrounds.isEmpty())
+    }
+
     private fun setHome(vararg items: HomeItem) {
         val layout = HomeLayout(pages = persistentListOf(HomePage(0, persistentListOf(*items))))
         composeRule.setContent {
@@ -163,8 +209,9 @@ class HomeScreenWidgetTest {
                         homeKeyPresses = 0,
                         onDrawerClosed = {},
                         state = HomeUiState(layout = layout, gridSpec = grid),
-                        loadPopup = { ItemPopupModel(canResize = true) },
+                        loadPopup = { ItemPopupModel(canResize = true, canSetBackground = true) },
                         onResizeWidget = { item, cell -> resizes += item to cell },
+                        onSetWidgetBackground = { item, opacity -> backgrounds += item to opacity },
                     ) { Text("drawer") }
                 }
             }
@@ -173,13 +220,23 @@ class HomeScreenWidgetTest {
 
     /** Long-presses the widget and picks Resize in its popup. */
     private fun openResize() {
+        pickInPopup(R.string.popup_resize)
+        composeRule.onNodeWithTag(WidgetResizeTestTags.FRAME).assertIsDisplayed()
+    }
+
+    /** Long-presses the widget and picks Background in its popup. */
+    private fun openBackground() {
+        pickInPopup(R.string.popup_background)
+        composeRule.onNodeWithTag(WidgetBackgroundPanelTestTags.PANEL).assertIsDisplayed()
+    }
+
+    private fun pickInPopup(label: Int) {
         composeRule.onRoot().performTouchInput { down(cellCenter(2, 1)) }
         composeRule.mainClock.advanceTimeBy(LONG_PRESS_WAIT_MS)
         composeRule.onRoot().performTouchInput { up() }
         composeRule.waitForIdle()
-        composeRule.onNodeWithText(context.getString(R.string.popup_resize)).performClick()
+        composeRule.onNodeWithText(context.getString(label)).performClick()
         composeRule.waitForIdle()
-        composeRule.onNodeWithTag(WidgetResizeTestTags.FRAME).assertIsDisplayed()
     }
 
     private fun dragHandle(edge: ResizeEdge, by: Offset) {
