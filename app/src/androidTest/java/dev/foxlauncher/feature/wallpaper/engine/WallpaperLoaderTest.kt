@@ -65,13 +65,14 @@ class WallpaperLoaderTest {
         assertDominant(Color.BLUE, bitmap.getPixel(100, 2300), "bottom")
     }
 
+    /** ADR-26: without the detail for the screen, the region is cut at the image's own size and stretched when drawn. */
     @Test
-    fun aSmallImageIsScaledUpToFill() {
+    fun aSmallImageIsDecodedAtItsOwnSize() {
         val uri = jpeg(270, 600) { canvas, _ -> canvas.drawColor(Color.GREEN) }
 
         val bitmap = checkNotNull(loader.load(uri, 1080, 2400))
 
-        assertEquals(1080 to 2400, bitmap.width to bitmap.height)
+        assertEquals(270 to 600, bitmap.width to bitmap.height)
     }
 
     @Test
