@@ -169,6 +169,12 @@ Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out o
 
 ## Session notes
 
+- 2026-10-19 — User: "if lock and home have different wallpapers there's a sudden change, can that be smooth?" ADR-28:
+  `KeyguardState` (isKeyguardLocked, refreshed on screen off, user present, home start, engine visibility) +
+  `EntryTargets.showing`; the engine draws the lock picture while locked and crossfades to home's at the unlock, no
+  `FLAG_LOCK` write while Fox is on the lock screen; settings banner offers "Home and lock". fox-api37 by adb: locked →
+  entry 2 at once, unlock → "showing entry 1 (crossfade)". Gate green. **Owed:** fox-api33 (separate lock still there),
+  the POCO (MIUI keyguard window, Carousel off).
 - 2026-10-19 — User: "for each selected make a separation of home only, lock only, or both". Each wallpaper entry has a
   `target` (HOME / LOCK / BOTH; Room v6, migrated rows HOME, new images BOTH). The "Also change the lock screen" switch
   is gone (task 4.6 superseded; users who had it on get every image on BOTH, once, `migrateLegacyLockSwitch`). Two
