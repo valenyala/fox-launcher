@@ -80,6 +80,7 @@ import kotlin.math.roundToInt
 object WallpaperSettingsTestTags {
     const val LIST = "wallpaper_settings_list"
     const val INTERVAL_PICKER = "wallpaper_interval_picker"
+    const val TARGET_PICKER = "wallpaper_target_picker"
     const val CROSSFADE = "wallpaper_crossfade"
 }
 
@@ -200,6 +201,7 @@ fun WallpaperSettingsContent(
     modifier: Modifier = Modifier,
 ) {
     var pickingInterval by rememberSaveable { mutableStateOf(false) }
+    var choosingTarget by rememberSaveable { mutableStateOf<Long?>(null) }
     var removing by rememberSaveable { mutableStateOf<Long?>(null) }
     BackHandler(onBack = actions::back)
     Scaffold(
@@ -307,8 +309,7 @@ fun WallpaperSettingsContent(
                             Thumbnail(
                                 entry,
                                 showing = entry.id == state.showingId || entry.id == state.lockShowingId,
-                                onTargetClick = { actions.setTarget(entry.id, entry.target.cycled()) },
-                                onClick = { actions.show(entry.id) },
+                                onClick = { choosingTarget = entry.id },
                                 onLongClick = { actions.editFraming(entry.id) },
                                 modifier = Modifier.weight(1f),
                             )
@@ -327,6 +328,20 @@ fun WallpaperSettingsContent(
                 actions.setInterval(it)
             },
             onDismiss = { pickingInterval = false },
+        )
+    }
+    state.entries.firstOrNull { it.id == choosingTarget }?.let { entry ->
+        TargetPicker(
+            entry = entry,
+            onPick = {
+                choosingTarget = null
+                actions.setTarget(entry.id, it)
+            },
+            onShowNow = {
+                choosingTarget = null
+                actions.show(entry.id)
+            },
+            onDismiss = { choosingTarget = null },
         )
     }
     state.sources.firstOrNull { it.id == removing }?.let { source ->
@@ -473,11 +488,11 @@ private fun ActionRow(icon: Int, label: Int, summary: Int, onClick: () -> Unit) 
 }
 
 /**
- * One wallpaper, cropped to the part chosen for the screen (ADR-26); tap shows it, touch and hold
+ * One wallpaper, cropped to the part chosen for the screen (ADR-26); tap chooses where it shows, touch and hold
  * frames it. The one showing is outlined, one that cannot be read is dimmed.
  */
 @Composable
-private fun Thumbnail(entry: WallpaperEntryUi, showing: Boolean, onTargetClick: () -> Unit, onClick: () -> Unit, onLongClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun Thumbnail(entry: WallpaperEntryUi, showing: Boolean, onClick: () -> Unit, onLongClick: () -> Unit, modifier: Modifier = Modifier) {
     val shape = MaterialTheme.shapes.small
     Box(
         modifier
@@ -487,7 +502,7 @@ private fun Thumbnail(entry: WallpaperEntryUi, showing: Boolean, onTargetClick: 
             .then(if (showing) Modifier.border(SHOWING_BORDER, MaterialTheme.colorScheme.primary, shape) else Modifier)
             .semantics { selected = showing }
             .combinedClickable(
-                onClickLabel = stringResource(R.string.wallpaper_show_now),
+                onClickLabel = stringResource(R.string.wallpaper_target_change),
                 onLongClickLabel = stringResource(R.string.wallpaper_framing_title),
                 onLongClick = onLongClick,
                 onClick = onClick,
@@ -515,16 +530,9 @@ private fun Thumbnail(entry: WallpaperEntryUi, showing: Boolean, onTargetClick: 
                     .size(20.dp),
             )
         }
-        // Where it shows; a tap goes on to the next choice.
-        val targetLabel = stringResource(
-            when (entry.target) {
-                WallpaperTarget.HOME -> R.string.wallpaper_target_home
-                WallpaperTarget.LOCK -> R.string.wallpaper_target_lock
-                WallpaperTarget.BOTH -> R.string.wallpaper_target_both
-            },
-        )
+        // Where it shows; a tap anywhere on the picture, this too, opens the choice.
         Text(
-            text = targetLabel,
+            text = stringResource(targetLabel(entry.target)),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,
@@ -533,10 +541,45 @@ private fun Thumbnail(entry: WallpaperEntryUi, showing: Boolean, onTargetClick: 
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.surface.copy(alpha = TARGET_BAR_ALPHA))
-                .clickable(onClickLabel = stringResource(R.string.wallpaper_target_change), onClick = onTargetClick)
+                .clickable(onClickLabel = stringResource(R.string.wallpaper_target_change), onClick = onClick)
                 .padding(vertical = 6.dp),
         )
     }
+}
+
+private fun targetLabel(target: WallpaperTarget): Int = when (target) {
+    WallpaperTarget.HOME -> R.string.wallpaper_target_home
+    WallpaperTarget.LOCK -> R.string.wallpaper_target_lock
+    WallpaperTarget.BOTH -> R.string.wallpaper_target_both
+}
+
+/** Where [entry] shows (home screen, lock screen or both), or show it now. */
+@Composable
+private fun TargetPicker(entry: WallpaperEntryUi, onPick: (WallpaperTarget) -> Unit, onShowNow: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = { TextButton(onClick = onShowNow) { Text(stringResource(R.string.wallpaper_show_now_button)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) } },
+        title = { Text(entry.name) },
+        text = {
+            Column {
+                WallpaperTarget.entries.forEach { target ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .selectable(selected = target == entry.target, role = Role.RadioButton) { onPick(target) }
+                            .padding(vertical = 4.dp),
+                    ) {
+                        RadioButton(selected = target == entry.target, onClick = null)
+                        Spacer(Modifier.width(12.dp))
+                        Text(stringResource(targetLabel(target)))
+                    }
+                }
+            }
+        },
+        modifier = Modifier.testTag(WallpaperSettingsTestTags.TARGET_PICKER),
+    )
 }
 
 @Composable

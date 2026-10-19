@@ -31,13 +31,6 @@ class EntryTargetsTest {
     }
 
     @Test
-    fun targetCyclesHomeLockBoth() {
-        assertEquals(LOCK, HOME.cycled())
-        assertEquals(BOTH, LOCK.cycled())
-        assertEquals(HOME, BOTH.cycled())
-    }
-
-    @Test
     fun lockedOnTheLiveWallpaperShowsTheLockPicture() {
         val showing = EntryTargets.showing(locked = true, foxOnLock = true, homeActive = 1L, lockActive = 2L, entries = entries)
         assertEquals(EntryTargets.Showing(2L, lockPicture = true), showing)

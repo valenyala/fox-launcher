@@ -169,6 +169,7 @@ Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out o
 
 ## Session notes
 
+- 2026-10-19 — User: "when tapping on a wallpaper pic let the user choose if it's shown on the home, lockscreen or both". Tapping a picture (or its label) opens `TargetPicker`: Home screen / Lock screen / Both radios plus "Show now"; the label no longer cycles (`WallpaperTarget.cycled()` removed with its test). Long-press still opens framing. Gate green; instrumented test updated, **not yet run on a device** (emulators owed).
 - 2026-10-19 — User: "if lock and home have different wallpapers there's a sudden change, can that be smooth?" ADR-28:
   `KeyguardState` (isKeyguardLocked, refreshed on screen off, user present, home start, engine visibility) +
   `EntryTargets.showing`; the engine draws the lock picture while locked and crossfades to home's at the unlock, no

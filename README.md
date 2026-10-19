@@ -99,7 +99,7 @@ Open **Home settings → Wallpaper**.
   between pages.
 - **Each picture's framing:** tap a picture in the list to show it now; touch and hold it to choose the part shown.
   Drag to move it, pinch to zoom in up to 3×, then **Save**.
-- **Lock screen:** every picture says where it shows (tap the label under it): home screen, lock screen or both. The two
+- **Lock screen:** every picture says where it shows (tap the picture; the same dialog has "Show now"): home screen, lock screen or both. The two
   screens rotate over their own pictures. The lock screen gets a still image the next time the screen turns off, so it never
   changes in front of you. For a smooth change from the lock screen's picture to the home screen's when you unlock, apply
   Fox wallpapers to the *home screen and lock screen*; a still lock image set by another lock wallpaper cannot be faded.

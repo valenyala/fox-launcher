@@ -10,6 +10,8 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -78,7 +80,7 @@ class WallpaperSettingsContentTest {
     }
 
     @Test
-    fun tappingAPicturesLabelGoesOnToTheNextTarget() {
+    fun tappingAPictureLetsYouChooseWhereItShows() {
         val entries = listOf(
             WallpaperEntryUi(7, "content://x/7", "Lake", failing = false, target = WallpaperTarget.HOME),
             WallpaperEntryUi(8, "content://x/8", "Hill", failing = false, target = WallpaperTarget.BOTH),
@@ -86,8 +88,11 @@ class WallpaperSettingsContentTest {
         setContent(WallpaperSettingsUiState(sources = listOf(builtIn), entries = entries, showingId = 7))
 
         composeRule.onNodeWithTag(WallpaperSettingsTestTags.LIST).performScrollToNode(hasContentDescription("Hill"))
-        composeRule.onNodeWithText(string(R.string.wallpaper_target_home)).performClick()
-        composeRule.onNodeWithText(string(R.string.wallpaper_target_both)).performClick()
+        composeRule.onNodeWithContentDescription("Lake").performClick()
+        composeRule.onNodeWithTag(WallpaperSettingsTestTags.TARGET_PICKER).assertExists()
+        composeRule.onNode(hasText(string(R.string.wallpaper_target_lock)) and hasAnyAncestor(hasTestTag(WallpaperSettingsTestTags.TARGET_PICKER))).performClick()
+        composeRule.onNodeWithContentDescription("Hill").performClick()
+        composeRule.onNode(hasText(string(R.string.wallpaper_target_home)) and hasAnyAncestor(hasTestTag(WallpaperSettingsTestTags.TARGET_PICKER))).performClick()
 
         assertEquals(listOf("target 7 LOCK", "target 8 HOME"), calls)
     }
@@ -195,6 +200,7 @@ class WallpaperSettingsContentTest {
         composeRule.onNodeWithTag(WallpaperSettingsTestTags.LIST).performScrollToNode(hasContentDescription("Hill"))
         composeRule.onNodeWithContentDescription("Lake").assertIsSelected()
         composeRule.onNodeWithContentDescription("Hill").performClick()
+        composeRule.onNodeWithText(string(R.string.wallpaper_show_now_button)).performClick()
 
         assertEquals(listOf("show 8"), calls)
     }

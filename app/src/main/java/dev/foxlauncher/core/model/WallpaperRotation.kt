@@ -22,9 +22,6 @@ enum class WallpaperTarget {
 
     val onHome: Boolean get() = this != LOCK
     val onLock: Boolean get() = this != HOME
-
-    /** The next choice in the order the picture's label cycles through. */
-    fun cycled(): WallpaperTarget = entries[(ordinal + 1) % entries.size]
 }
 
 /** What changes the wallpaper besides the user (task 4.4). [intervalMinutes] 0 means no interval. */
