@@ -22,6 +22,8 @@ import androidx.room.migration.AutoMigrationSpec
         AutoMigration(from = 3, to = 4),
         // v4 → v5: each widget's own background (task 5.8), a nullable column.
         AutoMigration(from = 4, to = 5),
+        // v5 → v6: where each wallpaper entry shows (home, lock screen or both), a column with a default.
+        AutoMigration(from = 5, to = 6),
     ],
 )
 abstract class FoxDatabase : RoomDatabase() {
@@ -35,7 +37,7 @@ abstract class FoxDatabase : RoomDatabase() {
     class DropKeyValue : AutoMigrationSpec
 
     companion object {
-        const val VERSION: Int = 5
+        const val VERSION: Int = 6
         const val NAME: String = "fox.db"
     }
 }

@@ -261,6 +261,14 @@ Cancel, Save), the thumbnails and the lock-screen still. The engine no longer as
 (`setOffsetNotificationsEnabled(false)`); the launcher still reports them for other wallpapers. Rejected: framing
 per screen size (the fractions already adapt), and keeping parallax beside framing (the user asked for it gone).
 
+## ADR-27 Each wallpaper picture says where it shows; the lock-screen switch is gone
+
+Supersedes the "Also change the lock screen" switch of task 4.6. Every entry has a target (home, lock, both). The home
+screen and the lock screen rotate independently over their own pictures; with no picture aimed at the lock screen Fox leaves
+it alone, with none aimed at the home screen the home screen uses them all. Both triggers advance both rotations. The lock
+screen stays a still image set at screen off (PLATFORM-NOTES W) unless the static fallback is on and both screens show the
+same picture, which goes in one write. Room v6 adds the column (existing pictures: home only).
+
 ## Dependency log
 (append `- <lib> <version> — reason` when adding a dependency)
 - AGP (com.android.application) 9.4.0 — build system; built-in Kotlin, see ADR-11.

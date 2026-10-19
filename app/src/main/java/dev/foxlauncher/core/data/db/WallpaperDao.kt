@@ -6,6 +6,7 @@ import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
 import androidx.room.Upsert
+import dev.foxlauncher.core.model.WallpaperTarget
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -85,6 +86,14 @@ abstract class WallpaperDao {
     /** The part of the image the user chose to show (ADR-26). */
     @Query("UPDATE wallpaper_entries SET focusX = :focusX, focusY = :focusY, zoom = :zoom WHERE id = :id")
     abstract suspend fun setFraming(id: Long, focusX: Float, focusY: Float, zoom: Float)
+
+    /** Where the image shows: the home screen, the lock screen or both. */
+    @Query("UPDATE wallpaper_entries SET target = :target WHERE id = :id")
+    abstract suspend fun setTarget(id: Long, target: WallpaperTarget)
+
+    /** Every image to one target; used once, for users of the old "also change the lock screen" switch. */
+    @Query("UPDATE wallpaper_entries SET target = :target")
+    abstract suspend fun setAllTargets(target: WallpaperTarget)
 
     /** Entries that cannot be read at all (their access is gone): skipped like three failures (task 4.9). */
     @Query("UPDATE wallpaper_entries SET failedCount = :failures WHERE id IN (:ids)")

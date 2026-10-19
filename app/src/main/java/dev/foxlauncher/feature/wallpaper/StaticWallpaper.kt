@@ -22,7 +22,6 @@ import dev.foxlauncher.core.common.FoxLog
 import dev.foxlauncher.core.common.IoDispatcher
 import dev.foxlauncher.core.data.db.WallpaperDao
 import dev.foxlauncher.core.data.db.framing
-import dev.foxlauncher.core.data.settings.FoxSettings
 import dev.foxlauncher.feature.wallpaper.engine.WallpaperLoader
 import dev.foxlauncher.feature.wallpaper.source.WallpaperSources
 import java.io.ByteArrayInputStream
@@ -30,7 +29,6 @@ import java.io.ByteArrayOutputStream
 import java.io.IOException
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
 /**
@@ -105,29 +103,19 @@ class StaticWallpaperApplier @Inject constructor(
 }
 
 /**
- * Sets the active entry as a still image off the caller's coroutine; rapid changes keep only the
- * latest. What it sets is decided when it runs: the live wallpaper or the lock-screen setting may
- * have changed meanwhile.
+ * Sets the images the system shows as still images off the caller's coroutine; rapid changes keep
+ * only the latest. What it sets is decided when it runs: the live wallpaper may have been applied
+ * meanwhile ([RotationScheduler.applyStatic]).
  */
 @HiltWorker
 class StaticApplyWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted params: WorkerParameters,
-    private val applier: StaticWallpaperApplier,
-    private val settings: FoxSettings,
-    private val dao: WallpaperDao,
+    private val rotation: RotationScheduler,
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
-        val targets = StaticTargets.of(
-            foxLiveActive = LiveWallpaper.isFoxActive(applicationContext),
-            changeLockScreen = settings.changeLockScreen.first(),
-        )
-        // The lock screen alone waits for the screen to go off ([RotationScheduler.catchUpLockScreen]).
-        if (targets.isEmpty() || StaticTargets.waitsForScreenOff(targets)) return Result.success()
-        // The same entry the live wallpaper shows, so the lock screen matches the home screen.
-        val entryId = WallpaperPlaylist.showing(settings.activeWallpaperEntryId.first(), dao.observeRotationEntries().first().map { it.id })
-        if (entryId != null && applier.apply(entryId, targets) && StaticTarget.LOCK in targets) settings.setLockWallpaperEntry(entryId)
+        rotation.applyStatic()
         return Result.success()
     }
 

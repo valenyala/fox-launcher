@@ -13,6 +13,20 @@ data class PlaylistState(
     val history: List<Long> = emptyList(),
 )
 
+/**
+ * Where one wallpaper image may show. Home and lock screen rotate over their own images; [BOTH]
+ * is in both. Stored by name, so never rename an entry.
+ */
+enum class WallpaperTarget {
+    HOME, LOCK, BOTH;
+
+    val onHome: Boolean get() = this != LOCK
+    val onLock: Boolean get() = this != HOME
+
+    /** The next choice in the order the picture's label cycles through. */
+    fun cycled(): WallpaperTarget = entries[(ordinal + 1) % entries.size]
+}
+
 /** What changes the wallpaper besides the user (task 4.4). [intervalMinutes] 0 means no interval. */
 data class RotationTriggers(
     val intervalMinutes: Int = 0,

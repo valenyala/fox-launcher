@@ -99,8 +99,9 @@ Open **Home settings → Wallpaper**.
   between pages.
 - **Each picture's framing:** tap a picture in the list to show it now; touch and hold it to choose the part shown.
   Drag to move it, pinch to zoom in up to 3×, then **Save**.
-- **Lock screen:** if your lock screen does not show the Fox live wallpaper, Fox can also set each new picture there as
-  a still image. It does so the next time the screen turns off, so the lock screen never changes in front of you.
+- **Lock screen:** every picture says where it shows (tap the label under it): home screen, lock screen or both. The two
+  screens rotate over their own pictures. The lock screen gets a still image the next time the screen turns off, so it never
+  changes in front of you.
 
 Smooth crossfades need the **Fox wallpapers** live wallpaper; the Wallpaper screen has an **Apply** button for it.
 Without it Fox still rotates by setting a normal wallpaper, but each change shows with a flash, and intervals under

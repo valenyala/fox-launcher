@@ -18,6 +18,7 @@ import dev.foxlauncher.core.data.db.WallpaperDao
 import dev.foxlauncher.core.data.db.framing
 import dev.foxlauncher.core.data.settings.FoxSettings
 import dev.foxlauncher.core.model.RotationTrigger
+import dev.foxlauncher.feature.wallpaper.EntryTargets
 import dev.foxlauncher.feature.wallpaper.RotationScheduler
 import dev.foxlauncher.feature.wallpaper.TriggerPolicy
 import dev.foxlauncher.feature.wallpaper.WallpaperPlaylist
@@ -134,7 +135,7 @@ class FoxWallpaperService : WallpaperService() {
             scope.launch {
                 combine(settings.activeWallpaperEntryId, dao.observeRotationEntries(), settings.crossfadeMs) { active, entries, ms ->
                     fadeMs = ms
-                    val id = WallpaperPlaylist.showing(active, entries.map { it.id })
+                    val id = WallpaperPlaylist.showing(active, EntryTargets.home(entries.map { it.id to it.target }))
                     id to entries.firstOrNull { it.id == id }?.framing
                 }
                     .distinctUntilChanged()

@@ -6,6 +6,7 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import dev.foxlauncher.core.model.WallpaperFraming
+import dev.foxlauncher.core.model.WallpaperTarget
 
 /** Where a wallpaper source's images come from (task 4.1). */
 enum class WallpaperSourceType {
@@ -58,6 +59,11 @@ data class WallpaperEntryEntity(
     @ColumnInfo(defaultValue = "0.5") val focusX: Float = 0.5f,
     @ColumnInfo(defaultValue = "0.5") val focusY: Float = 0.5f,
     @ColumnInfo(defaultValue = "1.0") val zoom: Float = 1f,
+    /**
+     * Where it shows. Images from before the choice existed stay on the home screen; a new one is on both
+     * (the SQL default is the migration's, the Kotlin one is for images added now).
+     */
+    @ColumnInfo(defaultValue = "HOME") val target: WallpaperTarget = WallpaperTarget.BOTH,
 ) {
     companion object {
         /** Failed loads in a row after which the rotation skips an entry. */

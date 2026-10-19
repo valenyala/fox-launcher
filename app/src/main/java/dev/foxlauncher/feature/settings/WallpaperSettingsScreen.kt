@@ -61,6 +61,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -72,6 +73,7 @@ import dev.foxlauncher.R
 import dev.foxlauncher.core.common.FoxLog
 import dev.foxlauncher.core.data.db.WallpaperSourceType
 import dev.foxlauncher.core.data.settings.FoxSettings
+import dev.foxlauncher.core.model.WallpaperTarget
 import dev.foxlauncher.feature.wallpaper.TriggerPolicy
 import kotlin.math.roundToInt
 
@@ -95,7 +97,8 @@ interface WallpaperSettingsActions {
     fun setCrossfadeMs(ms: Int)
     /** Opens the framing editor for one picture (ADR-26). */
     fun editFraming(entryId: Long)
-    fun setChangeLockScreen(enabled: Boolean)
+    /** Aims a picture at the home screen, the lock screen or both. */
+    fun setTarget(entryId: Long, target: WallpaperTarget)
     fun addFolder()
     fun addPictures()
     fun setSourceEnabled(sourceId: Long, enabled: Boolean)
@@ -145,7 +148,7 @@ fun WallpaperSettingsScreen(
             override fun editFraming(entryId: Long) {
                 framingId = entryId
             }
-            override fun setChangeLockScreen(enabled: Boolean) = viewModel.setChangeLockScreen(enabled)
+            override fun setTarget(entryId: Long, target: WallpaperTarget) = viewModel.setTarget(entryId, target)
             override fun addFolder() = launchPicker { folderPicker.launch(null) }
             override fun addPictures() = launchPicker {
                 picturesPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
@@ -246,7 +249,6 @@ fun WallpaperSettingsContent(
                 item { SectionHeader(R.string.wallpaper_section_look) }
                 item { SwitchRow(R.string.wallpaper_shuffle, state.shuffle, actions::setShuffle, R.string.wallpaper_shuffle_summary) }
                 item { CrossfadeRow(state.crossfadeMs, actions::setCrossfadeMs) }
-                item { SwitchRow(R.string.wallpaper_lock_screen, state.changeLockScreen, actions::setChangeLockScreen, R.string.wallpaper_lock_screen_summary) }
 
                 item { SectionHeader(R.string.wallpaper_section_sources) }
                 items(state.sources, key = { "source ${it.id}" }) { source ->
@@ -293,7 +295,8 @@ fun WallpaperSettingsContent(
                         row.forEach { entry ->
                             Thumbnail(
                                 entry,
-                                showing = entry.id == state.showingId,
+                                showing = entry.id == state.showingId || entry.id == state.lockShowingId,
+                                onTargetClick = { actions.setTarget(entry.id, entry.target.cycled()) },
                                 onClick = { actions.show(entry.id) },
                                 onLongClick = { actions.editFraming(entry.id) },
                                 modifier = Modifier.weight(1f),
@@ -463,7 +466,7 @@ private fun ActionRow(icon: Int, label: Int, summary: Int, onClick: () -> Unit) 
  * frames it. The one showing is outlined, one that cannot be read is dimmed.
  */
 @Composable
-private fun Thumbnail(entry: WallpaperEntryUi, showing: Boolean, onClick: () -> Unit, onLongClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun Thumbnail(entry: WallpaperEntryUi, showing: Boolean, onTargetClick: () -> Unit, onClick: () -> Unit, onLongClick: () -> Unit, modifier: Modifier = Modifier) {
     val shape = MaterialTheme.shapes.small
     Box(
         modifier
@@ -501,6 +504,27 @@ private fun Thumbnail(entry: WallpaperEntryUi, showing: Boolean, onClick: () -> 
                     .size(20.dp),
             )
         }
+        // Where it shows; a tap goes on to the next choice.
+        val targetLabel = stringResource(
+            when (entry.target) {
+                WallpaperTarget.HOME -> R.string.wallpaper_target_home
+                WallpaperTarget.LOCK -> R.string.wallpaper_target_lock
+                WallpaperTarget.BOTH -> R.string.wallpaper_target_both
+            },
+        )
+        Text(
+            text = targetLabel,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = TARGET_BAR_ALPHA))
+                .clickable(onClickLabel = stringResource(R.string.wallpaper_target_change), onClick = onTargetClick)
+                .padding(vertical = 6.dp),
+        )
     }
 }
 
@@ -552,3 +576,4 @@ private const val MIN_COLUMNS = 3
 private const val THUMB_ASPECT = 0.5f
 private val SHOWING_BORDER = 3.dp
 private const val FAILING_ALPHA = 0.4f
+private const val TARGET_BAR_ALPHA = 0.8f

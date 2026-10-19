@@ -171,7 +171,7 @@
     <string name="wallpaper_pictures_empty">No pictures: turn on a source or add one.</string>
     <string name="wallpaper_show_now">show it now</string>
     <string name="wallpaper_entry_failing">Cannot be read: skipped</string>
-    <string name="wallpaper_pictures_hint">Tap a picture to show it now. Touch and hold it to choose the part shown.</string>
+    <string name="wallpaper_pictures_hint">Tap a picture to show it now. Touch and hold it to choose the part shown. The label under it says where it shows; tap that to change it. The lock screen gets a still image of its pictures when the screen goes off.</string>
     <string name="wallpaper_framing_title">choose the part shown</string>
     <string name="wallpaper_framing_hint">Drag to move, pinch to zoom</string>
     <string name="wallpaper_framing_reset">Reset</string>
@@ -198,8 +198,10 @@
     <string name="wallpaper_add_folder_summary">Every picture in it, kept up to date</string>
     <string name="wallpaper_add_pictures">Add pictures</string>
     <string name="wallpaper_add_pictures_summary">Pick some from your gallery</string>
-    <string name="wallpaper_lock_screen">Also change the lock screen</string>
-    <string name="wallpaper_lock_screen_summary">Each new wallpaper is set there too, as a still image. Not needed if the lock screen already shows the Fox live wallpaper.</string>
+    <string name="wallpaper_target_home">Home screen</string>
+    <string name="wallpaper_target_lock">Lock screen</string>
+    <string name="wallpaper_target_both">Both</string>
+    <string name="wallpaper_target_change">change where it shows</string>
     <string name="settings_title">Home settings</string>
     <string name="settings_gestures">Gestures</string>
     <string name="settings_gestures_summary">What each swipe, tap and pinch does</string>

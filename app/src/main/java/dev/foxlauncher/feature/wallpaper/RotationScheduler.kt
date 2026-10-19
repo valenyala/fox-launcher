@@ -13,6 +13,7 @@ import dev.foxlauncher.core.data.db.WallpaperEntryEntity
 import dev.foxlauncher.core.data.settings.FoxSettings
 import dev.foxlauncher.core.model.RotationTrigger
 import dev.foxlauncher.core.model.WallpaperFraming
+import dev.foxlauncher.core.model.WallpaperTarget
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -28,9 +29,10 @@ import kotlinx.coroutines.sync.withLock
  * the playlist (task 4.2), or the one the user picked ([showNow], task 4.7), and writes the
  * active entry, which the live wallpaper engine draws (task 4.3). Gestures and "next now" ask directly; the interval, unlock and page-change triggers
  * (task 4.4) go through [advanceIfDue], which applies [TriggerPolicy]. While Fox's live wallpaper is
- * not applied, a change is also set as a static image (task 4.5), except from a gesture ([advance]);
- * so is the lock screen's, when the user asked for it (task 4.6): at once with the home screen's,
- * otherwise once the screen goes off ([catchUpLockScreen]).
+ * not applied, a change is also set as a static image (task 4.5), except from a gesture ([advance]).
+ * Each image says where it shows, the home screen, the lock screen or both; the two screens rotate
+ * over their own images. The lock screen is a still image, set with the home screen's when that is
+ * one too, otherwise once the screen goes off ([catchUpLockScreen]).
  */
 @Singleton
 class RotationScheduler @Inject constructor(
@@ -64,46 +66,92 @@ class RotationScheduler @Inject constructor(
         return advanceNow(forward = true, reason = trigger)
     }
 
-    /** Moves the rotation on (or back) and returns the entry now active; null when there is none. */
+    /**
+     * Moves the home screen's rotation and the lock screen's on (or back) and returns the entry now
+     * on the home screen (the lock screen's when only it moved); null when there is none.
+     */
     suspend fun advanceNow(forward: Boolean = true, reason: RotationTrigger = RotationTrigger.MANUAL): Long? = mutex.withLock {
-        val playlist = playlist()
-        val (id, after) = if (forward) playlist.next() else playlist.previous()
-        if (id == null) return null
-        show(id, after)
-        FoxLog.d("Wallpaper ${if (forward) "next" else "previous"} ($reason): entry $id")
-        return id
+        val entries = dao.observeRotationEntries().first()
+        val home = homePlaylist(entries)
+        val (homeId, homeAfter) = if (forward) home.next() else home.previous()
+        val lock = lockPlaylist(entries, home.seed)
+        val (lockId, lockAfter) = lock?.let { if (forward) it.next() else it.previous() } ?: (null to null)
+        if (homeId == null && lockId == null) return null
+        val now = System.currentTimeMillis()
+        if (homeId != null) showOnHome(homeId, homeAfter, now)
+        if (lockId != null && lockAfter != null) showOnLock(lockId, lockAfter, now)
+        onChanged()
+        FoxLog.d("Wallpaper ${if (forward) "next" else "previous"} ($reason): home $homeId, lock $lockId")
+        return homeId ?: lockId
     }
 
-    /** Shows entry [entryId], which the user picked; the rotation goes on from it. False when it cannot be shown. */
+    /**
+     * Shows entry [entryId], which the user picked, on the screens it is aimed at; each rotation goes
+     * on from it. False when it cannot be shown.
+     */
     suspend fun showNow(entryId: Long): Boolean = mutex.withLock {
-        val after = playlist().jumpTo(entryId) ?: return false
-        show(entryId, after)
-        FoxLog.d("Wallpaper picked: entry $entryId")
+        val entries = dao.observeRotationEntries().first()
+        val homeBefore = homePlaylist(entries)
+        val home = homeBefore.jumpTo(entryId)
+        val lock = lockPlaylist(entries, homeBefore.seed)?.jumpTo(entryId)
+        if (home == null && lock == null) return false
+        val now = System.currentTimeMillis()
+        if (home != null) showOnHome(entryId, home, now)
+        if (lock != null) showOnLock(entryId, lock, now)
+        onChanged()
+        FoxLog.d("Wallpaper picked: entry $entryId (home ${home != null}, lock ${lock != null})")
         return true
     }
 
-    /** The playlist as stored, over the entries that can be shown, at the entry on screen. */
-    private suspend fun playlist(): WallpaperPlaylist {
-        val enabled = dao.observeRotationEntries().first()
-        // Entries that failed three times in a row are skipped (task 4.9).
-        val entries = enabled.filter { it.failedCount < WallpaperEntryEntity.MAX_FAILURES }.map { it.id }
+    /** The home screen's rotation as stored, over its images that can be shown, at the entry on screen. */
+    private suspend fun homePlaylist(entries: List<WallpaperEntryEntity>): WallpaperPlaylist {
+        val ids = EntryTargets.home(entries.map { it.id to it.target })
         val state = settings.playlistState.first()
         // What the engine shows: the active entry or, before the first change or once it went away, the first one.
-        val onScreen = WallpaperPlaylist.showing(settings.activeWallpaperEntryId.first(), enabled.map { it.id })
-        return WallpaperPlaylist(entries, state.mode, state.seed ?: Random.nextLong(), state.history).onScreen(onScreen)
+        val onScreen = WallpaperPlaylist.showing(settings.activeWallpaperEntryId.first(), ids)
+        return WallpaperPlaylist(playable(entries, ids), state.mode, state.seed ?: Random.nextLong(), state.history).onScreen(onScreen)
     }
 
-    private suspend fun show(id: Long, after: WallpaperPlaylist) {
-        val now = System.currentTimeMillis()
+    /**
+     * The lock screen's rotation, null when no image is aimed at it. Until it has a seed of its own it
+     * shares [homeSeed], so over the same images the two walk alike and a "both" image shows on both.
+     */
+    private suspend fun lockPlaylist(entries: List<WallpaperEntryEntity>, homeSeed: Long): WallpaperPlaylist? {
+        val ids = EntryTargets.lock(entries.map { it.id to it.target })
+        if (ids.isEmpty()) return null
+        val state = settings.lockPlaylistState.first()
+        val onScreen = WallpaperPlaylist.showing(settings.lockActiveWallpaperEntryId.first(), ids)
+        return WallpaperPlaylist(playable(entries, ids), state.mode, state.seed ?: homeSeed, state.history).onScreen(onScreen)
+    }
+
+    /** Entries that failed three times in a row are skipped (task 4.9). */
+    private fun playable(entries: List<WallpaperEntryEntity>, ids: List<Long>): List<Long> {
+        val failing = entries.filter { it.failedCount >= WallpaperEntryEntity.MAX_FAILURES }.map { it.id }.toSet()
+        return ids.filter { it !in failing }
+    }
+
+    private suspend fun showOnHome(id: Long, after: WallpaperPlaylist, now: Long) {
         settings.savePlaylist(after.seed, after.history)
         settings.setActiveWallpaper(id, changedAt = now)
         dao.markShown(id, now)
-        val targets = StaticTargets.of(LiveWallpaper.isFoxActive(context), settings.changeLockScreen.first())
-        // The lock screen alone waits for the screen to go off ([catchUpLockScreen]).
-        if (targets.isNotEmpty() && !StaticTargets.waitsForScreenOff(targets)) {
-            StaticApplyWorker.enqueue(WorkManager.getInstance(context))
-        }
     }
+
+    private suspend fun showOnLock(id: Long, after: WallpaperPlaylist, now: Long) {
+        settings.saveLockPlaylist(after.seed, after.history)
+        settings.setLockActiveWallpaper(id, changedAt = now)
+        dao.markShown(id, now)
+    }
+
+    /** Without the live wallpaper the home screen needs a still image now; the lock screen's waits for screen off. */
+    private fun onChanged() {
+        if (!LiveWallpaper.isFoxActive(context)) StaticApplyWorker.enqueue(WorkManager.getInstance(context))
+    }
+
+    private suspend fun homeShowing(entries: List<WallpaperEntryEntity>): Long? =
+        WallpaperPlaylist.showing(settings.activeWallpaperEntryId.first(), EntryTargets.home(entries.map { it.id to it.target }))
+
+    private suspend fun lockShowing(entries: List<WallpaperEntryEntity>): Long? =
+        WallpaperPlaylist.showing(settings.lockActiveWallpaperEntryId.first(), EntryTargets.lock(entries.map { it.id to it.target }))
 
     /**
      * Keeps the part of entry [entryId] the user chose to show (ADR-26). The live wallpaper redraws
@@ -114,34 +162,58 @@ class RotationScheduler @Inject constructor(
         mutex.withLock {
             dao.setFraming(entryId, framing.focusX, framing.focusY, framing.zoom)
             if (settings.lockWallpaperEntryId.first() == entryId) settings.setLockWallpaperEntry(null)
-            val showing = WallpaperPlaylist.showing(settings.activeWallpaperEntryId.first(), dao.observeRotationEntries().first().map { it.id })
-            if (showing == entryId && !LiveWallpaper.isFoxActive(context)) StaticApplyWorker.enqueue(WorkManager.getInstance(context))
+            val entries = dao.observeRotationEntries().first()
+            if (entryId == homeShowing(entries) && !LiveWallpaper.isFoxActive(context)) StaticApplyWorker.enqueue(WorkManager.getInstance(context))
         }
     }
 
-    /** Turns "also change the lock screen" on or off; on, the lock screen gets the current image when the screen next goes off. */
-    suspend fun setChangeLockScreen(enabled: Boolean) {
-        // Forgotten, so the next screen off sets it, whatever the lock screen came to show meanwhile.
-        if (enabled) settings.setLockWallpaperEntry(null)
-        settings.setChangeLockScreen(enabled)
+    /** Aims entry [entryId] at the home screen, the lock screen or both. The lock screen catches up at its next screen off. */
+    suspend fun setTarget(entryId: Long, target: WallpaperTarget) {
+        mutex.withLock {
+            dao.setTarget(entryId, target)
+            // It may have left the lock screen's images, or the home screen's, or the lock screen has just got its first.
+            if (!LiveWallpaper.isFoxActive(context)) StaticApplyWorker.enqueue(WorkManager.getInstance(context))
+        }
+    }
+
+    /** Users of the retired "also change the lock screen" switch keep that: their images go on both screens. Once. */
+    suspend fun migrateLegacyLockSwitch() {
+        if (settings.takeLegacyLockSwitch()) dao.setAllTargets(WallpaperTarget.BOTH)
     }
 
     /**
-     * With the screen off: the lock screen gets the image the home screen shows, if it is behind,
-     * and only while the screen stays off. A still image set in front of the user restyles every app
-     * at once ([StaticTargets.waitsForScreenOff]); the next screen off tries again. Called when the
-     * live wallpaper goes out of sight with the screen off, and on `ACTION_SCREEN_OFF`, which MIUI
-     * delivers one to three seconds late (PLATFORM-NOTES W).
+     * Without Fox's live wallpaper: sets the still images the system shows, the home screen's now and
+     * the lock screen's too if it is behind (one write when both show the same image). With it, the
+     * home screen draws itself and the lock screen waits for [catchUpLockScreen].
+     */
+    suspend fun applyStatic() {
+        if (LiveWallpaper.isFoxActive(context)) return
+        mutex.withLock {
+            val entries = dao.observeRotationEntries().first()
+            val homeId = homeShowing(entries)
+            val lockId = lockShowing(entries)?.takeIf { StaticTargets.lockScreenBehind(settings.lockWallpaperEntryId.first(), it) }
+            if (homeId != null && homeId == lockId) {
+                if (applier.apply(homeId, setOf(StaticTarget.HOME, StaticTarget.LOCK))) settings.setLockWallpaperEntry(homeId)
+                return
+            }
+            if (homeId != null) applier.apply(homeId, setOf(StaticTarget.HOME))
+            if (lockId != null && applier.apply(lockId, setOf(StaticTarget.LOCK))) settings.setLockWallpaperEntry(lockId)
+        }
+    }
+
+    /**
+     * With the screen off: the lock screen gets its image, if it is behind, and only while the screen
+     * stays off. A still image set in front of the user restyles every app at once (PLATFORM-NOTES W);
+     * the next screen off tries again. Called when the live wallpaper goes out of sight with the screen
+     * off, and on `ACTION_SCREEN_OFF`, which MIUI delivers one to three seconds late.
      */
     suspend fun catchUpLockScreen() {
         val power = context.getSystemService(PowerManager::class.java)
         if (power.isInteractive) return
         mutex.withLock {
-            val changeLockScreen = settings.changeLockScreen.first()
-            val showing = WallpaperPlaylist.showing(settings.activeWallpaperEntryId.first(), dao.observeRotationEntries().first().map { it.id })
-            if (showing == null || !StaticTargets.lockScreenBehind(changeLockScreen, settings.lockWallpaperEntryId.first(), showing)) return
-            val targets = StaticTargets.of(LiveWallpaper.isFoxActive(context), changeLockScreen, lockOnly = true)
-            if (applier.apply(showing, targets) { !power.isInteractive }) settings.setLockWallpaperEntry(showing)
+            val lockId = lockShowing(dao.observeRotationEntries().first()) ?: return
+            if (!StaticTargets.lockScreenBehind(settings.lockWallpaperEntryId.first(), lockId)) return
+            if (applier.apply(lockId, setOf(StaticTarget.LOCK)) { !power.isInteractive }) settings.setLockWallpaperEntry(lockId)
         }
     }
 

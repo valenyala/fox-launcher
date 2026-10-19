@@ -169,6 +169,14 @@ Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out o
 
 ## Session notes
 
+- 2026-10-19 — User: "for each selected make a separation of home only, lock only, or both". Each wallpaper entry has a
+  `target` (HOME / LOCK / BOTH; Room v6, migrated rows HOME, new images BOTH). The "Also change the lock screen" switch
+  is gone (task 4.6 superseded; users who had it on get every image on BOTH, once, `migrateLegacyLockSwitch`). Two
+  playlists: home (`EntryTargets.home`, falls back to every image if none is aimed at home) and lock (`EntryTargets.lock`,
+  none = lock untouched), the lock one with its own DataStore seed/history/active entry and a seed shared with home until
+  it has its own, so equal lists walk alike. Triggers advance both; a tapped thumbnail shows on its targets. Lock still
+  image: with the static fallback in the same write as home when they match, else at screen off. Picture label bar cycles
+  the target. Gate green; **not run on a device** (emulators owed: API 33/37, then the POCO).
 - 2026-10-15 — README brought up to date: navigation gestures in apps (3.8), per-picture framing replaces the
   parallax (4.10), lock image set at screen off, Clock opens the clock app, the `:baselineprofile` module and perf
   commands. **Owed:** `docs/media/wallpaper-settings.png` (13 Oct) still shows the removed parallax switch; retake it.

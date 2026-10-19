@@ -21,6 +21,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.foxlauncher.R
 import dev.foxlauncher.core.data.db.WallpaperSourceType
 import dev.foxlauncher.core.model.RotationTriggers
+import dev.foxlauncher.core.model.WallpaperTarget
 import dev.foxlauncher.core.ui.theme.FoxTheme
 import kotlin.test.assertEquals
 import org.junit.Rule
@@ -69,12 +70,26 @@ class WallpaperSettingsContentTest {
 
     @Test
     fun theLookSwitchesReportTheirNewState() {
-        setContent(WallpaperSettingsUiState(changeLockScreen = true))
+        setContent(WallpaperSettingsUiState(shuffle = false))
 
         clickRow(R.string.wallpaper_shuffle)
-        clickRow(R.string.wallpaper_lock_screen)
 
-        assertEquals(listOf("shuffle true", "lock false"), calls)
+        assertEquals(listOf("shuffle true"), calls)
+    }
+
+    @Test
+    fun tappingAPicturesLabelGoesOnToTheNextTarget() {
+        val entries = listOf(
+            WallpaperEntryUi(7, "content://x/7", "Lake", failing = false, target = WallpaperTarget.HOME),
+            WallpaperEntryUi(8, "content://x/8", "Hill", failing = false, target = WallpaperTarget.BOTH),
+        )
+        setContent(WallpaperSettingsUiState(sources = listOf(builtIn), entries = entries, showingId = 7))
+
+        composeRule.onNodeWithTag(WallpaperSettingsTestTags.LIST).performScrollToNode(hasContentDescription("Hill"))
+        composeRule.onNodeWithText(string(R.string.wallpaper_target_home)).performClick()
+        composeRule.onNodeWithText(string(R.string.wallpaper_target_both)).performClick()
+
+        assertEquals(listOf("target 7 LOCK", "target 8 HOME"), calls)
     }
 
     @Test
@@ -234,7 +249,7 @@ class WallpaperSettingsContentTest {
         override fun setShuffle(enabled: Boolean) { calls += "shuffle $enabled" }
         override fun setCrossfadeMs(ms: Int) { calls += "crossfade $ms" }
         override fun editFraming(entryId: Long) { calls += "frame $entryId" }
-        override fun setChangeLockScreen(enabled: Boolean) { calls += "lock $enabled" }
+        override fun setTarget(entryId: Long, target: WallpaperTarget) { calls += "target $entryId $target" }
         override fun addFolder() { calls += "add folder" }
         override fun addPictures() { calls += "add pictures" }
         override fun setSourceEnabled(sourceId: Long, enabled: Boolean) { calls += "source $sourceId $enabled" }

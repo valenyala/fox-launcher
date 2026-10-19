@@ -15,6 +15,8 @@ import dev.foxlauncher.core.data.settings.FoxSettings
 import dev.foxlauncher.core.model.PlaylistMode
 import dev.foxlauncher.core.model.RotationTriggers
 import dev.foxlauncher.core.model.WallpaperFraming
+import dev.foxlauncher.core.model.WallpaperTarget
+import dev.foxlauncher.feature.wallpaper.EntryTargets
 import dev.foxlauncher.feature.wallpaper.LiveWallpaper
 import dev.foxlauncher.feature.wallpaper.RotationScheduler
 import dev.foxlauncher.feature.wallpaper.WallpaperPlaylist
@@ -50,6 +52,8 @@ data class WallpaperEntryUi(
     val failing: Boolean,
     /** The part of it that shows (ADR-26). */
     val framing: WallpaperFraming = WallpaperFraming.CENTERED,
+    /** Where it shows: the home screen, the lock screen or both. */
+    val target: WallpaperTarget = WallpaperTarget.BOTH,
 )
 
 @Immutable
@@ -57,15 +61,15 @@ data class WallpaperSettingsUiState(
     /** Fox's live wallpaper is the system wallpaper, so changes crossfade. */
     val liveWallpaperActive: Boolean = true,
     val triggers: RotationTriggers = RotationTriggers(),
-    /** Each new wallpaper is also set on the lock screen (task 4.6). */
-    val changeLockScreen: Boolean = false,
     val shuffle: Boolean = false,
     val crossfadeMs: Int = FoxSettings.DEFAULT_CROSSFADE_MS,
     val sources: List<WallpaperSourceUi> = emptyList(),
     /** The wallpapers of the enabled sources, in rotation order. */
     val entries: List<WallpaperEntryUi> = emptyList(),
-    /** The one on screen now. */
+    /** The one on the home screen now. */
     val showingId: Long? = null,
+    /** The one the lock screen is to show; null when no image is aimed at it. */
+    val lockShowingId: Long? = null,
 )
 
 /** Everything about the wallpaper (tasks 4.4–4.7): the live wallpaper, the rotation, sources and pictures. */
@@ -82,14 +86,12 @@ class WallpaperSettingsViewModel @Inject constructor(
     private val rotationSettings = combine(
         liveWallpaperActive,
         settings.rotationTriggers,
-        settings.changeLockScreen,
         settings.playlistState,
         settings.crossfadeMs,
-    ) { active, triggers, lock, playlist, crossfade ->
+    ) { active, triggers, playlist, crossfade ->
         WallpaperSettingsUiState(
             liveWallpaperActive = active,
             triggers = triggers,
-            changeLockScreen = lock,
             shuffle = playlist.mode == PlaylistMode.SHUFFLE,
             crossfadeMs = crossfade,
         )
@@ -102,14 +104,16 @@ class WallpaperSettingsViewModel @Inject constructor(
             list.map { WallpaperSourceUi(it.id, it.type, it.displayName, it.enabled, it.needsReauth, countOf[it.id] ?: 0) }
         },
         sources.rotationEntries,
-        settings.activeWallpaperEntryId,
-    ) { base, sourceList, entries, active ->
+        combine(settings.activeWallpaperEntryId, settings.lockActiveWallpaperEntryId, ::Pair),
+    ) { base, sourceList, entries, (active, lockActive) ->
+        val targets = entries.map { it.id to it.target }
         base.copy(
             sources = sourceList,
             entries = entries.map {
-                WallpaperEntryUi(it.id, sources.thumbnailModel(it.uri), it.displayName, it.failedCount >= WallpaperEntryEntity.MAX_FAILURES, it.framing)
+                WallpaperEntryUi(it.id, sources.thumbnailModel(it.uri), it.displayName, it.failedCount >= WallpaperEntryEntity.MAX_FAILURES, it.framing, it.target)
             },
-            showingId = WallpaperPlaylist.showing(active, entries.map { it.id }),
+            showingId = WallpaperPlaylist.showing(active, EntryTargets.home(targets)),
+            lockShowingId = WallpaperPlaylist.showing(lockActive, EntryTargets.lock(targets)),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), WallpaperSettingsUiState())
 
@@ -143,8 +147,9 @@ class WallpaperSettingsViewModel @Inject constructor(
         viewModelScope.launch { settings.setRotateOnPageChange(enabled) }
     }
 
-    fun setChangeLockScreen(enabled: Boolean) {
-        viewModelScope.launch { rotation.setChangeLockScreen(enabled) }
+    /** Aims a picture at the home screen, the lock screen or both. */
+    fun setTarget(entryId: Long, target: WallpaperTarget) {
+        viewModelScope.launch { rotation.setTarget(entryId, target) }
     }
 
     fun setShuffle(enabled: Boolean) {

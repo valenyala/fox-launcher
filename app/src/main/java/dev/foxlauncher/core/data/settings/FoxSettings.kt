@@ -215,11 +215,44 @@ class FoxSettings @Inject constructor(
         Unit
     }
 
-    /** Whether each new wallpaper is also set on the lock screen, as a still image (task 4.6). */
-    val changeLockScreen: Flow<Boolean> = dataStore.data.map { it[Keys.CHANGE_LOCK_SCREEN] ?: false }
+    /**
+     * Whether the retired "also change the lock screen" switch (task 4.6) was on, forgetting it:
+     * true only once. Each image now says itself where it shows.
+     */
+    suspend fun takeLegacyLockSwitch(): Boolean = withContext(io) {
+        var was = false
+        dataStore.edit {
+            was = it[Keys.CHANGE_LOCK_SCREEN] ?: false
+            it.remove(Keys.CHANGE_LOCK_SCREEN)
+        }
+        was
+    }
 
-    suspend fun setChangeLockScreen(enabled: Boolean) = withContext(io) {
-        dataStore.edit { it[Keys.CHANGE_LOCK_SCREEN] = enabled }
+    /** The entry the lock screen is to show; null until its rotation first picks one. Set as a still image at screen off. */
+    val lockActiveWallpaperEntryId: Flow<Long?> = dataStore.data.map { it[Keys.LOCK_ACTIVE_WALLPAPER] }
+
+    suspend fun setLockActiveWallpaper(id: Long, changedAt: Long) = withContext(io) {
+        dataStore.edit {
+            it[Keys.LOCK_ACTIVE_WALLPAPER] = id
+            it[Keys.WALLPAPER_CHANGED_AT] = changedAt
+        }
+        Unit
+    }
+
+    /** The lock screen's own walk through its images: the shared mode, its seed and its history. */
+    val lockPlaylistState: Flow<PlaylistState> = dataStore.data.map {
+        PlaylistState(
+            mode = playlistMode(it[Keys.PLAYLIST_MODE]),
+            seed = it[Keys.LOCK_PLAYLIST_SEED],
+            history = IdListCodec.decode(it[Keys.LOCK_PLAYLIST_HISTORY]),
+        )
+    }
+
+    suspend fun saveLockPlaylist(seed: Long, history: List<Long>) = withContext(io) {
+        dataStore.edit {
+            it[Keys.LOCK_PLAYLIST_SEED] = seed
+            it[Keys.LOCK_PLAYLIST_HISTORY] = IdListCodec.encode(history)
+        }
         Unit
     }
 
@@ -242,8 +275,7 @@ class FoxSettings @Inject constructor(
     /** The wallpaper rotation's mode, shuffle seed and history (task 4.2). */
     val playlistState: Flow<PlaylistState> = dataStore.data.map {
         PlaylistState(
-            mode = it[Keys.PLAYLIST_MODE]?.let { name -> PlaylistMode.entries.firstOrNull { mode -> mode.name == name } }
-                ?: PlaylistMode.SEQUENTIAL,
+            mode = playlistMode(it[Keys.PLAYLIST_MODE]),
             seed = it[Keys.PLAYLIST_SEED],
             history = IdListCodec.decode(it[Keys.PLAYLIST_HISTORY]),
         )
@@ -262,6 +294,8 @@ class FoxSettings @Inject constructor(
         }
         Unit
     }
+
+    private fun playlistMode(name: String?): PlaylistMode = PlaylistMode.entries.firstOrNull { it.name == name } ?: PlaylistMode.SEQUENTIAL
 
     private object Keys {
         val IS_FIRST_RUN = booleanPreferencesKey("is_first_run")
@@ -289,6 +323,9 @@ class FoxSettings @Inject constructor(
         val ROTATE_ON_PAGE_CHANGE = booleanPreferencesKey("wallpaper_rotate_on_page_change")
         val CHANGE_LOCK_SCREEN = booleanPreferencesKey("wallpaper_change_lock_screen")
         val LOCK_WALLPAPER = longPreferencesKey("wallpaper_lock_entry")
+        val LOCK_ACTIVE_WALLPAPER = longPreferencesKey("wallpaper_lock_active_entry")
+        val LOCK_PLAYLIST_SEED = longPreferencesKey("wallpaper_lock_playlist_seed")
+        val LOCK_PLAYLIST_HISTORY = stringPreferencesKey("wallpaper_lock_playlist_history")
         val PLAYLIST_MODE = stringPreferencesKey("wallpaper_playlist_mode")
         val PLAYLIST_SEED = longPreferencesKey("wallpaper_playlist_seed")
         val PLAYLIST_HISTORY = stringPreferencesKey("wallpaper_playlist_history")
