@@ -145,6 +145,7 @@
     <string name="wallpaper_live_inactive">Changes show with a flash: smooth crossfades need the Fox live wallpaper.</string>
     <string name="wallpaper_prompt_title">Use the Fox live wallpaper?</string>
     <string name="wallpaper_prompt">Fox changes wallpapers through its own live wallpaper, which crossfades them. Apply it in the preview that opens; your current wallpaper stays until you do.</string>
+    <string name="wallpaper_lock_not_live">The lock screen has its own picture, so it jumps to the home screen\'s when you unlock. For a smooth change, apply Fox wallpapers to the home screen and lock screen.</string>
     <string name="wallpaper_apply">Apply</string>
     <string name="wallpaper_next_now">Next wallpaper now</string>
     <string name="wallpaper_interval">Change every</string>

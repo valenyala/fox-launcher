@@ -252,6 +252,14 @@ here contradicts what you remember, trust this file unless a device proves other
   make the two share one image again. Fox's "Also change the lock screen" (off by default) writes `FLAG_LOCK` with
   `FLAG_SYSTEM`, in one write, after each change while the static fallback is on; with the live wallpaper, alone at
   the next screen off (see "Theme changes in front of the user").
+- Different pictures on lock and home (2026-10-19). A still image on the lock screen (`setStream(FLAG_LOCK)`) is dropped by
+  the system at the unlock and the home wallpaper shows: a jump Fox cannot animate. With Fox live applied to *Home screen
+  and lock screen* the keyguard shows Fox's engine (`getWallpaperId(FLAG_LOCK)` is -1: no separate lock image), so the
+  engine draws the lock picture while `KeyguardManager.isKeyguardLocked` and crossfades to the home picture at the unlock;
+  Fox then never writes `FLAG_LOCK`, which would split the lock screen off again. The lock picture gives the system no
+  colours (`onComputeColors` stays the home picture's). fox-api37: locked, entry shown at once with the engine hidden;
+  `Keyguard locked: false (user present)` and the crossfade start 0.12 s after the swipe. The emulators have the lock
+  screen disabled by default: `adb shell locksettings set-disabled false`.
 - MIUI 14 (POCO F3): the keyguard draws its own wallpaper window (`MiuiKeyguardPictorialWallpaper`, from
   `com.miui.miwallpaper`). Wallpaper Carousel (`com.miui.android.fashiongallery`) sets the lock wallpaper itself
   (`MiuiWallpaperManagerService setWallpaper which=2 type=gallery`) on screen-on and unlock, overwriting Fox's; with

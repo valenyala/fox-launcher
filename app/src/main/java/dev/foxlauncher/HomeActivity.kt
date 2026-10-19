@@ -54,6 +54,7 @@ import dev.foxlauncher.feature.settings.HomeSettingsScreen
 import dev.foxlauncher.feature.settings.IconsScreen
 import dev.foxlauncher.feature.settings.SettingsRoute
 import dev.foxlauncher.feature.settings.ShizukuScreen
+import dev.foxlauncher.feature.wallpaper.KeyguardState
 import dev.foxlauncher.feature.widgets.LocalNativeWidgets
 import dev.foxlauncher.feature.widgets.NativeWidgetRegistry
 import dev.foxlauncher.feature.widgets.WidgetPickerSheet
@@ -87,6 +88,8 @@ class HomeActivity : ComponentActivity() {
     @Inject lateinit var nativeWidgets: NativeWidgetRegistry
 
     @Inject lateinit var homeVisibility: HomeVisibility
+
+    @Inject lateinit var keyguardState: KeyguardState
 
     @Inject lateinit var appWidgetHost: FoxAppWidgetHost
 
@@ -447,6 +450,8 @@ class HomeActivity : ComponentActivity() {
         super.onStart()
         appWidgetHost.onHomeStarted()
         buttonAppLaunches.onHomeShown()
+        // The home comes up as the lock screen leaves: the live wallpaper crossfades to the home screen's picture.
+        keyguardState.refresh()
     }
 
     override fun onResume() {

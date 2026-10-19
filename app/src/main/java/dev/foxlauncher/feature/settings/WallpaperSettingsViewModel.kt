@@ -60,6 +60,8 @@ data class WallpaperEntryUi(
 data class WallpaperSettingsUiState(
     /** Fox's live wallpaper is the system wallpaper, so changes crossfade. */
     val liveWallpaperActive: Boolean = true,
+    /** The lock screen shows it too, so its pictures change into the home screen's smoothly at the unlock. */
+    val liveWallpaperOnLock: Boolean = true,
     val triggers: RotationTriggers = RotationTriggers(),
     val shuffle: Boolean = false,
     val crossfadeMs: Int = FoxSettings.DEFAULT_CROSSFADE_MS,
@@ -82,15 +84,17 @@ class WallpaperSettingsViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val liveWallpaperActive = MutableStateFlow(isLiveWallpaperActive())
+    private val liveWallpaperOnLock = MutableStateFlow(LiveWallpaper.isFoxOnLock(context))
 
     private val rotationSettings = combine(
-        liveWallpaperActive,
+        combine(liveWallpaperActive, liveWallpaperOnLock, ::Pair),
         settings.rotationTriggers,
         settings.playlistState,
         settings.crossfadeMs,
-    ) { active, triggers, playlist, crossfade ->
+    ) { (active, onLock), triggers, playlist, crossfade ->
         WallpaperSettingsUiState(
             liveWallpaperActive = active,
+            liveWallpaperOnLock = onLock,
             triggers = triggers,
             shuffle = playlist.mode == PlaylistMode.SHUFFLE,
             crossfadeMs = crossfade,
@@ -120,6 +124,7 @@ class WallpaperSettingsViewModel @Inject constructor(
     /** Coming back from the system's wallpaper preview: the live wallpaper may have been applied. */
     fun refresh() {
         liveWallpaperActive.value = isLiveWallpaperActive()
+        liveWallpaperOnLock.value = LiveWallpaper.isFoxOnLock(context)
     }
 
     /** "Next now" is an explicit request: without the live wallpaper it is set as a static image (task 4.5). */

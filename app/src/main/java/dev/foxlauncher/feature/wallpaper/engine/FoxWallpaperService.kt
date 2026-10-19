@@ -19,9 +19,10 @@ import dev.foxlauncher.core.data.db.framing
 import dev.foxlauncher.core.data.settings.FoxSettings
 import dev.foxlauncher.core.model.RotationTrigger
 import dev.foxlauncher.feature.wallpaper.EntryTargets
+import dev.foxlauncher.feature.wallpaper.KeyguardState
+import dev.foxlauncher.feature.wallpaper.LiveWallpaper
 import dev.foxlauncher.feature.wallpaper.RotationScheduler
 import dev.foxlauncher.feature.wallpaper.TriggerPolicy
-import dev.foxlauncher.feature.wallpaper.WallpaperPlaylist
 import dev.foxlauncher.feature.wallpaper.source.WallpaperSources
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineDispatcher
@@ -66,6 +67,8 @@ class FoxWallpaperService : WallpaperService() {
     @Inject lateinit var rotation: RotationScheduler
 
     @Inject lateinit var sources: WallpaperSources
+
+    @Inject lateinit var keyguard: KeyguardState
 
     /** The live engines: the system's and, while the picker shows one, a preview. */
     private val engines = mutableSetOf<FoxEngine>()
@@ -119,6 +122,9 @@ class FoxWallpaperService : WallpaperService() {
 
         /** The entry that should be showing, and the load bringing it in. */
         private var wantedId: Long? = null
+
+        /** [wantedId] is the lock screen's picture: it shows while locked, and its colours are never the system's. */
+        private var wantedLock = false
         private var loadJob: Job? = null
 
         /** A rotation interval under 15 minutes runs here, while visible (task 4.4). */
@@ -133,17 +139,30 @@ class FoxWallpaperService : WallpaperService() {
             // per-page snapshot of the wallpaper and its 150 ms waits for the engine (PLATFORM-NOTES W).
             setOffsetNotificationsEnabled(false)
             scope.launch {
-                combine(settings.activeWallpaperEntryId, dao.observeRotationEntries(), settings.crossfadeMs) { active, entries, ms ->
+                combine(
+                    combine(settings.activeWallpaperEntryId, settings.lockActiveWallpaperEntryId, ::Pair),
+                    dao.observeRotationEntries(),
+                    settings.crossfadeMs,
+                    keyguard.locked,
+                ) { (active, lockActive), entries, ms, locked ->
                     fadeMs = ms
-                    val id = WallpaperPlaylist.showing(active, EntryTargets.home(entries.map { it.id to it.target }))
-                    id to entries.firstOrNull { it.id == id }?.framing
+                    // The lock screen's picture shows while locked, if the lock screen shows this wallpaper; the preview never.
+                    val showing = EntryTargets.showing(
+                        locked = locked && !isPreview,
+                        foxOnLock = locked && !isPreview && LiveWallpaper.isFoxOnLock(applicationContext),
+                        homeActive = active,
+                        lockActive = lockActive,
+                        entries = entries.map { it.id to it.target },
+                    )
+                    Triple(showing.id, showing.lockPicture, entries.firstOrNull { it.id == showing.id }?.framing)
                 }
                     .distinctUntilChanged()
-                    .collect { (id, _) ->
-                        // A new image, or a new framing of the one showing, crossfades in.
-                        // The first image after (re)creation appears without a fade.
+                    .collect { (id, lockPicture, _) ->
+                        // A new image, or a new framing of the one showing, crossfades in (the lock screen's to the
+                        // home screen's at the unlock). The first image after (re)creation appears without a fade.
                         val animate = current != null
                         wantedId = id
+                        wantedLock = lockPicture
                         load(animate)
                     }
             }
@@ -189,7 +208,7 @@ class FoxWallpaperService : WallpaperService() {
                 current?.recycle()
                 current = next
                 incoming = null
-                currentColors = incomingColors
+                incomingColors?.let { currentColors = it }
                 incomingColors = null
             }
             surfaceW = 0
@@ -201,6 +220,7 @@ class FoxWallpaperService : WallpaperService() {
         override fun onVisibilityChanged(visible: Boolean) {
             FoxLog.d("$name: ${if (visible) "visible" else "hidden"}")
             this.visible = visible
+            if (!isPreview) keyguard.refresh()
             restartTimer()
             if (visible) {
                 draw()
@@ -254,6 +274,7 @@ class FoxWallpaperService : WallpaperService() {
         /** Decodes [wantedId] at the surface size, then shows it with or without a crossfade. */
         private fun load(animate: Boolean) {
             val id = wantedId ?: return
+            val lockPicture = wantedLock
             if (surfaceW == 0 || surfaceH == 0) return // onSurfaceChanged loads it.
             loadJob?.cancel()
             loadJob = scope.launch {
@@ -261,7 +282,8 @@ class FoxWallpaperService : WallpaperService() {
                 finishFade()
                 val entry = withContext(io) { dao.getEntry(id) } ?: return@launch
                 val decoded = withContext(io) {
-                    loader.load(entry.uri.toUri(), surfaceW, surfaceH, entry.framing)?.let { it to WallpaperColors.fromBitmap(it) }
+                    // The lock screen's picture has no colours: the system's palette follows the home screen's.
+                    loader.load(entry.uri.toUri(), surfaceW, surfaceH, entry.framing)?.let { it to if (lockPicture) null else WallpaperColors.fromBitmap(it) }
                 }
                 if (decoded == null) {
                     sources.reportUnreadable(id)
@@ -283,9 +305,11 @@ class FoxWallpaperService : WallpaperService() {
                     finishFade()
                     current?.recycle()
                     current = bitmap
-                    currentColors = colors
+                    if (!lockPicture) {
+                        currentColors = colors
+                        notifyColorsChanged()
+                    }
                     draw()
-                    notifyColorsChanged()
                 }
             }
         }
@@ -317,7 +341,7 @@ class FoxWallpaperService : WallpaperService() {
             val next = incoming ?: return
             current?.recycle()
             current = next
-            currentColors = incomingColors
+            incomingColors?.let { currentColors = it }
             incoming = null
             incomingColors = null
             draw()

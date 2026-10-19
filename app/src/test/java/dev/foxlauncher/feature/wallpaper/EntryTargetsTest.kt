@@ -36,4 +36,34 @@ class EntryTargetsTest {
         assertEquals(BOTH, LOCK.cycled())
         assertEquals(HOME, BOTH.cycled())
     }
+
+    @Test
+    fun lockedOnTheLiveWallpaperShowsTheLockPicture() {
+        val showing = EntryTargets.showing(locked = true, foxOnLock = true, homeActive = 1L, lockActive = 2L, entries = entries)
+        assertEquals(EntryTargets.Showing(2L, lockPicture = true), showing)
+    }
+
+    @Test
+    fun unlockedShowsTheHomePicture() {
+        val showing = EntryTargets.showing(locked = false, foxOnLock = true, homeActive = 1L, lockActive = 2L, entries = entries)
+        assertEquals(EntryTargets.Showing(1L, lockPicture = false), showing)
+    }
+
+    @Test
+    fun lockedWithoutTheLiveWallpaperOnTheLockScreenShowsTheHomePicture() {
+        val showing = EntryTargets.showing(locked = true, foxOnLock = false, homeActive = 1L, lockActive = 2L, entries = entries)
+        assertEquals(EntryTargets.Showing(1L, lockPicture = false), showing)
+    }
+
+    @Test
+    fun lockedWithNoLockPicturesShowsTheHomePicture() {
+        val showing = EntryTargets.showing(locked = true, foxOnLock = true, homeActive = 1L, lockActive = null, entries = listOf(1L to HOME))
+        assertEquals(EntryTargets.Showing(1L, lockPicture = false), showing)
+    }
+
+    @Test
+    fun anActiveEntryThatLeftTheLockListFallsBackToItsFirst() {
+        val showing = EntryTargets.showing(locked = true, foxOnLock = true, homeActive = 1L, lockActive = 4L, entries = entries)
+        assertEquals(EntryTargets.Showing(2L, lockPicture = true), showing)
+    }
 }

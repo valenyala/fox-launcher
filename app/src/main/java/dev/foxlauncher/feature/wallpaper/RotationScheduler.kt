@@ -191,7 +191,9 @@ class RotationScheduler @Inject constructor(
         mutex.withLock {
             val entries = dao.observeRotationEntries().first()
             val homeId = homeShowing(entries)
-            val lockId = lockShowing(entries)?.takeIf { StaticTargets.lockScreenBehind(settings.lockWallpaperEntryId.first(), it) }
+            // A still image on the lock screen would split it off the live wallpaper, which draws its picture itself.
+            val lockId = lockShowing(entries)
+                ?.takeIf { !LiveWallpaper.isFoxOnLock(context) && StaticTargets.lockScreenBehind(settings.lockWallpaperEntryId.first(), it) }
             if (homeId != null && homeId == lockId) {
                 if (applier.apply(homeId, setOf(StaticTarget.HOME, StaticTarget.LOCK))) settings.setLockWallpaperEntry(homeId)
                 return
@@ -202,14 +204,14 @@ class RotationScheduler @Inject constructor(
     }
 
     /**
-     * With the screen off: the lock screen gets its image, if it is behind, and only while the screen
-     * stays off. A still image set in front of the user restyles every app at once (PLATFORM-NOTES W);
+     * With the screen off: the lock screen gets its image as a still, if it is behind, and only while the
+     * screen stays off. Not when it shows Fox's live wallpaper, which draws the lock picture itself. A still image set in front of the user restyles every app at once (PLATFORM-NOTES W);
      * the next screen off tries again. Called when the live wallpaper goes out of sight with the screen
      * off, and on `ACTION_SCREEN_OFF`, which MIUI delivers one to three seconds late.
      */
     suspend fun catchUpLockScreen() {
         val power = context.getSystemService(PowerManager::class.java)
-        if (power.isInteractive) return
+        if (power.isInteractive || LiveWallpaper.isFoxOnLock(context)) return
         mutex.withLock {
             val lockId = lockShowing(dao.observeRotationEntries().first()) ?: return
             if (!StaticTargets.lockScreenBehind(settings.lockWallpaperEntryId.first(), lockId)) return

@@ -223,6 +223,17 @@ fun WallpaperSettingsContent(
                         onAction = actions::applyLiveWallpaper,
                     )
                 }
+                // Pictures for the lock screen change into the home screen's smoothly only if Fox's live wallpaper is on the lock screen.
+                if (state.liveWallpaperActive && !state.liveWallpaperOnLock && state.entries.any { it.target.onLock }) {
+                    item(key = "lock banner") {
+                        Banner(
+                            text = stringResource(R.string.wallpaper_lock_not_live),
+                            warning = false,
+                            action = stringResource(R.string.wallpaper_apply),
+                            onAction = actions::applyLiveWallpaper,
+                        )
+                    }
+                }
                 // A folder that lost its access is skipped by the rotation until it is picked again (task 4.9).
                 state.sources.firstOrNull { it.needsReauth }?.let { lost ->
                     item(key = "reauth ${lost.id}") {

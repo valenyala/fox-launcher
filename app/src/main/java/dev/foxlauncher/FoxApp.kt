@@ -21,6 +21,7 @@ import dev.foxlauncher.core.common.ApplicationScope
 import dev.foxlauncher.core.common.FoxLog
 import dev.foxlauncher.core.model.RotationTrigger
 import dev.foxlauncher.feature.gestures.system.AccessibilityRepair
+import dev.foxlauncher.feature.wallpaper.KeyguardState
 import dev.foxlauncher.feature.wallpaper.RotationScheduler
 import dev.foxlauncher.feature.wallpaper.source.SourceScanner
 import dev.foxlauncher.feature.wallpaper.source.WallpaperSources
@@ -49,6 +50,8 @@ class FoxApp : Application(), Configuration.Provider, SingletonImageLoader.Facto
 
     @Inject lateinit var rotation: RotationScheduler
 
+    @Inject lateinit var keyguard: KeyguardState
+
     override fun attachBaseContext(base: Context) {
         super.attachBaseContext(base)
         // Before the content providers start: ShizukuProvider would otherwise probe for Sui (a Magisk module) through a
@@ -71,6 +74,7 @@ class FoxApp : Application(), Configuration.Provider, SingletonImageLoader.Facto
      */
     private val unlockReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
+            keyguard.onUnlocked()
             scope.launch { rotation.advanceIfDue(RotationTrigger.UNLOCK) }
         }
     }
@@ -82,6 +86,7 @@ class FoxApp : Application(), Configuration.Provider, SingletonImageLoader.Facto
      */
     private val screenOffReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
+            keyguard.refresh()
             scope.launch { rotation.catchUpLockScreen() }
         }
     }

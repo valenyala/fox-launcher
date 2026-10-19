@@ -269,6 +269,13 @@ it alone, with none aimed at the home screen the home screen uses them all. Both
 screen stays a still image set at screen off (PLATFORM-NOTES W) unless the static fallback is on and both screens show the
 same picture, which goes in one write. Room v6 adds the column (existing pictures: home only).
 
+## ADR-28 The live wallpaper draws the lock screen's picture while locked
+
+Extends ADR-27. When Fox's live wallpaper is on the lock screen too, the engine shows the lock rotation's picture while the
+keyguard is up (`KeyguardState`) and crossfades to the home rotation's at the unlock; the lock picture contributes no
+colours. Fox writes no `FLAG_LOCK` still then. The settings suggest "Home screen and lock screen" while a picture targets
+the lock screen and Fox is not on it. A still lock image (another lock wallpaper, or no live wallpaper) still jumps.
+
 ## Dependency log
 (append `- <lib> <version> — reason` when adding a dependency)
 - AGP (com.android.application) 9.4.0 — build system; built-in Kotlin, see ADR-11.
