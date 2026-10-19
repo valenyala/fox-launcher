@@ -333,10 +333,7 @@ fun WallpaperSettingsContent(
     state.entries.firstOrNull { it.id == choosingTarget }?.let { entry ->
         TargetPicker(
             entry = entry,
-            onPick = {
-                choosingTarget = null
-                actions.setTarget(entry.id, it)
-            },
+            onPick = { actions.setTarget(entry.id, it) },
             onShowNow = {
                 choosingTarget = null
                 actions.show(entry.id)
@@ -553,7 +550,7 @@ private fun targetLabel(target: WallpaperTarget): Int = when (target) {
     WallpaperTarget.BOTH -> R.string.wallpaper_target_both
 }
 
-/** Where [entry] shows (home screen, lock screen or both), or show it now. */
+/** Where [entry] shows (home screen, lock screen or both), saved on each pick; stays open until "Show now" or cancel. */
 @Composable
 private fun TargetPicker(entry: WallpaperEntryUi, onPick: (WallpaperTarget) -> Unit, onShowNow: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(

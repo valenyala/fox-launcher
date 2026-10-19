@@ -91,6 +91,8 @@ class WallpaperSettingsContentTest {
         composeRule.onNodeWithContentDescription("Lake").performClick()
         composeRule.onNodeWithTag(WallpaperSettingsTestTags.TARGET_PICKER).assertExists()
         composeRule.onNode(hasText(string(R.string.wallpaper_target_lock)) and hasAnyAncestor(hasTestTag(WallpaperSettingsTestTags.TARGET_PICKER))).performClick()
+        composeRule.onNodeWithTag(WallpaperSettingsTestTags.TARGET_PICKER).assertExists()
+        composeRule.onNodeWithText(string(android.R.string.cancel)).performClick()
         composeRule.onNodeWithContentDescription("Hill").performClick()
         composeRule.onNode(hasText(string(R.string.wallpaper_target_home)) and hasAnyAncestor(hasTestTag(WallpaperSettingsTestTags.TARGET_PICKER))).performClick()
 
