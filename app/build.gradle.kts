@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -22,6 +24,23 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // Release signing comes from keystore.properties (gitignored, see README). Without it the release
+    // build stays unsigned, so a fresh clone and scripts/ci.sh still work.
+    val keystoreProperties = Properties().apply {
+        val file = rootProject.file("keystore.properties")
+        if (file.exists()) file.inputStream().use { load(it) }
+    }
+    val releaseSigning = if (keystoreProperties.containsKey("storeFile")) {
+        signingConfigs.create("release") {
+            storeFile = file(keystoreProperties.getProperty("storeFile"))
+            storePassword = keystoreProperties.getProperty("storePassword")
+            keyAlias = keystoreProperties.getProperty("keyAlias")
+            keyPassword = keystoreProperties.getProperty("keyPassword")
+        }
+    } else {
+        null
+    }
+
     buildTypes {
         debug {
             // Single applicationId: the accessibility service and live wallpaper component
@@ -32,9 +51,10 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = releaseSigning
         }
         // Performance measurement on a device: release code (R8) signed with the debug key, so it installs
-        // over a debug build and keeps the layout. Real release signing is task 8.3.
+        // over a debug build and keeps the layout.
         create("profiling") {
             initWith(getByName("release"))
             signingConfig = signingConfigs.getByName("debug")

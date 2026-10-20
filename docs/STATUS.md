@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 8 — Performance & release (started 2026-10-14 at the user's call, with 7.2–7.8 still open; phase 9 done; Phase 4 owes three checklist items, deferred; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists)
-**Next task:** 8.3 R8, keep rules, signing (5.6–5.8, user requests, owe the POCO check). Still open: 7.2–7.8; 3.8's POCO check; 2.8 deferred
+**Next task:** 8.4 Battery pass (8.3 done bar the POCO check; 5.6–5.8, user requests, owe the POCO check). Still open: 7.2–7.8; 3.8's POCO check; 2.8 deferred
 
 ## Environment facts (verified 2026-09-17)
 
@@ -117,7 +117,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 ## Phase 8 — Performance & release
 - [x] 8.1 Baseline profiles + macrobenchmark: profile generated on fox-api37 (26,315 rules, 3,108 Fox's); cold start TTID, fox-api37 macrobenchmark median 850 → 609 ms; POCO F3 `am start -W` median 188 → 169 ms (target < 500 ms)
 - [x] 8.2 Jank pass: drawer scroll 0.38–0.78% janky on the POCO F3 (target < 1%); folder open/close recomposition 12–22 → 5–10 ms; drawer open and folder stay ~4–5% janky from display pacing (dequeueBuffer waits at MIUI's 60 Hz, the 60↔120 Hz switch at touch), not Fox's work
-- [ ] 8.3 R8, keep rules, signing
+- [x] 8.3 R8, keep rules, signing: release signed from `keystore.properties` (README); fox-api33 release APK walked (home, drawer, settings, gesture remap kept across a restart, accessibility service + notification swipe), no R8 errors; **owed:** Shizuku deep boost on a release build (no Shizuku server started on the emulators), the live wallpaper and the POCO check with the `profiling` build
 - [ ] 8.4 Battery pass
 - [ ] 8.5 Play listing and disclosures
 - [ ] 8.6 Crash reporting decision
@@ -168,6 +168,8 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-10-20 — 8.3. `release` signs from `keystore.properties` (gitignored; unsigned when absent, so the gate and fresh clones work); key `~/keys/fox-release.jks`, alias `fox` (the user's). `proguard-rules.pro`: line numbers kept, and `FoxShellService`'s no-arg constructor (Shizuku starts it by name). Nothing else needed: manifest components are kept by AAPT, Hilt/Room/WorkManager/kotlinx.serialization ship consumer rules; `mapping.txt` shows the kept classes unrenamed. fox-api33 release build (debug uninstalled): home, drawer, Home settings, Gestures, a remap to Page overview survived a force stop, accessibility service bound and a swipe down opened the shade; no `ClassNotFound`/`NoSuchMethod`/`SerializationException`. fox-api37 installs and starts. **Owed:** Shizuku deep boost and the live wallpaper on release, the POCO (the `profiling` build: same R8 code, debug key). The emulators now carry the release build; reinstall debug before the instrumented tests.
 
 - 2026-10-19 — User: "when tapping on a wallpaper pic let the user choose if it's shown on the home, lockscreen or both". Tapping a picture (or its label) opens `TargetPicker`: Home screen / Lock screen / Both radios (each pick saves, the dialog stays open) plus "Show now"; the label no longer cycles (`WallpaperTarget.cycled()` removed with its test). Long-press still opens framing. Gate green; instrumented test updated, **not yet run on a device** (emulators owed).
 - 2026-10-19 — User: "if lock and home have different wallpapers there's a sudden change, can that be smooth?" ADR-28:

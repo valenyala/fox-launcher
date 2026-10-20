@@ -272,6 +272,27 @@ Common commands, from inside `nix develop`:
 Measure performance on the `profiling` build only: debug builds run Compose several times slower. The emulators render
 in software, so take timings from a real phone.
 
+### Release build
+
+`./gradlew :app:assembleRelease` builds the R8-shrunk APK. It is signed when `keystore.properties` exists in the repo
+root (gitignored); without it the APK comes out unsigned.
+
+```sh
+keytool -genkeypair -v -keystore ~/keys/fox-release.jks -alias fox -keyalg RSA -keysize 4096 -validity 10000
+```
+
+```properties
+# keystore.properties
+storeFile=/home/you/keys/fox-release.jks
+keyAlias=fox
+storePassword=...
+keyPassword=...
+```
+
+Back up the `.jks` and its password outside the repo: without them no update can ever install over a signed Fox.
+Keep `app/build/outputs/mapping/release/mapping.txt` of every release you ship, to read its stack traces. A release APK
+does not install over a debug one (different signature); on a phone that has the debug Fox, test the `profiling` build.
+
 `./scripts/ci.sh` is the whole CI: the dev shell installs it as a git pre-commit hook, and there is no hosted CI.
 
 The screenshots and recordings above come from the Android 17 emulator. The wallpapers in them are Fox's built-in
