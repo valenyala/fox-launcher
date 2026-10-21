@@ -5,6 +5,7 @@ import android.net.Uri
 import android.provider.DocumentsContract
 import androidx.core.net.toUri
 import androidx.hilt.work.HiltWorker
+import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
@@ -129,10 +130,12 @@ class SourceScanner @AssistedInject constructor(
             workManager.enqueueUniqueWork(SCAN_WORK + sourceId, ExistingWorkPolicy.REPLACE, request)
         }
 
-        /** Rescans every folder once a day; keeps an already scheduled schedule. */
+        /** Rescans every folder once a day; an already scheduled one keeps its timing and takes the current constraints. */
         fun scheduleDaily(workManager: WorkManager) {
-            val request = PeriodicWorkRequestBuilder<SourceScanner>(1, TimeUnit.DAYS).build()
-            workManager.enqueueUniquePeriodicWork(DAILY_WORK, ExistingPeriodicWorkPolicy.KEEP, request)
+            val request = PeriodicWorkRequestBuilder<SourceScanner>(1, TimeUnit.DAYS)
+                .setConstraints(Constraints.Builder().setRequiresBatteryNotLow(true).build())
+                .build()
+            workManager.enqueueUniquePeriodicWork(DAILY_WORK, ExistingPeriodicWorkPolicy.UPDATE, request)
         }
     }
 }

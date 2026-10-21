@@ -2,6 +2,7 @@ package dev.foxlauncher.feature.wallpaper
 
 import android.content.Context
 import android.os.PowerManager
+import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
@@ -227,7 +228,9 @@ class RotationScheduler @Inject constructor(
         val minutes = settings.rotationTriggers.first().intervalMinutes
         val workManager = WorkManager.getInstance(context)
         if (minutes >= TriggerPolicy.WORK_MANAGER_MIN_MINUTES) {
-            val request = PeriodicWorkRequestBuilder<RotationWorker>(minutes.toLong(), TimeUnit.MINUTES).build()
+            val request = PeriodicWorkRequestBuilder<RotationWorker>(minutes.toLong(), TimeUnit.MINUTES)
+                .setConstraints(Constraints.Builder().setRequiresBatteryNotLow(true).build())
+                .build()
             workManager.enqueueUniquePeriodicWork(INTERVAL_WORK, ExistingPeriodicWorkPolicy.UPDATE, request)
         } else {
             workManager.cancelUniqueWork(INTERVAL_WORK)
