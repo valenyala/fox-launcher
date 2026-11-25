@@ -24,6 +24,8 @@ import androidx.room.migration.AutoMigrationSpec
         AutoMigration(from = 4, to = 5),
         // v5 → v6: where each wallpaper entry shows (home, lock screen or both), a column with a default.
         AutoMigration(from = 5, to = 6),
+        // v6 → v7: a picture the user removed from a folder or the built-in ones, a column with a default.
+        AutoMigration(from = 6, to = 7),
     ],
 )
 abstract class FoxDatabase : RoomDatabase() {
@@ -37,7 +39,7 @@ abstract class FoxDatabase : RoomDatabase() {
     class DropKeyValue : AutoMigrationSpec
 
     companion object {
-        const val VERSION: Int = 6
+        const val VERSION: Int = 7
         const val NAME: String = "fox.db"
     }
 }

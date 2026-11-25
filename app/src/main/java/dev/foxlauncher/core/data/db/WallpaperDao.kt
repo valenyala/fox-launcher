@@ -37,8 +37,8 @@ abstract class WallpaperDao {
     @Query("UPDATE wallpaper_sources SET uri = :uri, displayName = :displayName, needsReauth = 0 WHERE id = :sourceId")
     abstract suspend fun reauthorizeSource(sourceId: Long, uri: String, displayName: String)
 
-    /** How many images each source has, enabled or not; a source with none is missing. */
-    @Query("SELECT sourceId, COUNT(*) AS count FROM wallpaper_entries GROUP BY sourceId")
+    /** How many images each source has, enabled or not, and how many were removed; a source with none is missing. */
+    @Query("SELECT sourceId, SUM(removed = 0) AS count, SUM(removed) AS removedCount FROM wallpaper_entries GROUP BY sourceId")
     abstract fun observeEntryCounts(): Flow<List<SourceEntryCount>>
 
     /** Removes the source and, by cascade, its entries. */
@@ -47,14 +47,15 @@ abstract class WallpaperDao {
 
     /**
      * The entries the rotation walks, in a stable order: those of enabled sources that can still be
-     * read (a folder that lost its access is left out, task 4.9). When that leaves nothing, the
-     * built-in pictures step in even if turned off, so the wallpaper never goes blank.
+     * read (a folder that lost its access is left out, task 4.9), less the ones the user removed. When
+     * that leaves nothing, the built-in pictures step in even if turned off or removed, so the
+     * wallpaper never goes blank.
      */
     @Query(
         "SELECT e.* FROM wallpaper_entries e JOIN wallpaper_sources s ON s.id = e.sourceId " +
-            "WHERE (s.enabled = 1 AND s.needsReauth = 0) " +
+            "WHERE (s.enabled = 1 AND s.needsReauth = 0 AND e.removed = 0) " +
             "OR (s.type = 'BUILT_IN' AND NOT EXISTS (SELECT 1 FROM wallpaper_entries e2 " +
-            "JOIN wallpaper_sources s2 ON s2.id = e2.sourceId WHERE s2.enabled = 1 AND s2.needsReauth = 0)) " +
+            "JOIN wallpaper_sources s2 ON s2.id = e2.sourceId WHERE s2.enabled = 1 AND s2.needsReauth = 0 AND e2.removed = 0)) " +
             "ORDER BY e.sourceId, e.displayName, e.id",
     )
     abstract fun observeRotationEntries(): Flow<List<WallpaperEntryEntity>>
@@ -73,6 +74,14 @@ abstract class WallpaperDao {
 
     @Query("DELETE FROM wallpaper_entries WHERE id IN (:ids)")
     abstract suspend fun deleteEntries(ids: List<Long>)
+
+    /** Takes a folder's or a built-in picture out of the rotation; its row stays so a rescan keeps it out. */
+    @Query("UPDATE wallpaper_entries SET removed = 1 WHERE id = :id")
+    abstract suspend fun markRemoved(id: Long)
+
+    /** Brings back every picture of [sourceId] the user removed. */
+    @Query("UPDATE wallpaper_entries SET removed = 0 WHERE sourceId = :sourceId")
+    abstract suspend fun restoreRemoved(sourceId: Long)
 
     @Query("DELETE FROM wallpaper_entries WHERE sourceId = :sourceId")
     abstract suspend fun deleteBySource(sourceId: Long)

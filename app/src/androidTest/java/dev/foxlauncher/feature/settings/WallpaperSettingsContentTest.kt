@@ -1,6 +1,9 @@
 package dev.foxlauncher.feature.settings
 
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -97,6 +100,37 @@ class WallpaperSettingsContentTest {
         composeRule.onNode(hasText(string(R.string.wallpaper_target_home)) and hasAnyAncestor(hasTestTag(WallpaperSettingsTestTags.TARGET_PICKER))).performClick()
 
         assertEquals(listOf("target 7 LOCK", "target 8 HOME"), calls)
+    }
+
+    @Test
+    fun aPictureCanBeRemovedButNotTheLastOne() {
+        val lake = WallpaperEntryUi(7, "content://x/7", "Lake", failing = false)
+        val hill = WallpaperEntryUi(8, "content://x/8", "Hill", failing = false)
+        var state by mutableStateOf(WallpaperSettingsUiState(sources = listOf(builtIn), entries = listOf(lake, hill)))
+        composeRule.setContent {
+            FoxTheme { WallpaperSettingsContent(state = state, actions = RecordingActions()) }
+        }
+
+        composeRule.onNodeWithTag(WallpaperSettingsTestTags.LIST).performScrollToNode(hasContentDescription("Lake"))
+        composeRule.onNodeWithContentDescription("Lake").performClick()
+        removeButton().performClick()
+        composeRule.onNodeWithTag(WallpaperSettingsTestTags.TARGET_PICKER).assertDoesNotExist()
+        assertEquals(listOf("remove entry 7"), calls)
+
+        state = state.copy(entries = listOf(hill))
+        composeRule.onNodeWithContentDescription("Hill").performClick()
+        removeButton().assertIsNotEnabled()
+    }
+
+    @Test
+    fun removedPicturesCanBeBroughtBack() {
+        setContent(WallpaperSettingsUiState(sources = listOf(builtIn, folder.copy(removedCount = 2))))
+        val restore = composeRule.activity.resources.getQuantityString(R.plurals.wallpaper_source_restore, 2, 2)
+
+        composeRule.onNodeWithTag(WallpaperSettingsTestTags.LIST).performScrollToNode(hasText(restore))
+        composeRule.onNodeWithText(restore).performClick()
+
+        assertEquals(listOf("restore 5"), calls)
     }
 
     @Test
@@ -244,6 +278,10 @@ class WallpaperSettingsContentTest {
 
     private fun string(id: Int, vararg args: Any) = composeRule.activity.getString(id, *args)
 
+    private fun removeButton() = composeRule.onNode(
+        hasText(string(R.string.wallpaper_remove)) and hasAnyAncestor(hasTestTag(WallpaperSettingsTestTags.TARGET_PICKER)),
+    )
+
     private fun plural(id: Int, n: Int) = composeRule.activity.resources.getQuantityString(id, n, n)
 
     private inner class RecordingActions : WallpaperSettingsActions {
@@ -258,6 +296,8 @@ class WallpaperSettingsContentTest {
         override fun setCrossfadeMs(ms: Int) { calls += "crossfade $ms" }
         override fun editFraming(entryId: Long) { calls += "frame $entryId" }
         override fun setTarget(entryId: Long, target: WallpaperTarget) { calls += "target $entryId $target" }
+        override fun removeEntry(entryId: Long) { calls += "remove entry $entryId" }
+        override fun restoreRemoved(sourceId: Long) { calls += "restore $sourceId" }
         override fun addFolder() { calls += "add folder" }
         override fun addPictures() { calls += "add pictures" }
         override fun setSourceEnabled(sourceId: Long, enabled: Boolean) { calls += "source $sourceId $enabled" }

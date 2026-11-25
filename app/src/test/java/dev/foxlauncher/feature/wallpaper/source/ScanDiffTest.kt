@@ -47,6 +47,16 @@ class ScanDiffTest {
     }
 
     @Test
+    fun aRemovedPictureStaysRemovedWhenItsFileChanges() {
+        val removed = a.copy(removed = true)
+
+        val diff = diffScan(listOf(removed), listOf(image("a.jpg", size = 150, modified = 30)))
+
+        assertEquals(listOf(removed.copy(sizeBytes = 150, lastModified = 30)), diff.changed)
+        assertTrue(diff.added.isEmpty() && diff.removedIds.isEmpty())
+    }
+
+    @Test
     fun aRenameIsAChange() {
         val diff = diffScan(listOf(a), listOf(FoundImage(uri = a.uri, displayName = "renamed.jpg", sizeBytes = 100, lastModified = 10)))
 

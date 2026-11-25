@@ -64,6 +64,11 @@ data class WallpaperEntryEntity(
      * (the SQL default is the migration's, the Kotlin one is for images added now).
      */
     @ColumnInfo(defaultValue = "HOME") val target: WallpaperTarget = WallpaperTarget.BOTH,
+    /**
+     * The user took it out of the rotation. Only a folder's or a built-in picture is kept this way, so a
+     * rescan does not bring it back; a picked one is deleted instead.
+     */
+    @ColumnInfo(defaultValue = "0") val removed: Boolean = false,
 ) {
     companion object {
         /** Failed loads in a row after which the rotation skips an entry. */
@@ -74,5 +79,5 @@ data class WallpaperEntryEntity(
 /** Which part of the image shows. */
 val WallpaperEntryEntity.framing: WallpaperFraming get() = WallpaperFraming(focusX, focusY, zoom)
 
-/** How many images a source has (task 4.7). */
-data class SourceEntryCount(val sourceId: Long, val count: Int)
+/** How many images a source has (task 4.7), and how many of them the user removed (not in [count]). */
+data class SourceEntryCount(val sourceId: Long, val count: Int, val removedCount: Int = 0)

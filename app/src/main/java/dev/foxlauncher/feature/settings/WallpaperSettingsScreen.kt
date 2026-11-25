@@ -54,6 +54,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -100,6 +101,10 @@ interface WallpaperSettingsActions {
     fun editFraming(entryId: Long)
     /** Aims a picture at the home screen, the lock screen or both. */
     fun setTarget(entryId: Long, target: WallpaperTarget)
+    /** Takes one picture out of the rotation. */
+    fun removeEntry(entryId: Long)
+    /** Brings back a source's pictures removed one by one. */
+    fun restoreRemoved(sourceId: Long)
     fun addFolder()
     fun addPictures()
     fun setSourceEnabled(sourceId: Long, enabled: Boolean)
@@ -150,6 +155,8 @@ fun WallpaperSettingsScreen(
                 framingId = entryId
             }
             override fun setTarget(entryId: Long, target: WallpaperTarget) = viewModel.setTarget(entryId, target)
+            override fun removeEntry(entryId: Long) = viewModel.removeEntry(entryId)
+            override fun restoreRemoved(sourceId: Long) = viewModel.restoreRemoved(sourceId)
             override fun addFolder() = launchPicker { folderPicker.launch(null) }
             override fun addPictures() = launchPicker {
                 picturesPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
@@ -272,6 +279,7 @@ fun WallpaperSettingsContent(
                         onEnabledChange = { actions.setSourceEnabled(source.id, it) },
                         onRemove = { removing = source.id },
                         onReauthorize = { actions.reauthorize(source.id) },
+                        onRestore = { actions.restoreRemoved(source.id) },
                     )
                 }
                 item {
@@ -333,7 +341,13 @@ fun WallpaperSettingsContent(
     state.entries.firstOrNull { it.id == choosingTarget }?.let { entry ->
         TargetPicker(
             entry = entry,
+            // The last picture stays: with none the wallpaper would be blank.
+            canRemove = state.entries.size > 1,
             onPick = { actions.setTarget(entry.id, it) },
+            onRemove = {
+                choosingTarget = null
+                actions.removeEntry(entry.id)
+            },
             onShowNow = {
                 choosingTarget = null
                 actions.show(entry.id)
@@ -436,6 +450,7 @@ private fun SourceRow(
     onEnabledChange: (Boolean) -> Unit,
     onRemove: () -> Unit,
     onReauthorize: () -> Unit,
+    onRestore: () -> Unit,
 ) {
     val name = sourceName(source)
     val toggleAllowed = !source.enabled || canTurnOff
@@ -445,7 +460,14 @@ private fun SourceRow(
             if (source.needsReauth) {
                 Text(stringResource(R.string.wallpaper_source_reauth), color = MaterialTheme.colorScheme.error)
             } else {
-                Text(pluralStringResource(R.plurals.wallpaper_source_pictures, source.imageCount, source.imageCount))
+                Column {
+                    Text(pluralStringResource(R.plurals.wallpaper_source_pictures, source.imageCount, source.imageCount))
+                    if (source.removedCount > 0) {
+                        TextButton(onClick = onRestore) {
+                            Text(pluralStringResource(R.plurals.wallpaper_source_restore, source.removedCount, source.removedCount))
+                        }
+                    }
+                }
             }
         },
         trailingContent = {
@@ -550,13 +572,30 @@ private fun targetLabel(target: WallpaperTarget): Int = when (target) {
     WallpaperTarget.BOTH -> R.string.wallpaper_target_both
 }
 
-/** Where [entry] shows (home screen, lock screen or both), saved on each pick; stays open until "Show now" or cancel. */
+/**
+ * Where [entry] shows (home screen, lock screen or both), saved on each pick; stays open until "Show now",
+ * "Remove" or cancel.
+ */
 @Composable
-private fun TargetPicker(entry: WallpaperEntryUi, onPick: (WallpaperTarget) -> Unit, onShowNow: () -> Unit, onDismiss: () -> Unit) {
+private fun TargetPicker(
+    entry: WallpaperEntryUi,
+    canRemove: Boolean,
+    onPick: (WallpaperTarget) -> Unit,
+    onRemove: () -> Unit,
+    onShowNow: () -> Unit,
+    onDismiss: () -> Unit,
+) {
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = { TextButton(onClick = onShowNow) { Text(stringResource(R.string.wallpaper_show_now_button)) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) } },
+        dismissButton = {
+            Row {
+                TextButton(onClick = onRemove, enabled = canRemove) {
+                    Text(stringResource(R.string.wallpaper_remove), color = if (canRemove) MaterialTheme.colorScheme.error else Color.Unspecified)
+                }
+                TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) }
+            }
+        },
         title = { Text(entry.name) },
         text = {
             Column {

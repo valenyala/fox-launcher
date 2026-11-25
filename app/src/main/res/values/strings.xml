@@ -173,7 +173,7 @@
     <string name="wallpaper_show_now">show it now</string>
     <string name="wallpaper_show_now_button">Show now</string>
     <string name="wallpaper_entry_failing">Cannot be read: skipped</string>
-    <string name="wallpaper_pictures_hint">Tap a picture to choose where it shows (home screen, lock screen or both) or to show it now. Touch and hold it to choose the part shown. The lock screen gets a still image of its pictures when the screen goes off.</string>
+    <string name="wallpaper_pictures_hint">Tap a picture to choose where it shows (home screen, lock screen or both), to show it now or to remove it. Touch and hold it to choose the part shown. The lock screen gets a still image of its pictures when the screen goes off.</string>
     <string name="wallpaper_framing_title">choose the part shown</string>
     <string name="wallpaper_framing_hint">Drag to move, pinch to zoom</string>
     <string name="wallpaper_framing_reset">Reset</string>
@@ -188,6 +188,10 @@
     <plurals name="wallpaper_source_pictures">
         <item quantity="one">%d picture</item>
         <item quantity="other">%d pictures</item>
+    </plurals>
+    <plurals name="wallpaper_source_restore">
+        <item quantity="one">Bring back %d removed</item>
+        <item quantity="other">Bring back %d removed</item>
     </plurals>
     <string name="wallpaper_source_reauth">Access lost: tap to pick the folder again</string>
     <string name="wallpaper_reauth_banner">Fox can no longer read “%1$s”. Its pictures are skipped until you pick the folder again.</string>

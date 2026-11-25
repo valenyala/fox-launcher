@@ -177,6 +177,14 @@ class RotationScheduler @Inject constructor(
         }
     }
 
+    /**
+     * A picture on screen was removed. The live wallpaper moves on by itself (it watches the entries); a
+     * still home image is replaced now and the lock screen's at its next screen off.
+     */
+    fun showingRemoved() {
+        if (!LiveWallpaper.isFoxActive(context)) StaticApplyWorker.enqueue(WorkManager.getInstance(context))
+    }
+
     /** Users of the retired "also change the lock screen" switch keep that: their images go on both screens. Once. */
     suspend fun migrateLegacyLockSwitch() {
         if (settings.takeLegacyLockSwitch()) dao.setAllTargets(WallpaperTarget.BOTH)
