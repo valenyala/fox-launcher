@@ -103,8 +103,6 @@ interface WallpaperSettingsActions {
     fun setTarget(entryId: Long, target: WallpaperTarget)
     /** Takes one picture out of the rotation. */
     fun removeEntry(entryId: Long)
-    /** Brings back a source's pictures removed one by one. */
-    fun restoreRemoved(sourceId: Long)
     fun addFolder()
     fun addPictures()
     fun setSourceEnabled(sourceId: Long, enabled: Boolean)
@@ -156,7 +154,6 @@ fun WallpaperSettingsScreen(
             }
             override fun setTarget(entryId: Long, target: WallpaperTarget) = viewModel.setTarget(entryId, target)
             override fun removeEntry(entryId: Long) = viewModel.removeEntry(entryId)
-            override fun restoreRemoved(sourceId: Long) = viewModel.restoreRemoved(sourceId)
             override fun addFolder() = launchPicker { folderPicker.launch(null) }
             override fun addPictures() = launchPicker {
                 picturesPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
@@ -279,7 +276,6 @@ fun WallpaperSettingsContent(
                         onEnabledChange = { actions.setSourceEnabled(source.id, it) },
                         onRemove = { removing = source.id },
                         onReauthorize = { actions.reauthorize(source.id) },
-                        onRestore = { actions.restoreRemoved(source.id) },
                     )
                 }
                 item {
@@ -450,7 +446,6 @@ private fun SourceRow(
     onEnabledChange: (Boolean) -> Unit,
     onRemove: () -> Unit,
     onReauthorize: () -> Unit,
-    onRestore: () -> Unit,
 ) {
     val name = sourceName(source)
     val toggleAllowed = !source.enabled || canTurnOff
@@ -460,14 +455,7 @@ private fun SourceRow(
             if (source.needsReauth) {
                 Text(stringResource(R.string.wallpaper_source_reauth), color = MaterialTheme.colorScheme.error)
             } else {
-                Column {
-                    Text(pluralStringResource(R.plurals.wallpaper_source_pictures, source.imageCount, source.imageCount))
-                    if (source.removedCount > 0) {
-                        TextButton(onClick = onRestore) {
-                            Text(pluralStringResource(R.plurals.wallpaper_source_restore, source.removedCount, source.removedCount))
-                        }
-                    }
-                }
+                Text(pluralStringResource(R.plurals.wallpaper_source_pictures, source.imageCount, source.imageCount))
             }
         },
         trailingContent = {

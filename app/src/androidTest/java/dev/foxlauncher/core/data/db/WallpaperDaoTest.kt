@@ -172,18 +172,7 @@ class WallpaperDaoTest {
         dao.applyScan(id, emptyList(), listOf(dao.getEntry(a.id)!!.copy(sizeBytes = 999)), emptyList())
 
         assertEquals(listOf("b"), dao.observeRotationEntries().first().map { it.displayName })
-        assertEquals(listOf(SourceEntryCount(id, 1, removedCount = 1)), dao.observeEntryCounts().first())
-    }
-
-    @Test
-    fun removedPicturesComeBack() = runBlocking {
-        val id = dao.insertSource(source("Folder"))
-        dao.applyScan(id, listOf(entry("a"), entry("b")), emptyList(), emptyList())
-        dao.getEntries(id).forEach { dao.markRemoved(it.id) }
-
-        dao.restoreRemoved(id)
-
-        assertEquals(listOf("a", "b"), dao.observeRotationEntries().first().map { it.displayName })
+        assertEquals(listOf(SourceEntryCount(id, 1)), dao.observeEntryCounts().first())
     }
 
     @Test

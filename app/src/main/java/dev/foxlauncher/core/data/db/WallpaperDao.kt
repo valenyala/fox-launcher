@@ -37,8 +37,8 @@ abstract class WallpaperDao {
     @Query("UPDATE wallpaper_sources SET uri = :uri, displayName = :displayName, needsReauth = 0 WHERE id = :sourceId")
     abstract suspend fun reauthorizeSource(sourceId: Long, uri: String, displayName: String)
 
-    /** How many images each source has, enabled or not, and how many were removed; a source with none is missing. */
-    @Query("SELECT sourceId, SUM(removed = 0) AS count, SUM(removed) AS removedCount FROM wallpaper_entries GROUP BY sourceId")
+    /** How many images each source has, enabled or not, less the removed ones; a source with none is missing. */
+    @Query("SELECT sourceId, COUNT(*) AS count FROM wallpaper_entries WHERE removed = 0 GROUP BY sourceId")
     abstract fun observeEntryCounts(): Flow<List<SourceEntryCount>>
 
     /** Removes the source and, by cascade, its entries. */
@@ -78,10 +78,6 @@ abstract class WallpaperDao {
     /** Takes a folder's or a built-in picture out of the rotation; its row stays so a rescan keeps it out. */
     @Query("UPDATE wallpaper_entries SET removed = 1 WHERE id = :id")
     abstract suspend fun markRemoved(id: Long)
-
-    /** Brings back every picture of [sourceId] the user removed. */
-    @Query("UPDATE wallpaper_entries SET removed = 0 WHERE sourceId = :sourceId")
-    abstract suspend fun restoreRemoved(sourceId: Long)
 
     @Query("DELETE FROM wallpaper_entries WHERE sourceId = :sourceId")
     abstract suspend fun deleteBySource(sourceId: Long)

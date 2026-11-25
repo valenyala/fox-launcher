@@ -123,17 +123,6 @@ class WallpaperSettingsContentTest {
     }
 
     @Test
-    fun removedPicturesCanBeBroughtBack() {
-        setContent(WallpaperSettingsUiState(sources = listOf(builtIn, folder.copy(removedCount = 2))))
-        val restore = composeRule.activity.resources.getQuantityString(R.plurals.wallpaper_source_restore, 2, 2)
-
-        composeRule.onNodeWithTag(WallpaperSettingsTestTags.LIST).performScrollToNode(hasText(restore))
-        composeRule.onNodeWithText(restore).performClick()
-
-        assertEquals(listOf("restore 5"), calls)
-    }
-
-    @Test
     fun theCrossfadeIsSavedWhenSet() {
         setContent()
 
@@ -297,7 +286,6 @@ class WallpaperSettingsContentTest {
         override fun editFraming(entryId: Long) { calls += "frame $entryId" }
         override fun setTarget(entryId: Long, target: WallpaperTarget) { calls += "target $entryId $target" }
         override fun removeEntry(entryId: Long) { calls += "remove entry $entryId" }
-        override fun restoreRemoved(sourceId: Long) { calls += "restore $sourceId" }
         override fun addFolder() { calls += "add folder" }
         override fun addPictures() { calls += "add pictures" }
         override fun setSourceEnabled(sourceId: Long, enabled: Boolean) { calls += "source $sourceId $enabled" }

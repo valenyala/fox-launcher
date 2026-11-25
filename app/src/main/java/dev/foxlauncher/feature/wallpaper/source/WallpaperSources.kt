@@ -142,7 +142,7 @@ class WallpaperSources @Inject constructor(
 
     /**
      * Takes one picture out of the rotation. A picked one is deleted and its access given back; one of a
-     * folder or the built-in ones is only marked, so the next scan does not add it again ([restoreRemoved]).
+     * folder or the built-in ones is only marked, so the next scan does not add it again.
      */
     suspend fun removeEntry(entryId: Long) = withContext(io) {
         val entry = dao.getEntry(entryId) ?: return@withContext
@@ -152,11 +152,6 @@ class WallpaperSources @Inject constructor(
         } else {
             dao.markRemoved(entryId)
         }
-    }
-
-    /** Brings back the pictures of a folder or the built-in ones that the user removed. */
-    suspend fun restoreRemoved(sourceId: Long) = withContext(io) {
-        dao.restoreRemoved(sourceId)
     }
 
     /** Removes a folder or the picked pictures, giving their access back. The built-in pictures stay. */

@@ -39,8 +39,6 @@ data class WallpaperSourceUi(
     /** The folder's access is gone: it must be picked again. */
     val needsReauth: Boolean,
     val imageCount: Int,
-    /** Its pictures the user removed one by one, which can be brought back. */
-    val removedCount: Int = 0,
 )
 
 /** One wallpaper in the thumbnail grid (task 4.7). */
@@ -106,11 +104,8 @@ class WallpaperSettingsViewModel @Inject constructor(
     val uiState: StateFlow<WallpaperSettingsUiState> = combine(
         rotationSettings,
         combine(sources.sources, sources.entryCounts) { list, counts ->
-            val countOf = counts.associateBy { it.sourceId }
-            list.map {
-                val count = countOf[it.id]
-                WallpaperSourceUi(it.id, it.type, it.displayName, it.enabled, it.needsReauth, count?.count ?: 0, count?.removedCount ?: 0)
-            }
+            val countOf = counts.associate { it.sourceId to it.count }
+            list.map { WallpaperSourceUi(it.id, it.type, it.displayName, it.enabled, it.needsReauth, countOf[it.id] ?: 0) }
         },
         sources.rotationEntries,
         combine(settings.activeWallpaperEntryId, settings.lockActiveWallpaperEntryId, ::Pair),
@@ -170,10 +165,6 @@ class WallpaperSettingsViewModel @Inject constructor(
             sources.removeEntry(entryId)
             if (showing) rotation.showingRemoved()
         }
-    }
-
-    fun restoreRemoved(sourceId: Long) {
-        viewModelScope.launch { sources.restoreRemoved(sourceId) }
     }
 
     fun setShuffle(enabled: Boolean) {
