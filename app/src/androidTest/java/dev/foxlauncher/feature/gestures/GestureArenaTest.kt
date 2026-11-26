@@ -72,6 +72,16 @@ class GestureArenaTest {
     }
 
     @Test
+    fun aDoubleTapOnAnItemIsLeftToTheItem() {
+        onItem = true
+        setArena()
+
+        arena().performTouchInput { doubleClick() }
+
+        assertTrue(gestures.isEmpty())
+    }
+
+    @Test
     fun aLongPressOnEmptySpaceIsReported() {
         setArena()
 

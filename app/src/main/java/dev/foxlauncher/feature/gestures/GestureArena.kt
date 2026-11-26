@@ -36,7 +36,7 @@ private val PINCH_THRESHOLD = 48.dp
  * [onGesture] hears what it recognizes. Once a gesture is the home's (a vertical drag, two
  * fingers, a pinch, a double tap, a long press on empty space, three fingers) the rest of its
  * events are consumed, so the pager does not page and items do not react. Single-finger horizontal
- * swipes stay the pager's, and a long press on an item ([isOnItem]) stays the item's.
+ * swipes stay the pager's, and a long press or a double tap on an item ([isOnItem]) stays the item's.
  *
  * A single-finger vertical drag that [followsVerticalDrag] accepts (it started on the dock, it goes
  * up) is followed instead of recognized (task 3.7): [onDragStart], then [onDrag] with each move in
@@ -135,6 +135,8 @@ fun Modifier.gestureArena(
                                 }
                                 is GestureResult.Recognized -> {
                                     longPress?.cancel()
+                                    // A double tap on an item is the item's: a widget's own taps, not the gesture.
+                                    if (result.type == GestureType.DOUBLE_TAP && isOnItem(change.position)) continue
                                     consumeRest = true
                                     onGesture(result.type)
                                 }
