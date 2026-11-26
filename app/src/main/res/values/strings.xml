@@ -68,6 +68,14 @@
     <string name="widget_lock_screen">Lock screen</string>
     <string name="widget_lock_screen_description">Tap the padlock to lock the phone. Needs the \"Fox gestures\" accessibility service</string>
     <string name="widget_lock_screen_action">Lock the screen</string>
+    <string name="widget_flashlight">Flashlight</string>
+    <string name="widget_flashlight_description">Tap the torch to turn the flashlight on or off</string>
+    <string name="widget_flashlight_turn_on">Turn the flashlight on</string>
+    <string name="widget_flashlight_turn_off">Turn the flashlight off</string>
+    <string name="widget_flashlight_on">On</string>
+    <string name="widget_flashlight_off">Off</string>
+    <string name="widget_flashlight_busy">Unavailable while another app uses the camera</string>
+    <string name="widget_flashlight_none">This phone has no flashlight</string>
     <string name="settings_icons">Icons</string>
     <string name="settings_icons_summary">Icon pack, shape, size and labels</string>
     <string name="icons_title">Icons</string>
@@ -131,7 +139,7 @@
     <string name="settings_widget_background_summary">How see-through the surface behind Fox\'s widgets is</string>
     <string name="widget_background_opacity">Opacity</string>
     <string name="widget_background_value">%1$d%%</string>
-    <string name="widget_background_note">For Fox\'s own widgets: Clock, the memory widgets and Lock screen. To give one widget its own background, an app widget too, touch and hold it, then Background.</string>
+    <string name="widget_background_note">For Fox\'s own widgets: Clock, the memory widgets, Lock screen and Flashlight. To give one widget its own background, an app widget too, touch and hold it, then Background.</string>
     <string name="popup_resize">Resize</string>
     <string name="popup_background">Background</string>
     <string name="widget_background_same">Same as other widgets (%1$d%%)</string>

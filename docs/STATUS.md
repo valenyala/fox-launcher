@@ -3,7 +3,7 @@
 Update this file at the end of every session. Keep it terse. Newest session notes on top.
 
 **Current phase:** 8 — Performance & release (started 2026-10-14 at the user's call, with 7.2–7.8 still open; phase 9 done; Phase 4 owes three checklist items, deferred; Phase 2 still owes 2.8, deferred by the user, and its device checklist; phases 0 and 1 owe their device checklists)
-**Next task:** 8.6 Crash reporting decision, then 8.5 (8.4 owes the user's 60-minute idle run; 8.3 done bar the POCO check; 5.6–5.8, user requests, owe the POCO check). Still open: 7.2–7.8; 3.8's POCO check; 2.8 deferred
+**Next task:** 8.6 Crash reporting decision, then 8.5 (8.4 owes the user's 60-minute idle run; 8.3 done bar the POCO check; 5.6–5.9, user requests, owe the POCO check). Still open: 7.2–7.8; 3.8's POCO check; 2.8 deferred
 
 ## Environment facts (verified 2026-09-17)
 
@@ -92,6 +92,7 @@ Update this file at the end of every session. Keep it terse. Newest session note
 - [ ] 5.6 Widget background opacity (user request 2026-10-15): fox-api33 pass; **owed:** the POCO check
 - [ ] 5.7 Lock screen widget (user request 2026-10-15): fox-api33/37 pass; **owed:** the POCO check
 - [ ] 5.8 Each widget's own background (user request 2026-10-15): fox-api33 pass, v4 → v5 on fox-api33/37; **owed:** the POCO check
+- [ ] 5.9 Flashlight widget (user request 2026-11-25): fox-api33 pass; **owed:** the POCO check
 - [x] Device checklist: POCO F3 2026-10-13 — widgets added from the home menu, resized, moved, figures right; 5.4 "boost reduces used memory on API ≤ 33" passed through Deep boost (9.1) on the POCO F3, 2026-10-14; the 34+ caption passed on fox-api37
 
 ## Phase 6 — App widgets
@@ -168,6 +169,8 @@ Return home after 12 s in Settings (`ab.sh return`, fresh install, 2 A/Bs × 6 r
 Fox's first frame on the UI thread 34 → 27 ms (2026-10-11, closed drawer out of the draw tree).
 
 ## Session notes
+
+- 2026-11-25 — 5.9 (user: "make a widget to open the light"). `FlashlightWidget` (`flashlight`, 1×1): a torch icon, outlined when off, filled amber when on; a tap toggles it through `CameraManager.setTorchMode` (no permission, no camera opened). `Flashlight` picks the back camera with a flash (`pickTorchCamera`, pure, `TorchCameraTest` 3) and follows `TorchCallback`, so the widget also shows the torch turned on from quick settings; while another app holds the camera it dims and takes no tap; with no flash it says so. Gate green. `FlashlightButtonTest` 4/4 on fox-api33; fox-api37 hits the known Espresso `InputManager.getInstance` failure. fox-api33 (debug, Fox set as home): added from the picker, tap → `Torch for camera id 1 turned on`, icon amber; tap → off. The POCO has the profiling build with it (`install -r`, data kept). **Owed:** the POCO check.
 
 - 2026-11-25 — User: "make it possible to remove a wallpaper individually". The picture dialog (`TargetPicker`) has **Remove**, disabled when only one picture is left. `WallpaperSources.removeEntry`: a picked picture is deleted and its URI grant released; a folder's or built-in one gets `removed = 1` (new column, DB v7, auto-migration 6→7, `7.json`), so `diffScan` keeps the row and a rescan does not re-add it. `observeRotationEntries` skips removed rows; the built-in fallback still steps in, removed or not, so the wallpaper never goes blank. `observeEntryCounts` leaves removed ones out. A "Bring back N removed" button per source was tried and dropped at the user's call (2026-11-25): removal is for good (a folder's pictures return only if the folder is removed and added again). Removing the picture on screen: the live engine falls back to the first entry; without it `RotationScheduler.showingRemoved` re-applies the still. Gate green. fox-api33: `WallpaperDaoTest` 15/15, `WallpaperSettingsContentTest` 20/20; fox-api37: DAO 15/15, the Compose tests hit the known Espresso `InputManager.getInstance` failure. Both emulators had the release build: uninstalled for the run, so they now have no Fox. A comma-separated `class=` runner argument ran only the first class; run one class at a time. The POCO has the profiling build with this (`install -r`, data kept, v6→v7 migration, no crash). POCO checked by the user: remove, removing the one on screen, last picture locked.
 

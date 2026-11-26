@@ -74,3 +74,12 @@ Read `PLATFORM-NOTES.md` section M. ADR-5 and ADR-8 apply.
   `widgetBackgroundOpacity(item, default)` is pure.
 - **Verify:** unit tests for the rule and the mapper round trip; UI tests of the panel and of popup → panel → save.
   Device: v4 → v5 keeps the layout; a Fox widget and an app widget each keep their own after Done.
+
+## 5.9 Flashlight widget (user request, 2026-11-25)
+
+- **Do:** `flashlight`, 1×1, not resizable: a torch; a tap toggles `CameraManager.setTorchMode` on the back camera with
+  a flash (any camera with one otherwise). No permission and no camera session. The icon follows `TorchCallback`, so a
+  torch switched from quick settings shows too. Camera held by another app → dimmed, no tap; no flash → dimmed, says so.
+  The picker preview takes no tap.
+- **Verify:** JVM test of the camera pick; UI test (a tap toggles, on/off state description, no tap when busy or in the
+  preview). Device: tap turns the torch on and off; opening the camera app dims the widget.

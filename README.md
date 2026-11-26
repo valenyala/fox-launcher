@@ -124,6 +124,7 @@ Long-press a widget on the home screen to move, resize or remove it; lists insid
 | Memory details | 2 × 2 | Used, available, cached and swap, with a graph of the last two minutes, plus recent apps if you allow usage access |
 | Boost | 1 × 1 | Frees memory and shows how much was really freed |
 | Lock screen | 1 × 1 | A padlock: tap it to lock the phone (needs the "Fox gestures" accessibility service, as the gestures do) |
+| Flashlight | 1 × 1 | A torch: tap it to turn the flashlight on or off; it lights up while the flashlight is on |
 
 The memory widgets only poll while they are on screen. **Home settings → Widget background** sets how see-through the
 surface behind Fox's widgets is, from clear to solid. To give one widget its own, long-press it and pick **Background**:
