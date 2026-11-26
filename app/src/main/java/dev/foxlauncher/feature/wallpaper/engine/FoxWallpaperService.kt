@@ -21,6 +21,7 @@ import dev.foxlauncher.core.model.RotationTrigger
 import dev.foxlauncher.feature.wallpaper.EntryTargets
 import dev.foxlauncher.feature.wallpaper.KeyguardState
 import dev.foxlauncher.feature.wallpaper.LiveWallpaper
+import dev.foxlauncher.feature.wallpaper.RotationEntries
 import dev.foxlauncher.feature.wallpaper.RotationScheduler
 import dev.foxlauncher.feature.wallpaper.TriggerPolicy
 import dev.foxlauncher.feature.wallpaper.source.WallpaperSources
@@ -59,6 +60,8 @@ class FoxWallpaperService : WallpaperService() {
     @Inject lateinit var settings: FoxSettings
 
     @Inject lateinit var dao: WallpaperDao
+
+    @Inject lateinit var rotationEntries: RotationEntries
 
     @Inject lateinit var loader: WallpaperLoader
 
@@ -141,7 +144,7 @@ class FoxWallpaperService : WallpaperService() {
             scope.launch {
                 combine(
                     combine(settings.activeWallpaperEntryId, settings.lockActiveWallpaperEntryId, ::Pair),
-                    dao.observeRotationEntries(),
+                    rotationEntries.flow,
                     settings.crossfadeMs,
                     keyguard.locked,
                 ) { (active, lockActive), entries, ms, locked ->

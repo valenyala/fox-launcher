@@ -76,6 +76,12 @@
     <string name="widget_flashlight_off">Off</string>
     <string name="widget_flashlight_busy">Unavailable while another app uses the camera</string>
     <string name="widget_flashlight_none">This phone has no flashlight</string>
+    <string name="widget_private_wallpapers">Private wallpapers</string>
+    <string name="widget_private_wallpapers_description">Switch on to include the pictures marked private in the wallpaper list and rotation</string>
+    <string name="widget_private_wallpapers_turn_on">Include private wallpapers</string>
+    <string name="widget_private_wallpapers_turn_off">Exclude private wallpapers</string>
+    <string name="widget_private_wallpapers_on">Included</string>
+    <string name="widget_private_wallpapers_off">Excluded</string>
     <string name="settings_icons">Icons</string>
     <string name="settings_icons_summary">Icon pack, shape, size and labels</string>
     <string name="icons_title">Icons</string>
@@ -211,6 +217,8 @@
     <string name="wallpaper_target_home">Home screen</string>
     <string name="wallpaper_target_lock">Lock screen</string>
     <string name="wallpaper_target_both">Both</string>
+    <string name="wallpaper_private">Private</string>
+    <string name="wallpaper_private_summary">Listed and rotated only while the Private wallpapers widget is on</string>
     <string name="wallpaper_target_change">change where it shows</string>
     <string name="settings_title">Home settings</string>
     <string name="settings_gestures">Gestures</string>

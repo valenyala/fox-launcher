@@ -101,6 +101,8 @@ interface WallpaperSettingsActions {
     fun editFraming(entryId: Long)
     /** Aims a picture at the home screen, the lock screen or both. */
     fun setTarget(entryId: Long, target: WallpaperTarget)
+    /** Marks a picture private: shown only while the private wallpapers switch (a widget) is on. */
+    fun setPrivate(entryId: Long, isPrivate: Boolean)
     /** Takes one picture out of the rotation. */
     fun removeEntry(entryId: Long)
     fun addFolder()
@@ -153,6 +155,7 @@ fun WallpaperSettingsScreen(
                 framingId = entryId
             }
             override fun setTarget(entryId: Long, target: WallpaperTarget) = viewModel.setTarget(entryId, target)
+            override fun setPrivate(entryId: Long, isPrivate: Boolean) = viewModel.setPrivate(entryId, isPrivate)
             override fun removeEntry(entryId: Long) = viewModel.removeEntry(entryId)
             override fun addFolder() = launchPicker { folderPicker.launch(null) }
             override fun addPictures() = launchPicker {
@@ -340,6 +343,7 @@ fun WallpaperSettingsContent(
             // The last picture stays: with none the wallpaper would be blank.
             canRemove = state.entries.size > 1,
             onPick = { actions.setTarget(entry.id, it) },
+            onPrivate = { actions.setPrivate(entry.id, it) },
             onRemove = {
                 choosingTarget = null
                 actions.removeEntry(entry.id)
@@ -569,6 +573,7 @@ private fun TargetPicker(
     entry: WallpaperEntryUi,
     canRemove: Boolean,
     onPick: (WallpaperTarget) -> Unit,
+    onPrivate: (Boolean) -> Unit,
     onRemove: () -> Unit,
     onShowNow: () -> Unit,
     onDismiss: () -> Unit,
@@ -600,6 +605,7 @@ private fun TargetPicker(
                         Text(stringResource(targetLabel(target)))
                     }
                 }
+                SwitchRow(R.string.wallpaper_private, entry.isPrivate, onPrivate, R.string.wallpaper_private_summary)
             }
         },
         modifier = Modifier.testTag(WallpaperSettingsTestTags.TARGET_PICKER),

@@ -40,9 +40,6 @@ class WallpaperSources @Inject constructor(
 
     val entryCounts: Flow<List<SourceEntryCount>> = dao.observeEntryCounts()
 
-    /** The images the rotation walks (see [WallpaperDao.observeRotationEntries]). */
-    val rotationEntries: Flow<List<WallpaperEntryEntity>> = dao.observeRotationEntries()
-
     /**
      * Makes sure the built-in source exists and lists exactly the wallpapers this version ships, so
      * rotation has images with no setup. Their URIs name the resource, which stays valid across builds.

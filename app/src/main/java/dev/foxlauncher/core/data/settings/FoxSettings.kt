@@ -264,6 +264,14 @@ class FoxSettings @Inject constructor(
         Unit
     }
 
+    /** The "private wallpapers" switch: whether pictures marked private are listed and rotate. Off until turned on. */
+    val showPrivateWallpapers: Flow<Boolean> = dataStore.data.map { it[Keys.SHOW_PRIVATE_WALLPAPERS] ?: false }
+
+    suspend fun setShowPrivateWallpapers(show: Boolean) = withContext(io) {
+        dataStore.edit { it[Keys.SHOW_PRIVATE_WALLPAPERS] = show }
+        Unit
+    }
+
     /** How long a wallpaper crossfade lasts, in ms (task 4.3; set in the wallpaper settings, task 4.7). */
     val crossfadeMs: Flow<Int> = dataStore.data.map { it[Keys.CROSSFADE_MS] ?: DEFAULT_CROSSFADE_MS }
 
@@ -316,6 +324,7 @@ class FoxSettings @Inject constructor(
         val NAVIGATION_GESTURES = booleanPreferencesKey("navigation_gestures")
         val DEEP_BOOST = booleanPreferencesKey("deep_boost")
         val ACTIVE_WALLPAPER = longPreferencesKey("wallpaper_active_entry")
+        val SHOW_PRIVATE_WALLPAPERS = booleanPreferencesKey("wallpaper_show_private")
         val CROSSFADE_MS = intPreferencesKey("wallpaper_crossfade_ms")
         val WALLPAPER_CHANGED_AT = longPreferencesKey("wallpaper_changed_at")
         val ROTATION_INTERVAL = intPreferencesKey("wallpaper_rotation_interval_minutes")

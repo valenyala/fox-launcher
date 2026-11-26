@@ -15,6 +15,7 @@ import dev.foxlauncher.feature.memory.widgets.MemoryWidgets
 import dev.foxlauncher.feature.widgets.clock.ClockWidget
 import dev.foxlauncher.feature.widgets.flashlight.FlashlightWidget
 import dev.foxlauncher.feature.widgets.lock.LockScreenWidget
+import dev.foxlauncher.feature.widgets.privatewallpapers.PrivateWallpapersWidget
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -78,6 +79,10 @@ object NativeWidgetModule {
     @Provides
     @IntoSet
     fun flashlight(): NativeWidgetSpec = FlashlightWidget.spec
+
+    @Provides
+    @IntoSet
+    fun privateWallpapers(): NativeWidgetSpec = PrivateWallpapersWidget.spec
 
     @Provides
     @IntoSet

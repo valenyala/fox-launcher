@@ -49,16 +49,16 @@ abstract class WallpaperDao {
      * The entries the rotation walks, in a stable order: those of enabled sources that can still be
      * read (a folder that lost its access is left out, task 4.9), less the ones the user removed. When
      * that leaves nothing, the built-in pictures step in even if turned off or removed, so the
-     * wallpaper never goes blank.
+     * wallpaper never goes blank. Private pictures count only when [showPrivate].
      */
     @Query(
         "SELECT e.* FROM wallpaper_entries e JOIN wallpaper_sources s ON s.id = e.sourceId " +
-            "WHERE (s.enabled = 1 AND s.needsReauth = 0 AND e.removed = 0) " +
+            "WHERE (s.enabled = 1 AND s.needsReauth = 0 AND e.removed = 0 AND (:showPrivate = 1 OR e.isPrivate = 0)) " +
             "OR (s.type = 'BUILT_IN' AND NOT EXISTS (SELECT 1 FROM wallpaper_entries e2 " +
-            "JOIN wallpaper_sources s2 ON s2.id = e2.sourceId WHERE s2.enabled = 1 AND s2.needsReauth = 0 AND e2.removed = 0)) " +
+            "JOIN wallpaper_sources s2 ON s2.id = e2.sourceId WHERE s2.enabled = 1 AND s2.needsReauth = 0 AND e2.removed = 0 AND (:showPrivate = 1 OR e2.isPrivate = 0))) " +
             "ORDER BY e.sourceId, e.displayName, e.id",
     )
-    abstract fun observeRotationEntries(): Flow<List<WallpaperEntryEntity>>
+    abstract fun observeRotationEntries(showPrivate: Boolean): Flow<List<WallpaperEntryEntity>>
 
     @Query("SELECT * FROM wallpaper_entries WHERE sourceId = :sourceId")
     abstract suspend fun getEntries(sourceId: Long): List<WallpaperEntryEntity>
@@ -91,6 +91,10 @@ abstract class WallpaperDao {
     /** The part of the image the user chose to show (ADR-26). */
     @Query("UPDATE wallpaper_entries SET focusX = :focusX, focusY = :focusY, zoom = :zoom WHERE id = :id")
     abstract suspend fun setFraming(id: Long, focusX: Float, focusY: Float, zoom: Float)
+
+    /** Marks the picture private or not. */
+    @Query("UPDATE wallpaper_entries SET isPrivate = :isPrivate WHERE id = :id")
+    abstract suspend fun setPrivate(id: Long, isPrivate: Boolean)
 
     /** Where the image shows: the home screen, the lock screen or both. */
     @Query("UPDATE wallpaper_entries SET target = :target WHERE id = :id")

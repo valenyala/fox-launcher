@@ -38,7 +38,17 @@ class WallpaperDaoTest {
         dao.applyScan(on, listOf(entry("a")), emptyList(), emptyList())
         dao.applyScan(off, listOf(entry("b")), emptyList(), emptyList())
 
-        assertEquals(listOf("a"), dao.observeRotationEntries().first().map { it.displayName })
+        assertEquals(listOf("a"), dao.observeRotationEntries(showPrivate = true).first().map { it.displayName })
+    }
+
+    @Test
+    fun privatePicturesRotateOnlyWhileTheSwitchIsOn() = runBlocking {
+        val id = dao.insertSource(source("On"))
+        dao.applyScan(id, listOf(entry("a"), entry("b")), emptyList(), emptyList())
+        dao.setPrivate(dao.getEntries(id).single { it.displayName == "b" }.id, true)
+
+        assertEquals(listOf("a"), dao.observeRotationEntries(showPrivate = false).first().map { it.displayName })
+        assertEquals(listOf("a", "b"), dao.observeRotationEntries(showPrivate = true).first().map { it.displayName })
     }
 
     @Test
@@ -107,10 +117,10 @@ class WallpaperDaoTest {
         dao.applyScan(id, listOf(entry("a")), emptyList(), emptyList())
 
         dao.setSourceEnabled(id, false)
-        assertTrue(dao.observeRotationEntries().first().isEmpty())
+        assertTrue(dao.observeRotationEntries(showPrivate = true).first().isEmpty())
         dao.setSourceEnabled(id, true)
 
-        assertEquals(listOf("a"), dao.observeRotationEntries().first().map { it.displayName })
+        assertEquals(listOf("a"), dao.observeRotationEntries(showPrivate = true).first().map { it.displayName })
     }
 
     @Test
@@ -122,7 +132,7 @@ class WallpaperDaoTest {
 
         dao.setNeedsReauth(lost, true)
 
-        assertEquals(listOf("a"), dao.observeRotationEntries().first().map { it.displayName })
+        assertEquals(listOf("a"), dao.observeRotationEntries(showPrivate = true).first().map { it.displayName })
     }
 
     @Test
@@ -131,11 +141,11 @@ class WallpaperDaoTest {
         val lost = dao.insertSource(source("Lost"))
         dao.applyScan(builtIn, listOf(entry("fox")), emptyList(), emptyList())
         dao.applyScan(lost, listOf(entry("b")), emptyList(), emptyList())
-        assertEquals(listOf("b"), dao.observeRotationEntries().first().map { it.displayName })
+        assertEquals(listOf("b"), dao.observeRotationEntries(showPrivate = true).first().map { it.displayName })
 
         dao.setNeedsReauth(lost, true)
 
-        assertEquals(listOf("fox"), dao.observeRotationEntries().first().map { it.displayName }, "turned off, but nothing else is left")
+        assertEquals(listOf("fox"), dao.observeRotationEntries(showPrivate = true).first().map { it.displayName }, "turned off, but nothing else is left")
     }
 
     @Test
@@ -168,10 +178,10 @@ class WallpaperDaoTest {
         val a = dao.getEntries(id).single { it.displayName == "a" }
 
         dao.markRemoved(a.id)
-        assertEquals(listOf("b"), dao.observeRotationEntries().first().map { it.displayName })
+        assertEquals(listOf("b"), dao.observeRotationEntries(showPrivate = true).first().map { it.displayName })
         dao.applyScan(id, emptyList(), listOf(dao.getEntry(a.id)!!.copy(sizeBytes = 999)), emptyList())
 
-        assertEquals(listOf("b"), dao.observeRotationEntries().first().map { it.displayName })
+        assertEquals(listOf("b"), dao.observeRotationEntries(showPrivate = true).first().map { it.displayName })
         assertEquals(listOf(SourceEntryCount(id, 1)), dao.observeEntryCounts().first())
     }
 
@@ -184,7 +194,7 @@ class WallpaperDaoTest {
 
         (dao.getEntries(builtIn) + dao.getEntries(folder)).forEach { dao.markRemoved(it.id) }
 
-        assertEquals(listOf("fox"), dao.observeRotationEntries().first().map { it.displayName }, "removed, but nothing else is left")
+        assertEquals(listOf("fox"), dao.observeRotationEntries(showPrivate = true).first().map { it.displayName }, "removed, but nothing else is left")
     }
 
     @Test

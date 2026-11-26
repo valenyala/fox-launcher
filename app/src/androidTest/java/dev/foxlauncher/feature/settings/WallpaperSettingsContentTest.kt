@@ -285,6 +285,7 @@ class WallpaperSettingsContentTest {
         override fun setCrossfadeMs(ms: Int) { calls += "crossfade $ms" }
         override fun editFraming(entryId: Long) { calls += "frame $entryId" }
         override fun setTarget(entryId: Long, target: WallpaperTarget) { calls += "target $entryId $target" }
+        override fun setPrivate(entryId: Long, isPrivate: Boolean) { calls += "private $entryId $isPrivate" }
         override fun removeEntry(entryId: Long) { calls += "remove entry $entryId" }
         override fun addFolder() { calls += "add folder" }
         override fun addPictures() { calls += "add pictures" }

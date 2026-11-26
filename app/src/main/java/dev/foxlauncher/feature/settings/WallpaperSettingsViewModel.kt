@@ -18,6 +18,7 @@ import dev.foxlauncher.core.model.WallpaperFraming
 import dev.foxlauncher.core.model.WallpaperTarget
 import dev.foxlauncher.feature.wallpaper.EntryTargets
 import dev.foxlauncher.feature.wallpaper.LiveWallpaper
+import dev.foxlauncher.feature.wallpaper.RotationEntries
 import dev.foxlauncher.feature.wallpaper.RotationScheduler
 import dev.foxlauncher.feature.wallpaper.WallpaperPlaylist
 import dev.foxlauncher.feature.wallpaper.source.WallpaperSources
@@ -54,6 +55,8 @@ data class WallpaperEntryUi(
     val framing: WallpaperFraming = WallpaperFraming.CENTERED,
     /** Where it shows: the home screen, the lock screen or both. */
     val target: WallpaperTarget = WallpaperTarget.BOTH,
+    /** Marked private: listed and rotated only while the private wallpapers switch is on. */
+    val isPrivate: Boolean = false,
 )
 
 @Immutable
@@ -81,6 +84,7 @@ class WallpaperSettingsViewModel @Inject constructor(
     private val settings: FoxSettings,
     private val rotation: RotationScheduler,
     private val sources: WallpaperSources,
+    rotationEntries: RotationEntries,
 ) : ViewModel() {
 
     private val liveWallpaperActive = MutableStateFlow(isLiveWallpaperActive())
@@ -107,14 +111,14 @@ class WallpaperSettingsViewModel @Inject constructor(
             val countOf = counts.associate { it.sourceId to it.count }
             list.map { WallpaperSourceUi(it.id, it.type, it.displayName, it.enabled, it.needsReauth, countOf[it.id] ?: 0) }
         },
-        sources.rotationEntries,
+        rotationEntries.flow,
         combine(settings.activeWallpaperEntryId, settings.lockActiveWallpaperEntryId, ::Pair),
     ) { base, sourceList, entries, (active, lockActive) ->
         val targets = entries.map { it.id to it.target }
         base.copy(
             sources = sourceList,
             entries = entries.map {
-                WallpaperEntryUi(it.id, sources.thumbnailModel(it.uri), it.displayName, it.failedCount >= WallpaperEntryEntity.MAX_FAILURES, it.framing, it.target)
+                WallpaperEntryUi(it.id, sources.thumbnailModel(it.uri), it.displayName, it.failedCount >= WallpaperEntryEntity.MAX_FAILURES, it.framing, it.target, it.isPrivate)
             },
             showingId = WallpaperPlaylist.showing(active, EntryTargets.home(targets)),
             lockShowingId = WallpaperPlaylist.showing(lockActive, EntryTargets.lock(targets)),
@@ -155,6 +159,11 @@ class WallpaperSettingsViewModel @Inject constructor(
     /** Aims a picture at the home screen, the lock screen or both. */
     fun setTarget(entryId: Long, target: WallpaperTarget) {
         viewModelScope.launch { rotation.setTarget(entryId, target) }
+    }
+
+    /** Marks a picture private (hidden while the switch is off) or not. */
+    fun setPrivate(entryId: Long, isPrivate: Boolean) {
+        viewModelScope.launch { rotation.setPrivate(entryId, isPrivate) }
     }
 
     /** Takes one picture out of the rotation; one on screen is replaced. */

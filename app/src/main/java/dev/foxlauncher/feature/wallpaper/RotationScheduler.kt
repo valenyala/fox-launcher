@@ -40,6 +40,7 @@ class RotationScheduler @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val settings: FoxSettings,
     private val dao: WallpaperDao,
+    private val rotationEntries: RotationEntries,
     @param:ApplicationScope private val scope: CoroutineScope,
     private val applier: StaticWallpaperApplier,
 ) : WallpaperAdvancer {
@@ -72,7 +73,7 @@ class RotationScheduler @Inject constructor(
      * on the home screen (the lock screen's when only it moved); null when there is none.
      */
     suspend fun advanceNow(forward: Boolean = true, reason: RotationTrigger = RotationTrigger.MANUAL): Long? = mutex.withLock {
-        val entries = dao.observeRotationEntries().first()
+        val entries = rotationEntries.flow.first()
         val home = homePlaylist(entries)
         val (homeId, homeAfter) = if (forward) home.next() else home.previous()
         val lock = lockPlaylist(entries, home.seed)
@@ -91,7 +92,7 @@ class RotationScheduler @Inject constructor(
      * on from it. False when it cannot be shown.
      */
     suspend fun showNow(entryId: Long): Boolean = mutex.withLock {
-        val entries = dao.observeRotationEntries().first()
+        val entries = rotationEntries.flow.first()
         val homeBefore = homePlaylist(entries)
         val home = homeBefore.jumpTo(entryId)
         val lock = lockPlaylist(entries, homeBefore.seed)?.jumpTo(entryId)
@@ -163,10 +164,19 @@ class RotationScheduler @Inject constructor(
         mutex.withLock {
             dao.setFraming(entryId, framing.focusX, framing.focusY, framing.zoom)
             if (settings.lockWallpaperEntryId.first() == entryId) settings.setLockWallpaperEntry(null)
-            val entries = dao.observeRotationEntries().first()
+            val entries = rotationEntries.flow.first()
             if (entryId == homeShowing(entries) && !LiveWallpaper.isFoxActive(context)) StaticApplyWorker.enqueue(WorkManager.getInstance(context))
         }
     }
+
+    /** Marks a picture private or not; the switch decides whether private ones show. */
+    suspend fun setPrivate(entryId: Long, isPrivate: Boolean) {
+        mutex.withLock { dao.setPrivate(entryId, isPrivate) }
+        privateChanged()
+    }
+
+    /** The private pictures came or went (the switch, or a picture marked): a still home image is replaced now, the lock screen at its next screen off. */
+    fun privateChanged() = showingRemoved()
 
     /** Aims entry [entryId] at the home screen, the lock screen or both. The lock screen catches up at its next screen off. */
     suspend fun setTarget(entryId: Long, target: WallpaperTarget) {
@@ -198,7 +208,7 @@ class RotationScheduler @Inject constructor(
     suspend fun applyStatic() {
         if (LiveWallpaper.isFoxActive(context)) return
         mutex.withLock {
-            val entries = dao.observeRotationEntries().first()
+            val entries = rotationEntries.flow.first()
             val homeId = homeShowing(entries)
             // A still image on the lock screen would split it off the live wallpaper, which draws its picture itself.
             val lockId = lockShowing(entries)
@@ -222,7 +232,7 @@ class RotationScheduler @Inject constructor(
         val power = context.getSystemService(PowerManager::class.java)
         if (power.isInteractive || LiveWallpaper.isFoxOnLock(context)) return
         mutex.withLock {
-            val lockId = lockShowing(dao.observeRotationEntries().first()) ?: return
+            val lockId = lockShowing(rotationEntries.flow.first()) ?: return
             if (!StaticTargets.lockScreenBehind(settings.lockWallpaperEntryId.first(), lockId)) return
             if (applier.apply(lockId, setOf(StaticTarget.LOCK)) { !power.isInteractive }) settings.setLockWallpaperEntry(lockId)
         }

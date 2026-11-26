@@ -26,6 +26,8 @@ import androidx.room.migration.AutoMigrationSpec
         AutoMigration(from = 5, to = 6),
         // v6 → v7: a picture the user removed from a folder or the built-in ones, a column with a default.
         AutoMigration(from = 6, to = 7),
+        // v7 → v8: a picture the user marked private, a column with a default.
+        AutoMigration(from = 7, to = 8),
     ],
 )
 abstract class FoxDatabase : RoomDatabase() {
@@ -39,7 +41,7 @@ abstract class FoxDatabase : RoomDatabase() {
     class DropKeyValue : AutoMigrationSpec
 
     companion object {
-        const val VERSION: Int = 7
+        const val VERSION: Int = 8
         const val NAME: String = "fox.db"
     }
 }

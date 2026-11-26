@@ -69,6 +69,11 @@ data class WallpaperEntryEntity(
      * so a rescan does not bring it back; a picked one is deleted instead.
      */
     @ColumnInfo(defaultValue = "0") val removed: Boolean = false,
+    /**
+     * A private picture: it is in the list and the rotation only while the "private wallpapers" switch (a home
+     * widget) is on.
+     */
+    @ColumnInfo(defaultValue = "0") val isPrivate: Boolean = false,
 ) {
     companion object {
         /** Failed loads in a row after which the rotation skips an entry. */
